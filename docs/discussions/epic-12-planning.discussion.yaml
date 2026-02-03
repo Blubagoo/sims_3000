@@ -1,0 +1,324 @@
+epic: 12
+title: "Information & UI Systems Planning"
+date: "2026-01-29"
+status: resolved
+participants: [systems-architect, game-designer, ui-developer]
+
+# ============================================================================
+# CROSS-CUTTING REQUIREMENTS
+# ============================================================================
+
+cross_cutting_requirements:
+  CCR-1:
+    title: "Per-Player UI State"
+    description: "UI state is entirely client-side and per-player. Panel positions, current tool, active overlay, open dialogs - none of this syncs over network. Each player has independent UI state."
+    status: confirmed
+    agreed_by: [systems-architect, game-designer, ui-developer]
+
+  CCR-2:
+    title: "Dual UI Mode Support"
+    description: "UISystem supports two visual modes: Legacy Interface (Classic) and Holo Interface (Holographic). Both modes share keybindings, data sources, and widget logic - only rendering differs."
+    status: confirmed
+    agreed_by: [systems-architect, game-designer, ui-developer]
+
+  CCR-3:
+    title: "UISystem Has No Tick Priority"
+    description: "UISystem does not participate in simulation ticks. It renders between ticks, querying data from simulation systems via interfaces (IGridOverlay, IStatQueryable, IEconomyQueryable)."
+    status: confirmed
+    agreed_by: [systems-architect, ui-developer]
+
+  CCR-4:
+    title: "UISystem is Read-Only Consumer"
+    description: "UISystem queries data from all simulation systems but does not modify game state directly. Player actions flow through UI events to appropriate game systems."
+    status: confirmed
+    agreed_by: [systems-architect]
+
+  CCR-5:
+    title: "Alien Terminology Enforcement"
+    description: "All player-facing UI text uses canonical alien terms from terminology.yaml: sector_scan (not minimap), command_array (not toolbar), data_readout (not info panel), etc."
+    status: confirmed
+    agreed_by: [game-designer]
+
+  CCR-6:
+    title: "IGridOverlay for All Overlays"
+    description: "UISystem uses IGridOverlay interface to render all data overlays. Systems that provide overlay data (DisorderSystem, ContaminationSystem, LandValueSystem, etc.) implement this interface."
+    status: confirmed
+    agreed_by: [systems-architect, ui-developer]
+
+# ============================================================================
+# RESOLVED DISCUSSION THREADS
+# ============================================================================
+
+threads:
+  # ============================================================================
+  # SYSTEMS ARCHITECT -> GAME DESIGNER
+  # ============================================================================
+
+  - id: 1
+    topic: "Multiple Overlays Active Simultaneously"
+    status: resolved
+    entries:
+      - agent: systems-architect
+        position: "Can players have multiple overlays active simultaneously (e.g., power + disorder)? Or mutually exclusive single active overlay? Proposed: single active overlay at a time."
+      - agent: game-designer
+        position: "Single active is simpler for MVP, but advanced option for 2 overlays simultaneously could be valuable. Overlays should be from different hue families for visual distinction."
+    resolution: "Single active overlay for Epic 12 MVP. Max 2 overlays simultaneously is P2 (polish). Clear visual distinction between overlays required when multi-overlay is added."
+
+  - id: 2
+    topic: "Query Tool (Analyzer) Detail Level"
+    status: resolved
+    entries:
+      - agent: systems-architect
+        position: "How much detail should the query tool show? Options: (A) Summary only, (B) Full stats, (C) Progressive reveal. Proposed: Option C."
+      - agent: game-designer
+        position: "Progressive reveal preferred. Summary visible immediately, click/hover to expand for details. Players who want quick info get it fast, detail seekers can drill down."
+    resolution: "Progressive reveal (Option C). Data readout shows summary by default (zone type, powered/watered status), expandable sections for detailed stats (exact disorder value, sector value, etc.)."
+
+  - id: 3
+    topic: "Classic vs Holographic Functional Differences"
+    status: resolved
+    entries:
+      - agent: systems-architect
+        position: "Beyond visual styling, should there be any functional differences between modes? Or purely cosmetic? Proposed: purely cosmetic."
+      - agent: game-designer
+        position: "Purely cosmetic. Same keybindings, same data, same functionality. Only presentation differs."
+      - agent: ui-developer
+        position: "Agree. Shared widget logic, separate renderers. UISkin data structure handles visual differences."
+    resolution: "Purely cosmetic. Both modes share identical functionality, keybindings, and data. Only visual presentation differs via skinning system."
+
+  - id: 4
+    topic: "Sector Scan (Minimap) Interaction Level"
+    status: resolved
+    entries:
+      - agent: systems-architect
+        position: "Should sector scan allow: (A) View + click to navigate, (B) Full tool use (place buildings), (C) View only? Proposed: Option A."
+      - agent: game-designer
+        position: "View + click to navigate (Option A). Building placement on minimap is too fiddly and error-prone. Minimap is for orientation and quick navigation."
+    resolution: "Option A: View + click to navigate. Sector scan shows terrain, zones, buildings, and ownership. Click to move camera to location. No building placement through minimap."
+
+  - id: 5
+    topic: "Hover Data (Tooltip) Content"
+    status: resolved
+    entries:
+      - agent: systems-architect
+        position: "What information should tooltips show on hover? Building type? Stats? Cost? Proposed: Building name (alien term), status icons, brief description."
+      - agent: game-designer
+        position: "Building name, status icons (powered/watered/accessible), and one-line description. Keep it brief - full details are in data readout."
+    resolution: "Tooltips show: Structure name (alien term), status icons (energy/fluid/pathway), one-line description. Detailed stats require clicking to open data readout."
+
+  - id: 6
+    topic: "Multiplayer Action Notifications"
+    status: resolved
+    entries:
+      - agent: systems-architect
+        position: "When another player builds something, should there be notification? Toast? Audio?"
+      - agent: game-designer
+        position: "Yes to notifications for significant actions in visible range. Alert pulse (toast) with fade after 3-5 seconds. Audio chime optional (can be muted)."
+    resolution: "Alert pulses for other player actions in visible range. Toast notification with 4-second fade. Soft audio chime (configurable). Notification types: construction completed, disaster, milestone achieved."
+
+  # ============================================================================
+  # SYSTEMS ARCHITECT -> UI DEVELOPER
+  # ============================================================================
+
+  - id: 7
+    topic: "UI Framework Choice"
+    status: resolved
+    entries:
+      - agent: systems-architect
+        position: "Should we use: (A) Custom immediate-mode UI, (B) Custom retained-mode UI, (C) Existing library? Trade-offs for dual modes?"
+      - agent: ui-developer
+        position: "Recommend hybrid: retained mode for structure (widget tree), immediate mode for data binding (query fresh each frame). Custom rendering via SDL_GPU for full style control."
+    resolution: "Hybrid approach: Retained-mode widget tree for structure, immediate-mode data queries. Custom SDL_GPU 2D rendering for both Classic and Holographic skins. No external UI library."
+
+  - id: 8
+    topic: "Panel Positioning Behavior"
+    status: resolved
+    entries:
+      - agent: systems-architect
+        position: "Should panels be: (A) Fixed positions per mode, (B) Freely draggable with snap, (C) Dockable to edges? Proposed: A for Classic, B for Holographic."
+      - agent: ui-developer
+        position: "Agree. Classic mode has predictable fixed positions. Holographic mode allows floating repositionable panels with snap-to-grid for alignment."
+    resolution: "Classic mode: Fixed panel positions (toolbar top, info panel bottom, sector scan corner). Holographic mode: Freely draggable panels with snap-to-grid."
+
+  - id: 9
+    topic: "Overlay Rendering Technique"
+    status: resolved
+    entries:
+      - agent: systems-architect
+        position: "Best approach for semi-transparent overlay: (A) Texture atlas with pre-baked gradients, (B) Per-tile shader coloring, (C) Separate 2D pass over terrain?"
+      - agent: ui-developer
+        position: "Recommend Option A for performance: 3D grid mesh at terrain height with overlay texture. Update texture when data changes, render cached texture every frame. Follows terrain elevation."
+    resolution: "3D grid mesh aligned with terrain chunks (32x32). Overlay data rendered to texture, texture updated at tick boundaries (not every frame). Additive blending with scene. Chunked rendering for performance."
+
+  - id: 10
+    topic: "UI Animation Requirements"
+    status: resolved
+    entries:
+      - agent: systems-architect
+        position: "What UI animations are expected? Panel slide, button feedback, overlay fade, RCI meter movement?"
+      - agent: ui-developer
+        position: "Essential animations: button hover/click states, overlay fade transitions, panel open/close. RCI meter should animate smoothly. Holographic mode adds scan-line and subtle flicker effects."
+    resolution: "Required animations: button states (hover, press), overlay fade (250ms), panel slide (200ms). RCI demand bars animate changes. Holographic mode adds scan-line overlay and 2% opacity flicker."
+
+  # ============================================================================
+  # UI DEVELOPER -> SYSTEMS ARCHITECT
+  # ============================================================================
+
+  - id: 11
+    topic: "UI and Simulation Thread Separation"
+    status: resolved
+    entries:
+      - agent: ui-developer
+        position: "Is UISystem expected to run on a separate thread from simulation? How to handle data queries?"
+      - agent: systems-architect
+        position: "UISystem runs on render thread (main thread). Simulation runs on server/simulation thread. Data queries via interfaces must be thread-safe for read access."
+    resolution: "UISystem on render thread. IGridOverlay, IStatQueryable, etc. provide thread-safe read-only access. Overlay grids use double-buffering (read from previous tick's buffer while simulation writes to current)."
+
+  - id: 12
+    topic: "Overlay Data Thread Safety"
+    status: resolved
+    entries:
+      - agent: ui-developer
+        position: "IGridOverlay provides raw pointer to grid data. Is this safe to access from render thread while simulation writes?"
+      - agent: systems-architect
+        position: "Yes. Overlay grids use double-buffering per patterns.yaml. Render reads from read_buffer, simulation writes to write_buffer, swapped at tick boundary."
+    resolution: "Thread-safe via double-buffering. UISystem reads from previous tick's buffer. No locking required. IGridOverlay.get_overlay_data() returns read buffer."
+
+  - id: 13
+    topic: "Event System Integration"
+    status: resolved
+    entries:
+      - agent: ui-developer
+        position: "How should UISystem emit events (tool selected, button clicked)? Direct callbacks, event queue, or observer pattern?"
+      - agent: systems-architect
+        position: "Event queue pattern. UISystem emits events to queue, consumed by game systems next tick. Same pattern as other inter-system communication."
+    resolution: "Event queue pattern. UISystem produces: UIToolSelectedEvent, UIBuildRequestEvent, UIZoneRequestEvent, UITributeRateChangedEvent, etc. Game systems consume from queue."
+
+  - id: 14
+    topic: "World Coordinate Conversion"
+    status: resolved
+    entries:
+      - agent: ui-developer
+        position: "UISystem needs screen-to-world conversion for tool placement. RenderingSystem owns this. Should UISystem query directly?"
+      - agent: systems-architect
+        position: "Yes. RenderingSystem provides screen_to_world and world_to_screen via public API. UISystem queries directly for cursor position mapping."
+    resolution: "RenderingSystem provides coordinate conversion API. UISystem calls RenderingSystem.screen_to_world(screen_x, screen_y) for grid position under cursor."
+
+  # ============================================================================
+  # UI DEVELOPER -> GAME DESIGNER
+  # ============================================================================
+
+  - id: 15
+    topic: "Overlay Toggle Persistence"
+    status: resolved
+    entries:
+      - agent: ui-developer
+        position: "Should enabled overlays persist across sessions (saved in settings), or reset to 'none' on game load?"
+      - agent: game-designer
+        position: "Reset to none on game load. Overlay is a temporary viewing mode, not a persistent preference."
+    resolution: "Overlays reset to 'none' on game load. UI mode preference (Classic/Holographic) persists in user settings. Overlay is session-transient state."
+
+  - id: 16
+    topic: "Classic Mode Toolbar Layout"
+    status: resolved
+    entries:
+      - agent: ui-developer
+        position: "Can you provide detailed Classic mode toolbar layout? Number of tool groups, icons per group?"
+      - agent: game-designer
+        position: "Four main groups: BUILD (zones, infrastructure, structures), MODIFY (bulldoze, upgrade, terrain), INSPECT (query tool, overlays), VIEW (speed, camera). Each group 4-8 buttons."
+    resolution: |
+      Command array layout (Classic mode):
+      - BUILD: Zone Designator (3 types), Pathway, Energy Conduit, Fluid Conduit, Structures dropdown
+      - MODIFY: Bulldoze, Terrain Tools (purge, grade)
+      - INSPECT: Probe Function (query), Scan Layer toggle, Scan Layer selector
+      - VIEW: Speed controls (pause, normal, fast, ultra), Camera preset buttons
+      Total: ~20 toolbar buttons plus speed controls.
+
+  - id: 17
+    topic: "Holographic Radial Menu Design"
+    status: resolved
+    entries:
+      - agent: ui-developer
+        position: "Where should radial menus appear? On right-click at cursor? Hotkey? How many items per radial?"
+      - agent: game-designer
+        position: "Right-click at cursor position opens radial menu. 8 items per ring (optimal for quick selection). Inner ring: main categories. Hover category to expand sub-ring."
+    resolution: "Holographic radial menu: right-click opens at cursor. 8 items per ring. Categories (Build, Modify, Inspect, View) on inner ring. Hover to expand category sub-ring. ESC or click away to close."
+
+  - id: 18
+    topic: "Notification Priority and Duration"
+    status: resolved
+    entries:
+      - agent: ui-developer
+        position: "How long should notifications stay visible? Priority levels? Max simultaneous?"
+      - agent: game-designer
+        position: "Critical (red pulse): 8 seconds, audio alert. Warning (amber): 5 seconds. Info (cyan): 3 seconds. Max 4 simultaneous, oldest replaced."
+    resolution: |
+      Alert pulse system:
+      - Critical (grid collapse, conflagration, catastrophe): 8 seconds, audio alert, red pulse
+      - Warning (energy deficit, disorder spike): 5 seconds, amber glow
+      - Info (milestone, structure completed): 3 seconds, cyan flash
+      Max 4 visible. Newest pushes oldest off (FIFO queue).
+
+  - id: 19
+    topic: "Newspaper/Chronicle System Scope"
+    status: resolved
+    entries:
+      - agent: ui-developer
+        position: "Is newspaper system (random articles, opinion polls) in scope for Epic 12, or deferred?"
+      - agent: game-designer
+        position: "Deferred to Epic 17 (Polish). Epic 12 focuses on core UI infrastructure. Newspaper is flavor content."
+    resolution: "Newspaper/chronicle system deferred to Epic 17. Epic 12 delivers core UI: command array, data readout, sector scan, overlays, budget window, alert pulses."
+
+  # ============================================================================
+  # GAME DESIGNER -> SYSTEMS ARCHITECT
+  # ============================================================================
+
+  - id: 20
+    topic: "Overlay Data Update Frequency"
+    status: resolved
+    entries:
+      - agent: game-designer
+        position: "How often should UI refresh overlay display? Every frame? Every tick? On data change?"
+      - agent: systems-architect
+        position: "Update overlay texture at tick boundaries (20Hz). Render cached texture every frame (60fps). Event-driven updates for drastic changes (zone placed, building demolished)."
+    resolution: "Overlay texture updated at tick boundaries (50ms intervals). Cached texture rendered every frame. Overlay fade transitions are purely visual (interpolated client-side)."
+
+  - id: 21
+    topic: "Budget Window Complexity"
+    status: resolved
+    entries:
+      - agent: game-designer
+        position: "Budget window needs income breakdown, expense breakdown, funding sliders, bonds, tribute rates. Single complex panel or multiple sub-panels?"
+      - agent: systems-architect
+        position: "Recommend tabbed interface within single budget panel: Revenue, Expenditure, Services, Credit Advances."
+    resolution: "Single colony_treasury panel with 4 tabs: Revenue (tribute by zone), Expenditure (maintenance breakdown), Services (funding sliders), Credit Advances (bond management). One modal dialog, tabbed internally."
+
+  - id: 22
+    topic: "Panel State Persistence"
+    status: resolved
+    entries:
+      - agent: game-designer
+        position: "Should UI state persist across sessions? Panel positions, which panels open?"
+      - agent: systems-architect
+        position: "UI preferences (mode, panel positions in Holo mode) save in user preferences, separate from game save. Which panels are open resets on load."
+    resolution: "User preferences (separate from game save): UI mode, Holo panel positions, volume, keybinds. Session state (resets on load): open panels, current tool, active overlay."
+
+# ============================================================================
+# SUMMARY
+# ============================================================================
+
+summary:
+  total_threads: 22
+  resolved: 22
+  pending: 0
+  key_decisions:
+    - "Per-player UI state, not synced over network"
+    - "Dual UI modes (Classic/Holographic) with shared logic, different rendering"
+    - "UISystem has no tick priority - renders between ticks"
+    - "Single active overlay for MVP, multi-overlay in polish phase"
+    - "Progressive reveal for query tool (summary + expandable detail)"
+    - "Hybrid UI framework: retained widget tree, immediate data queries, custom SDL_GPU rendering"
+    - "3D grid mesh for overlays with chunked texture updates"
+    - "Alert pulse system with 3 priority levels"
+    - "Budget window as tabbed modal dialog"
+    - "Newspaper system deferred to Epic 17"

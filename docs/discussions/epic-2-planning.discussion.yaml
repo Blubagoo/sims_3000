@@ -1,0 +1,1586 @@
+# Epic 2 Planning Discussion
+topic: "Epic 2 Planning: Core Rendering Engine"
+created: "2026-01-27"
+status: active
+participants:
+  - systems-architect
+  - graphics-engineer
+  - game-designer
+
+threads:
+  # ============================================================================
+  # Questions from Systems Architect
+  # ============================================================================
+
+  - id: Q001
+    status: answered
+    author: "systems-architect"
+    target: "graphics-engineer"
+    timestamp: "2026-01-27"
+    question: |
+      For dimetric projection, what exact angle should we use? Classic isometric is 2:1 (approximately 26.57 degrees). SimCity 2000 used a slightly different ratio. What matches our 64x64 square tile spec?
+    answers:
+      - author: "graphics-engineer"
+        timestamp: "2026-01-27"
+        answer: |
+          For our 64x64 square tile spec, I recommend the classic 2:1 dimetric ratio (approximately 26.57 degrees). This is the standard for isometric-style games and works naturally with our tile dimensions.
+
+          **Projection Math:**
+          - screen_x = (world_x - world_y) * 32  (half tile width)
+          - screen_y = (world_x + world_y) * 16  (quarter tile height)
+
+          This produces a diamond-shaped tile footprint of 64 pixels wide by 32 pixels tall on screen, which is the classic SimCity/isometric look. SimCity 2000 used essentially this same ratio.
+
+          **Practical Advantages of 2:1 Ratio:**
+          1. Integer math (32 and 16 divide cleanly from 64)
+          2. Well-understood by artists creating isometric assets
+          3. Pixel-perfect alignment is achievable
+          4. Standard tooling (Aseprite, etc.) has presets for this ratio
+
+          **Implementation Recommendation:**
+          Codify these constants in a Projection namespace:
+          ```cpp
+          namespace Projection {
+              constexpr int TILE_WIDTH = 64;
+              constexpr int TILE_HEIGHT = 32;  // Visual height (2:1 ratio)
+              constexpr int HALF_TILE_WIDTH = 32;
+              constexpr int QUARTER_TILE_HEIGHT = 16;
+          }
+          ```
+
+  - id: Q002
+    status: answered
+    author: "systems-architect"
+    target: "graphics-engineer"
+    timestamp: "2026-01-27"
+    question: |
+      How should we handle sprite batching with depth sorting? Sorting breaks batching (can't batch sprites with different depths). Should we use a depth buffer (requires 3D rendering) or accept some overdraw?
+    answers:
+      - author: "graphics-engineer"
+        timestamp: "2026-01-27"
+        answer: |
+          I recommend a hybrid approach: **layer-based batching with painter's algorithm within layers**. This balances batching efficiency with correct depth ordering.
+
+          **Strategy:**
+
+          1. **Batch by texture within layers**: Group sprites by render layer first (terrain, buildings, units). Within each layer, batch sprites that share the same texture atlas.
+
+          2. **Sort by depth key within batches**: For sprites in the same layer/texture group that overlap spatially, sort by depth key before submission. Accept that this breaks some batching.
+
+          3. **Spatial bucketing for optimization**: Divide the visible area into screen-space buckets. Sprites in non-overlapping buckets can batch freely regardless of depth.
+
+          **Why NOT a depth buffer:**
+          - SDL3's SDL_Renderer is primarily 2D and doesn't expose a depth buffer by default
+          - SDL_GPU would support depth testing but adds significant complexity
+          - For 2D sprite games, painter's algorithm is the proven approach
+          - Depth buffers require careful handling of alpha blending
+
+          **Overdraw considerations:**
+          - Some overdraw is acceptable and unavoidable with sprites (transparent edges)
+          - Aggressive frustum culling prevents rendering offscreen sprites
+          - Layer system naturally reduces overdraw (terrain doesn't overdraw buildings)
+
+          **Performance budget:**
+          With proper batching (SDL_RenderGeometry), we can target 100-500 draw calls per frame at 60fps. Each batch can contain hundreds of sprites from the same texture atlas.
+
+  - id: Q003
+    status: answered
+    author: "systems-architect"
+    target: "graphics-engineer"
+    timestamp: "2026-01-27"
+    question: |
+      SDL3 vs SDL2 rendering differences - what renderer features should we target? SDL3's GPU API is newer. Should we use SDL_Renderer (simpler) or SDL_GPU (more control)?
+    answers:
+      - author: "graphics-engineer"
+        timestamp: "2026-01-27"
+        answer: |
+          I recommend starting with **SDL_Renderer** for Epic 2, with architecture that allows migration to SDL_GPU if needed later.
+
+          **SDL_Renderer advantages (recommended for Epic 2):**
+          - Simpler API, faster development
+          - Handles backend selection automatically (D3D11, D3D12, Vulkan, OpenGL, Metal)
+          - SDL_RenderGeometry provides efficient batched rendering
+          - Sufficient for our 2D sprite-based rendering needs
+          - Well-documented with extensive examples
+
+          **SDL_GPU considerations:**
+          - Lower-level, more complex API
+          - Better for custom shaders and advanced effects
+          - Requires manual backend management
+          - Overkill for initial implementation
+
+          **Key SDL3 features to leverage:**
+          1. `SDL_RenderGeometry` - batch submission of textured quads
+          2. Render targets for layer compositing
+          3. Blend modes for overlays
+          4. Floating-point coordinates for smooth camera movement
+          5. Logical presentation size for resolution independence
+
+          **Migration path:**
+          If we need custom shaders for cell-shading effects or performance optimization, we can:
+          1. Abstract renderer behind our own interface (Renderer.h)
+          2. Implement SDL_GPU backend without changing game code
+          3. This is a Phase 5 (polish) concern, not Epic 2
+
+          **Recommendation:** Build with SDL_Renderer now, design interfaces that don't leak SDL specifics, revisit if performance profiling shows need for SDL_GPU.
+
+  - id: Q004
+    status: answered
+    author: "systems-architect"
+    target: "graphics-engineer"
+    timestamp: "2026-01-27"
+    question: |
+      For sprite interpolation, should we interpolate position only, or also support scale/rotation interpolation for smooth animations?
+    answers:
+      - author: "graphics-engineer"
+        timestamp: "2026-01-27"
+        answer: |
+          I recommend **position interpolation as the default, with optional scale/rotation interpolation** for specific use cases.
+
+          **Position interpolation (required):**
+          - Essential for smooth movement at 60fps from 20Hz simulation
+          - Applies to all entities with PositionComponent
+          - Uses the Interpolatable<T> pattern from Epic 0
+          - Formula: render_pos = lerp(previous_pos, current_pos, alpha)
+
+          **Scale/rotation interpolation (optional per-entity):**
+          - Most game entities don't scale or rotate (buildings are static)
+          - Only enable for entities that need it (saves memory/computation)
+          - Use cases: zoom effects, construction animations, disaster effects
+          - Add InterpolatedTransformComponent for entities that need it
+
+          **Component design:**
+          ```cpp
+          // Default: all positioned entities
+          struct PositionComponent {
+              int32_t grid_x, grid_y;
+              int32_t elevation;
+              int32_t prev_grid_x, prev_grid_y;
+              int32_t prev_elevation;
+          };
+
+          // Optional: entities needing transform interpolation
+          struct TransformComponent {
+              float scale_x, scale_y;
+              float rotation_degrees;
+              float prev_scale_x, prev_scale_y;
+              float prev_rotation;
+          };
+          ```
+
+          **Sprite animations (frame-based):**
+          Animation frame changes should NOT interpolate (discrete state changes). An AnimatedSpriteComponent handles frame timing independently from position interpolation.
+
+          **Performance note:**
+          Keep interpolation lightweight. For a city with 5000+ entities, we need O(1) interpolation per entity. Simple lerp achieves this.
+
+  - id: Q005
+    status: answered
+    author: "systems-architect"
+    target: "graphics-engineer"
+    timestamp: "2026-01-27"
+    question: |
+      What's the recommended approach for multi-tile buildings? Single large sprite, or composite of tile sprites? How does this affect Z-ordering?
+    answers:
+      - author: "graphics-engineer"
+        timestamp: "2026-01-27"
+        answer: |
+          I recommend **single large sprite per building** with an anchor point at the building's "front" corner for correct Z-ordering.
+
+          **Single sprite approach:**
+          - One SpriteComponent per building entity
+          - Sprite dimensions can exceed 64x64 (e.g., 128x96 for a 2x2 building)
+          - Anchor point determines sorting position
+          - Simpler entity management, better batching
+
+          **Anchor point for Z-ordering:**
+          For dimetric projection, the "front" of a building (closest to camera) is the corner with highest (grid_x + grid_y). The anchor should be at:
+          - Bottom-center of the sprite image
+          - Corresponds to the front-most tile of the building footprint
+
+          ```
+          Building footprint (2x2):
+            [0,0][1,0]
+            [0,1][1,1]  <-- Anchor tile (1,1) - front corner
+
+          Depth key = anchor_x + anchor_y + elevation * weight
+          ```
+
+          **Z-ordering impact:**
+          - Buildings sort by their anchor tile, not their full footprint
+          - A tall building at position (5,5) will correctly occlude buildings at (4,4), (4,5), (5,4)
+          - Potential issue: very wide buildings may partially occlude things they shouldn't
+          - Mitigation: art direction should keep building widths reasonable
+
+          **Art direction guidance:**
+          - Sprites should be pre-rendered with correct isometric perspective
+          - Anchor point standardized (bottom-center)
+          - Building "back" tiles may need slight transparency or cutaway for usability
+          - Atlas grouping by building size for efficient batching
+
+  - id: Q006
+    status: answered
+    author: "systems-architect"
+    target: "graphics-engineer"
+    timestamp: "2026-01-27"
+    question: |
+      Cell-shaded art style - does this require special rendering techniques (edge detection, posterization) or is it purely an art asset concern?
+    answers:
+      - author: "graphics-engineer"
+        timestamp: "2026-01-27"
+        answer: |
+          For our implementation, **cell-shading should be primarily an art asset concern**, not a real-time shader effect.
+
+          **Rationale:**
+
+          1. **Pre-rendered sprites**: Our game uses pre-rendered 2D sprites, not 3D models. Cell-shading techniques like edge detection and posterization are typically applied to 3D geometry. For 2D sprites, the cell-shaded look is baked into the artwork.
+
+          2. **SDL_Renderer limitations**: SDL_Renderer doesn't support custom fragment shaders. Implementing real-time cell-shading would require SDL_GPU or custom OpenGL/Vulkan code.
+
+          3. **Consistency**: Pre-baked cell-shading ensures consistent appearance across all hardware and avoids shader compatibility issues.
+
+          **Art direction guidance for cell-shaded look:**
+          - Bold outlines (1-2 pixel black/dark edges)
+          - Limited color palette with hard color bands (no smooth gradients)
+          - Flat lighting with distinct shadow shapes (not soft shadows)
+          - High contrast between lit and shadowed areas
+          - Clean, vector-like aesthetic
+
+          **Rendering system support:**
+          While the core look is in assets, we CAN support some effects:
+          - **Color tinting**: SDL_SetTextureColorMod for selection highlights, damage states
+          - **Overlay blending**: Data overlays (power, crime) with alpha blending
+          - **Palette swapping**: Different building color schemes via texture modulation
+
+          **Future consideration:**
+          If we migrate to SDL_GPU for other reasons, we could add optional post-processing:
+          - Subtle edge enhancement
+          - Color quantization for "ink and paint" effect
+          - Bloom on energy conduits
+
+          This would be a Phase 5 polish item, not Epic 2 scope.
+
+  - id: Q007
+    status: answered
+    author: "systems-architect"
+    target: "game-designer"
+    timestamp: "2026-01-27"
+    question: |
+      For camera zoom, what are the desired min/max zoom levels? How much of the city should be visible at max zoom out? How close at max zoom in?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Zoom Range Recommendation:**
+
+          - **Max Zoom Out (0.25x):** Should show approximately 64x64 sectors (a full small map) on a 1080p display. This "strategic view" lets overseers survey their entire domain and spot problem areas at a glance. At this level, individual structures become small icons.
+
+          - **Default Zoom (1.0x):** Approximately 20x15 sectors visible. This is the primary building and management view where structures are clearly identifiable and the colony feels alive with visible being movement.
+
+          - **Max Zoom In (2.0x):** Approximately 10x7 sectors visible. This "detail view" lets players appreciate the art, watch individual beings, and enjoy the visual polish. Useful for screenshots and admiring your work.
+
+          **Experience Rationale:**
+          - The zoom range serves different player modes: strategic planning (zoomed out), active building (default), and appreciation/social sharing (zoomed in)
+          - Avoid going too close (3x+) as it reveals pixel-level detail that breaks the cell-shaded aesthetic
+          - The casual, social vibe means players will spend time zoomed in watching their colony, so that view must be satisfying
+
+          **Multiplayer Consideration:**
+          - At max zoom out, overseers should be able to see neighboring colonies to feel connected to other players
+
+  - id: Q008
+    status: answered
+    author: "systems-architect"
+    target: "game-designer"
+    timestamp: "2026-01-27"
+    question: |
+      Edge-of-screen scrolling - is this desired behavior? Some players find it annoying. Should it be toggleable?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Recommendation: Enabled by default, toggleable in settings.**
+
+          **Rationale:**
+          - Edge scrolling is a genre convention for colony builders - players coming from SimCity will expect it
+          - However, modern players increasingly use multi-monitor setups or play windowed, where edge scrolling becomes frustrating
+          - The casual/social vibe means we should minimize frustration sources
+
+          **Implementation Details:**
+          - Edge scroll zone: 8-12 pixels from screen edge (not too sensitive)
+          - Scroll speed: Match keyboard pan speed for consistency
+          - Activation delay: 100-150ms before scrolling begins (prevents accidental scrolling when moving mouse across screen)
+          - Auto-disable when window loses focus
+
+          **Settings Option:**
+          "Edge Scrolling: On / Off / Only in Fullscreen"
+
+          The third option is a nice compromise - enables it for immersive fullscreen play but disables it for windowed/multi-monitor users.
+
+  - id: Q009
+    status: answered
+    author: "systems-architect"
+    target: "game-designer"
+    timestamp: "2026-01-27"
+    question: |
+      When clicking on overlapping tiles (different elevations), which one takes priority? The visually topmost? The one with the highest elevation? The one closest to camera?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Recommendation: Visually topmost (what the player sees) takes priority.**
+
+          **Core Principle:** The player's click intent is always "that thing I can see." If they click on a visible structure, they expect to select it - regardless of what's technically underneath.
+
+          **Implementation:**
+          1. Use the rendered sprite bounds, not logical tile bounds
+          2. For overlapping sprites at the same screen position, the one rendered last (on top) wins
+          3. This means higher elevation structures naturally take priority since they render on top
+
+          **Edge Case - Underground View:**
+          When in underground view mode (viewing fluid conduits, subterra rail), the priority inverts - underground elements become "visible" and take click priority.
+
+          **Anti-Frustration Measures:**
+          - Provide a hotkey (e.g., Tab or Ctrl+Click) to cycle through overlapping entities at a click location
+          - Show a small popup listing overlapping selectables: "Dwelling | Energy Conduit | Terrain" - click to select
+          - Selected entity gets a clear outline/highlight so players know what they've selected
+
+          **Why Not "Highest Elevation":**
+          If a tall tower visually obscures a ground-level pathway behind it, clicking on the visible tower should select the tower, not the hidden pathway - even if the pathway is "at" the click point in world coordinates.
+
+  - id: Q010
+    status: answered
+    author: "systems-architect"
+    target: "game-designer"
+    timestamp: "2026-01-27"
+    question: |
+      Should the camera have any "momentum" when panning (continue drifting after releasing keys/mouse)? Or should it stop immediately?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Recommendation: Minimal momentum with quick deceleration (not instant stop).**
+
+          **Rationale:**
+          - Instant stop feels mechanical and jarring - breaks the relaxed, casual vibe we want
+          - Heavy momentum (like mobile games) feels imprecise for a building game where accurate placement matters
+          - A light "ease out" over 100-150ms gives a polished, smooth feel without sacrificing control
+
+          **Proposed Feel:**
+          - Keyboard panning: Very light deceleration (50-80ms ease out)
+          - Mouse drag panning: Slightly more momentum based on release velocity (100-150ms ease out)
+          - Middle-mouse or edge scrolling: Same as keyboard (light deceleration)
+
+          **Technical Suggestion:**
+          Use exponential decay: `velocity *= 0.85` per frame at 60fps, with a velocity threshold below which you snap to zero (prevents endless micro-drift).
+
+          **What to Avoid:**
+          - No "throw" physics where camera keeps moving for 500ms+
+          - No bouncy/elastic feel at map edges
+          - No acceleration on key press (start at full speed immediately, only ease the stop)
+
+          **Settings Consideration:**
+          Could offer "Camera Smoothing: Off / Low / Medium" but this is low priority. Default to Low (the light momentum described above).
+
+  - id: Q011
+    status: answered
+    author: "systems-architect"
+    target: "game-designer"
+    timestamp: "2026-01-27"
+    question: |
+      For debug rendering (grid overlay, etc.), should these be available in the shipping game as options, or development-only?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Recommendation: Tiered approach - some player-facing, some dev-only.**
+
+          **Player-Facing Debug Options (in Settings > Display):**
+          - Grid Overlay: Shows sector boundaries - useful for precise structure placement
+          - Coordinate Display: Shows sector coordinates on hover - helps with multiplayer communication ("meet me at 45,32")
+          - Zone Coloring: Tints zones by type (Habitation/Exchange/Fabrication) - genuinely useful gameplay aid
+
+          **Developer-Only (console command or dev build):**
+          - FPS counter / frame timing graphs
+          - Entity count / component statistics
+          - Network latency visualization
+          - Collision bounds rendering
+          - System tick timing breakdown
+
+          **Rationale:**
+          - Grid overlay is a classic colony builder feature, not "debug" - players expect it
+          - Zone coloring helps players understand their colony layout - positive experience
+          - Coordinate display enables social play ("I built something cool at sector 23,47")
+          - Performance metrics clutter the screen and break immersion for casual players
+
+          **Implementation Note:**
+          Player-facing overlays should be polished - use the cell-shaded art style, not harsh debug lines. Grid overlay could be a subtle glow effect rather than stark white lines.
+
+  - id: Q012
+    status: answered
+    author: "systems-architect"
+    target: "game-designer"
+    timestamp: "2026-01-27"
+    question: |
+      When a player joins multiplayer, should the camera auto-center on their starting colony location, or stay at a default position?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Recommendation: Auto-center on their colony with a smooth cinematic pan.**
+
+          **New Player (First Join):**
+          1. Brief world overview (2-3 seconds showing the whole map with other colonies visible)
+          2. Smooth pan/zoom to their assigned starting sector
+          3. Camera settles at default zoom level, centered on their Command Nexus or starting tile
+
+          **Returning Player (Reconnecting):**
+          - Restore their last camera position exactly (position, zoom, any view mode)
+          - This respects player intent - they were looking at something for a reason
+
+          **Why the Cinematic Intro:**
+          - Creates a sense of "arriving" in the world - reinforces the multiplayer presence
+          - Shows other overseers' colonies immediately - "you're not alone here"
+          - Gives context for where their colony is relative to others
+          - Feels polished and intentional vs. just "spawning in"
+
+          **Multiplayer Social Feel:**
+          - During the overview, briefly highlight other players' colonies with their faction color
+          - Optional: Show player names/icons floating above their colonies
+          - This immediately communicates "there are friends here" - supports the social vibe
+
+          **Skip Option:**
+          - After first join, players can press Space/Escape to skip the intro pan
+          - Settings option: "Skip Colony Intro: Never / After First Time / Always"
+
+  # ============================================================================
+  # Questions from Graphics Engineer
+  # ============================================================================
+
+  - id: Q013
+    status: answered
+    author: "graphics-engineer"
+    target: "systems-architect"
+    timestamp: "2026-01-27"
+    question: |
+      The canon specifies "dimetric projection" but classic SimCity 2000 used a specific 2:1 isometric ratio. Should we match that exact ratio, or is deviation acceptable for visual preference?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-27"
+        answer: |
+          Use the classic 2:1 isometric ratio (approximately 26.57 degrees). This is the standard for
+          tile-based isometric games and provides several architectural benefits:
+
+          1. **Pixel-perfect alignment**: With 64x64 square tiles and 2:1 ratio, screen coordinates
+             align cleanly to integers, avoiding sub-pixel rendering artifacts.
+
+          2. **Coordinate math simplicity**: Screen-to-world and world-to-screen conversions become
+             simple integer operations: screen_x = (grid_x - grid_y) * 32, screen_y = (grid_x + grid_y) * 16.
+
+          3. **Asset compatibility**: Art assets designed for 2:1 isometric are abundant and well-understood.
+
+          4. **Multiplayer consistency**: Fixed projection means all clients render identically - no
+             floating point discrepancies between machines.
+
+          Deviation is NOT recommended as it would complicate coordinate math and asset creation without
+          meaningful visual benefit. The 2:1 ratio IS the SimCity 2000 aesthetic we're emulating.
+
+  - id: Q014
+    status: answered
+    author: "graphics-engineer"
+    target: "systems-architect"
+    timestamp: "2026-01-27"
+    question: |
+      For screen-to-world coordinate conversion with elevation, what's the expected behavior when clicking? Should we raycast through all elevations and return the topmost visible tile, or provide an "elevation slice" view mode?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-27"
+        answer: |
+          Implement BOTH approaches as they serve different purposes:
+
+          **Default click behavior (raycast):**
+          Return the topmost VISIBLE tile at the clicked screen position. This is intuitive for normal
+          gameplay - players click what they see. The algorithm:
+          1. Convert screen coords to base grid position (assuming elevation 0)
+          2. Iterate from highest to lowest elevation at that grid position
+          3. Return first tile that has geometry AND is not occluded by tiles in front of it
+
+          **Elevation slice mode (for underground/editing):**
+          Provide a view mode that shows only a specific elevation range. This is essential for:
+          - Underground infrastructure (REQ-14 in the requirements)
+          - Precise terrain editing
+          - Debugging elevation issues
+
+          **Data flow implications:**
+          - RenderingSystem must track which entities are visible at current view settings
+          - Click handler queries RenderingSystem for "entity at screen position" not TerrainSystem directly
+          - This keeps rendering concerns encapsulated and avoids duplicate visibility calculations
+
+          **Interface suggestion:**
+          ```cpp
+          // In RenderingSystem
+          std::optional<EntityID> get_entity_at_screen_pos(int screen_x, int screen_y);
+          std::vector<EntityID> get_all_entities_at_screen_pos(int screen_x, int screen_y); // for query tool
+          ```
+
+  - id: Q015
+    status: answered
+    author: "graphics-engineer"
+    target: "systems-architect"
+    timestamp: "2026-01-27"
+    question: |
+      RenderingSystem depends on CameraSystem for viewport. Should CameraSystem tick run BEFORE RenderingSystem in system execution order, or should rendering query camera state directly?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-27"
+        answer: |
+          **Rendering should query camera state directly** - they operate on different schedules.
+
+          Key insight: CameraSystem and RenderingSystem serve different loops:
+          - **CameraSystem**: Updates at simulation tick rate (20 Hz) OR at frame rate for smooth input
+          - **RenderingSystem**: Runs every frame (60+ Hz)
+
+          **Recommended architecture:**
+
+          1. **Camera state is NOT part of simulation tick order.** Camera is client-authoritative
+             (per canon patterns.yaml), so it doesn't participate in the server's ISimulatable tick sequence.
+
+          2. **CameraSystem updates every frame** on the client, processing input and updating its
+             internal state (position, zoom, velocity if momentum is enabled).
+
+          3. **RenderingSystem queries CameraSystem** at render time via a clean interface:
+             ```cpp
+             struct Viewport {
+                 float center_x, center_y;  // World coordinates
+                 float zoom;
+                 int screen_width, screen_height;
+             };
+             const Viewport& CameraSystem::get_viewport() const;
+             ```
+
+          4. **Frame loop order** (client-side):
+             - Poll input (InputSystem)
+             - Update camera (CameraSystem)
+             - Interpolate simulation state
+             - Render (RenderingSystem queries camera)
+
+          This avoids coupling camera to simulation tick rate and allows smooth 60fps camera movement
+          independent of 20Hz simulation.
+
+  - id: Q016
+    status: answered
+    author: "graphics-engineer"
+    target: "systems-architect"
+    timestamp: "2026-01-27"
+    question: |
+      For multi-tile buildings, should the SpriteComponent support multi-tile sprites natively, or should buildings be composed of multiple single-tile sprite entities?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-27"
+        answer: |
+          **Single sprite per building entity, with footprint metadata.** Do NOT compose buildings from
+          multiple sprite entities.
+
+          **Rationale:**
+
+          1. **ECS principle**: A building is ONE logical entity. Splitting it into multiple entities for
+             rendering creates artificial complexity - which entity do you query? Which owns the BuildingComponent?
+
+          2. **Z-ordering**: A single large sprite for a 2x2 or 3x3 building is sorted as one unit.
+             Multiple sprite entities would need complex coordination to avoid z-fighting between parts.
+
+          3. **Batching**: Single sprites batch better. Multiple entities per building multiplies draw calls.
+
+          4. **Footprint vs sprite**: The BuildingComponent already defines `footprint` (GridRect) for
+             gameplay. The sprite is a visual concern that doesn't need to match 1:1 with tiles.
+
+          **Recommended component design:**
+          ```cpp
+          struct SpriteComponent {
+              AssetHandle<Texture> texture;
+              int32_t width_px, height_px;     // Sprite dimensions (may exceed one tile)
+              int32_t anchor_offset_x;          // Offset from entity position to sprite anchor
+              int32_t anchor_offset_y;
+              int32_t z_layer;                  // For layer sorting
+          };
+          ```
+
+          **Rendering responsibility:**
+          RenderingSystem reads the building's PositionComponent (anchor tile), applies the sprite's
+          anchor offset, and draws the full sprite. The footprint is only used for collision/placement,
+          not rendering.
+
+          **Exception:** Animation frames that need independent timing could use child entities, but
+          this is an optimization to defer until needed.
+
+  - id: Q017
+    status: answered
+    author: "graphics-engineer"
+    target: "systems-architect"
+    timestamp: "2026-01-27"
+    question: |
+      The interfaces.yaml defines IGridQueryable for spatial queries. Should RenderingSystem use this for frustum culling, or maintain its own spatial index optimized for rendering?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-27"
+        answer: |
+          **Use the shared IGridQueryable for initial culling, but RenderingSystem may maintain
+          render-specific caches.**
+
+          **Architectural reasoning:**
+
+          1. **Avoid duplicate spatial indices.** Maintaining separate spatial indices for different
+             systems leads to synchronization bugs and memory bloat. The canonical SpatialIndex
+             (implementing IGridQueryable) should be the single source of truth for "what's at position X."
+
+          2. **IGridQueryable is sufficient for frustum culling.** The visible tile range from
+             CameraSystem maps directly to a grid rect query. For a 64x64 tile city, even a naive
+             iteration over visible tiles is fast (<1ms for 100x100 visible area).
+
+          3. **Render-specific caching is acceptable** for:
+             - Sorted sprite lists (rebuilt per frame anyway)
+             - Texture atlas batching groups
+             - Cached visibility flags for occluded tiles
+
+          **Recommended flow:**
+          ```
+          1. CameraSystem provides visible_tile_range (GridRect)
+          2. RenderingSystem queries IGridQueryable::get_entities_in_rect(visible_tile_range)
+          3. RenderingSystem filters by SpriteComponent presence
+          4. RenderingSystem sorts by depth and batches
+          5. RenderingSystem draws
+          ```
+
+          **Performance note:** If profiling shows IGridQueryable queries are a bottleneck (unlikely for
+          city-scale), we can optimize the underlying SpatialIndex implementation without changing the
+          interface. Don't prematurely optimize with duplicate indices.
+
+  - id: Q018
+    status: answered
+    author: "graphics-engineer"
+    target: "systems-architect"
+    timestamp: "2026-01-27"
+    question: |
+      What's the expected behavior when a texture fails to load? Pink placeholder per Epic 0 AssetManager, or skip rendering that entity?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-27"
+        answer: |
+          **Use a visible placeholder - NEVER skip rendering.** The pink/magenta placeholder pattern
+          is correct.
+
+          **Rationale:**
+
+          1. **Visibility of errors**: Skipping rendering hides bugs. A missing texture is a bug that
+             should be immediately obvious during development. Pink placeholders scream "fix me."
+
+          2. **Gameplay consistency**: An entity exists in the simulation regardless of its visual state.
+             If a building has a missing texture but we skip rendering, players can't click on it,
+             creating a game-breaking disconnect between logic and visuals.
+
+          3. **Multiplayer debugging**: In multiplayer, one client might have corrupt assets while
+             another doesn't. Placeholders make this visible; skipping would cause silent desync in
+             player experience.
+
+          **Implementation:**
+
+          AssetManager should provide a global fallback texture (created at initialization):
+          ```cpp
+          // AssetManager initialization
+          m_fallback_texture = create_checkerboard_texture(32, 32, MAGENTA, BLACK);
+
+          // On load failure
+          AssetHandle<Texture> AssetManager::load_texture(const std::string& path) {
+              // ... attempt load ...
+              if (failed) {
+                  LOG_ERROR("Failed to load texture: {}", path);
+                  return AssetHandle(m_fallback_texture, /*is_fallback=*/true);
+              }
+          }
+          ```
+
+          RenderingSystem should NOT need to know about fallbacks - it just renders whatever texture
+          the AssetHandle provides. The fallback flag can be used for debug overlays if desired.
+
+  - id: Q019
+    status: answered
+    author: "graphics-engineer"
+    target: "game-designer"
+    timestamp: "2026-01-27"
+    question: |
+      What is the target minimum and maximum zoom level? SimCity 2000 had limited zoom. How close/far should players be able to zoom?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-27"
+        answer: |
+          **See Q007 for detailed answer.** Summary:
+
+          - **Max Zoom Out: 0.25x** - Full 64x64 sector map visible, strategic overview
+          - **Default: 1.0x** - ~20x15 sectors, primary building view
+          - **Max Zoom In: 2.0x** - ~10x7 sectors, detail/appreciation view
+
+          Unlike SimCity 2000, we want meaningful zoom range because:
+          1. Multiplayer requires seeing other colonies (strategic zoom out)
+          2. Cell-shaded art deserves appreciation (detail zoom in)
+          3. Modern displays support smooth scaling without pixel artifacts
+
+  - id: Q020
+    status: answered
+    author: "graphics-engineer"
+    target: "game-designer"
+    timestamp: "2026-01-27"
+    question: |
+      Should the camera be able to rotate, or is fixed orientation (north-up or similar) preferred for this art style?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Recommendation: Fixed orientation (no rotation) for initial release.**
+
+          **Rationale:**
+
+          1. **Art Asset Complexity:** True rotation requires either 3D rendering or 4 directional sprite sets for every structure. With 2D dimetric sprites, rotation would require 4x the art assets.
+
+          2. **Genre Convention:** SimCity 2000, the primary inspiration, used fixed orientation. Players of colony builders are accustomed to this.
+
+          3. **Multiplayer Consistency:** All overseers seeing the same orientation makes communication easier ("the tower to the north of my Command Nexus").
+
+          4. **Reduced Confusion:** Fixed orientation means players build mental maps of their colony that persist session-to-session.
+
+          **What We Lose:**
+          - Can't peek behind tall structures (mitigated by transparency/x-ray on hover)
+          - Some structures might always obscure the same areas
+
+          **Mitigation:**
+          - Structure transparency when cursor is behind them
+          - Underground view mode for hidden infrastructure
+          - Structure footprint preview when placing
+
+          **Future Consideration:**
+          If rotation becomes highly requested, implement 90-degree snap rotation (4 fixed views) rather than free rotation. This is a significant scope increase and should be a later epic if pursued.
+
+  - id: Q021
+    status: answered
+    author: "graphics-engineer"
+    target: "game-designer"
+    timestamp: "2026-01-27"
+    question: |
+      For data overlays (crime, pollution, power coverage), what visual style? Colored tile tints? Icons? Heat map gradients?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Recommendation: Layered approach matching our alien theme.**
+
+          **Primary Style: Pulsing Energy Gradients**
+          Rather than traditional heat maps, use a bioluminescent/energy aesthetic that fits the alien theme:
+
+          - **Energy Matrix Coverage:** Blue-white pulsing glow emanating from conduits, fading to darkness in unpowered areas
+          - **Contamination (Pollution):** Sickly green-purple miasma effect, denser = more contaminated
+          - **Disorder (Crime):** Red flickering/unstable effect in high-disorder areas
+          - **Harmony (Happiness):** Golden ambient glow in harmonious districts
+
+          **Secondary Layer: Iconography**
+          - Floating status icons above structures with issues (no energy, high disorder, etc.)
+          - Icons should be stylized to fit the cell-shaded look (bold outlines, limited color palette)
+          - Icons pulse/animate subtly to catch attention without being annoying
+
+          **Overlay Modes:**
+          1. **Integrated (Default):** Subtle visual hints visible during normal play (slight glow, small icons)
+          2. **Data View (Toggle):** Full overlay with clear gradients and all icons visible
+          3. **Specific Overlay:** View only one data type at full intensity (Energy, Fluid, Disorder, etc.)
+
+          **Experience Goal:**
+          Overlays should feel like you're seeing the colony's "life force" or "energy field" - not clinical data visualization. The alien theme gives us permission to make data overlays beautiful and atmospheric rather than utilitarian.
+
+          **Avoid:**
+          - Harsh rectangular tile tints (feels like spreadsheet)
+          - Too many simultaneous overlay types (visual overload)
+          - Clashing colors with base art style
+
+  - id: Q022
+    status: answered
+    author: "graphics-engineer"
+    target: "game-designer"
+    timestamp: "2026-01-27"
+    question: |
+      When rendering buildings under construction, should they have a distinct visual (scaffolding, transparent, progress bar)?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Recommendation: "Materializing" effect with progress indication.**
+
+          Per our terminology, structures under construction are "materializing" - this suggests a visual effect of the structure phasing into existence rather than traditional human scaffolding.
+
+          **Visual Concept:**
+          1. **Ghostly Silhouette:** The final structure is visible but translucent/holographic (30-50% opacity)
+          2. **Materialization Effect:** From bottom to top, the structure becomes solid with an energy effect at the transition line
+          3. **Particle Effect:** Small energy particles/motes floating upward during materialization
+          4. **Color Tint:** Slight blue-white tint to the materializing portion
+
+          **Progress Indication:**
+          - The solid/ghost boundary line IS the progress indicator (no need for separate bar)
+          - When 50% complete, bottom 50% is solid, top 50% is ghostly
+          - Optional: Subtle percentage text on hover (not always visible)
+
+          **Why Not Scaffolding:**
+          - We're aliens building with advanced technology, not humans with wood frames
+          - Scaffolding requires additional art assets for every structure type
+          - The materializing effect is more visually distinctive and thematically consistent
+
+          **Sound Design Note (for future):**
+          Materializing structures should have a subtle ambient hum/energy sound that completes with a satisfying "solidification" audio cue.
+
+          **Multiplayer Benefit:**
+          Players can see other overseers' structures materializing - creates a sense of a living, growing world.
+
+  - id: Q023
+    status: answered
+    author: "graphics-engineer"
+    target: "game-designer"
+    timestamp: "2026-01-27"
+    question: |
+      Should there be visual feedback when a building is selected (highlight, outline, UI arrow)?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Recommendation: Multi-layered feedback for clear selection state.**
+
+          **Primary Feedback: Glowing Outline**
+          - Cel-shaded style bold outline (2-3 pixel) in faction color (or white for unowned)
+          - Subtle pulse animation (brightness oscillation, not size change)
+          - Outline should feel like "energy highlighting" not clinical selection box
+
+          **Secondary Feedback: Ground Indicator**
+          - Glowing ring/footprint on the ground beneath the structure
+          - Shows exact sector(s) occupied
+          - Useful for understanding multi-sector structure bounds
+
+          **Tertiary Feedback: Info Anchor**
+          - Small upward-pointing chevron or energy tendril connecting to info panel
+          - Establishes clear visual relationship between structure and its UI panel
+          - Animates smoothly when panel opens/closes
+
+          **Hover State (Before Click):**
+          - Lighter version of selection outline (50% intensity)
+          - Tooltip with structure name appears after brief delay (300ms)
+          - Shows ownership (your structure vs. other overseer's vs. uncharted)
+
+          **Multi-Select (If Supported):**
+          - Each selected structure gets the outline
+          - Primary selection (last clicked) has brighter outline
+          - Secondary selections slightly dimmer
+
+          **What to Avoid:**
+          - Bouncing or scaling animations (distracting)
+          - UI arrows pointing down from sky (feels disconnected)
+          - Selection boxes that don't match structure shape
+
+          **Accessibility Note:**
+          Ensure selection is visible for colorblind players - the pulsing animation helps, but consider a high-contrast mode with distinctive patterns.
+
+  - id: Q024
+    status: answered
+    author: "graphics-engineer"
+    target: "game-designer"
+    timestamp: "2026-01-27"
+    question: |
+      Are there any day/night cycle or lighting considerations for the cell-shaded art style?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Recommendation: Implement day/night cycle, designed for cell-shaded aesthetic.**
+
+          **Why Day/Night Matters:**
+          1. **Time Passage Feel:** Creates sense of time passing during long sessions
+          2. **Visual Variety:** Same colony looks different at different times
+          3. **Gameplay Hooks:** Future systems could tie to time (energy consumption patterns, being schedules)
+          4. **Atmosphere:** Night cycle with glowing structures is visually stunning
+
+          **Cell-Shaded Approach:**
+          Unlike realistic games, we don't need complex shadow mapping. Instead:
+
+          - **Palette Shifting:** Day/night is achieved by shifting the entire color palette
+          - **Day:** Warm, saturated colors (oranges, bright greens, vivid blues)
+          - **Dusk/Dawn:** Purple-pink accent colors, longer shadows (pre-baked into sprites)
+          - **Night:** Cool blues, desaturated base colors, but GLOWING elements become prominent
+
+          **Night Mode Features:**
+          - Energy conduits visibly glow and pulse
+          - Structures with energy show lit windows/bio-luminescence
+          - Unpowered areas are notably darker (reinforces energy matrix importance)
+          - Being movement creates small light trails
+
+          **Implementation Approach:**
+          - Simple global color multiply/tint (not per-object lighting)
+          - Additive blend layer for glowing elements (constant regardless of time)
+          - Smooth transitions (no jarring day/night switch)
+
+          **Cycle Timing:**
+          - Real-time: ~20-30 minute full cycle (adjustable in settings)
+          - Can be paused or locked to preferred time in settings
+
+          **Multiplayer:**
+          - All players see same time of day (synchronized)
+          - Creates shared experience ("remember that night raid on the disorder?")
+
+          **Performance:**
+          - Palette shifting is essentially free (uniform color multiply)
+          - Additive glow layer is simple blend operation
+          - No dynamic shadows required
+
+  # ============================================================================
+  # Questions from Game Designer
+  # ============================================================================
+
+  - id: Q025
+    status: answered
+    author: "game-designer"
+    target: "systems-architect"
+    timestamp: "2026-01-27"
+    question: |
+      For REQ-02 (living world impression), should ambient animations (being movement, conduit pulses) be part of RenderingSystem, or should they be separate AnimationSystem/SpriteAnimationSystem that feeds into rendering? What is the ownership boundary?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-27"
+        answer: |
+          **Separate AnimationSystem that updates components; RenderingSystem only reads and draws.**
+
+          **Ownership boundaries:**
+
+          | System | Owns | Does Not Own |
+          |--------|------|--------------|
+          | AnimationSystem | Animation state machine, frame timing, sprite sheet indexing | Drawing sprites |
+          | RenderingSystem | Drawing sprites, batching, projection | Animation logic |
+
+          **Component design:**
+          ```cpp
+          struct AnimationComponent {
+              uint32_t animation_id;           // Which animation is playing
+              uint32_t current_frame;          // Current frame index
+              float frame_timer;               // Time until next frame
+              bool looping;
+              bool playing;
+          };
+
+          struct SpriteComponent {
+              AssetHandle<Texture> texture;    // Could be atlas
+              Rect source_rect;                // Current frame's rect in atlas
+              // ... other render properties
+          };
+          ```
+
+          **Data flow:**
+          1. AnimationSystem ticks every frame (client-side, NOT simulation tick)
+          2. AnimationSystem updates AnimationComponent state and writes new source_rect to SpriteComponent
+          3. RenderingSystem reads SpriteComponent.source_rect and draws
+
+          **Why separate?**
+
+          1. **Cosmetic beings** (per canon patterns.yaml) are client-side only. Their animations don't
+             sync to server, so they must run on the client's frame loop, not simulation tick.
+
+          2. **Animation complexity grows.** Eventual features like being pathfinding, building state
+             animations, weather effects - these all need animation logic. Keeping it in RenderingSystem
+             would bloat that system.
+
+          3. **Testability.** AnimationSystem can be unit tested without rendering infrastructure.
+
+          **Multiplayer note:** Cosmetic animations are client-authoritative. Only gameplay-affecting
+          state (building complete, power connected) syncs from server. Visual polish is local.
+
+  - id: Q026
+    status: answered
+    author: "game-designer"
+    target: "systems-architect"
+    timestamp: "2026-01-27"
+    question: |
+      For REQ-11 (camera remembers context), should camera state be stored in a CameraComponent on a camera entity, or in a separate CameraManager that is not ECS? How does camera state relate to player context (e.g., per-player camera in multiplayer)?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-27"
+        answer: |
+          **CameraSystem as a non-ECS manager, with per-player state stored locally on each client.**
+
+          **Rationale against ECS camera entity:**
+
+          1. **Camera is client-authoritative** (per canon). It doesn't sync to server, so putting it in
+             the ECS registry (which syncs) creates unnecessary complexity to exclude it from sync.
+
+          2. **Only one camera per client.** ECS shines for many-of-a-kind entities. There's exactly
+             one active camera per player - no benefit from entity composition.
+
+          3. **Camera state is local.** Each client has their own camera; there's no shared camera entity
+             that multiple clients see differently.
+
+          **Per-player camera in multiplayer:**
+
+          Each client's CameraSystem manages its OWN camera state. Cameras are not shared:
+          - Player A's camera position is unknown to Player B (and irrelevant)
+          - Player A's camera state persists locally (could be saved to local settings file for "remember
+            last position" feature)
+          - Server does NOT track or sync camera positions
+
+          **REQ-11 implementation (camera remembers context):**
+          ```cpp
+          class CameraSystem {
+              struct CameraState {
+                  float x, y;
+                  float zoom;
+                  // Optional: saved positions for quick-jump
+                  std::vector<CameraState> bookmarks;
+              };
+
+              CameraState m_current;
+              std::unordered_map<std::string, CameraState> m_context_states;  // e.g., "main", "underground"
+
+              void switch_context(const std::string& context);  // Saves current, restores target
+          };
+          ```
+
+          **Exception - cursor positions (REQ-38-40):**
+          Other players' CURSOR positions (not cameras) should sync for multiplayer presence. This is
+          separate from camera state - see Q029 for that data flow.
+
+  - id: Q027
+    status: answered
+    author: "game-designer"
+    target: "systems-architect"
+    timestamp: "2026-01-27"
+    question: |
+      For REQ-14 (underground view), is the underground layer a separate render pass, a transparency blend, or a complete scene swap? What is the state machine for view modes?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-27"
+        answer: |
+          **Layer filtering approach with transition blend - NOT separate render passes or scene swap.**
+
+          **Recommended architecture:**
+
+          View modes control which render layers are VISIBLE and at what OPACITY. The same RenderingSystem
+          handles all modes; only the filter criteria change.
+
+          **View mode state machine:**
+          ```
+          ┌──────────────┐
+          │   SURFACE    │ ◄── Default
+          │  (normal)    │
+          └──────┬───────┘
+                 │ Toggle underground (U key)
+                 ▼
+          ┌──────────────┐
+          │  TRANSITION  │  ◄── Brief blend (0.3s)
+          │   (blend)    │
+          └──────┬───────┘
+                 │
+                 ▼
+          ┌──────────────┐
+          │ UNDERGROUND  │
+          │  (pipes/sub) │
+          └──────────────┘
+          ```
+
+          **Layer visibility per mode:**
+
+          | Layer | Surface Mode | Underground Mode |
+          |-------|--------------|------------------|
+          | Terrain | 100% | 30% (ghosted) |
+          | Buildings | 100% | 0% (hidden) |
+          | Surface Roads | 100% | 20% (ghosted) |
+          | Underground Pipes | 0% | 100% |
+          | Subterra Rails | 0% | 100% |
+          | Beings | 100% | 0% |
+          | UI Overlays | 100% | 100% |
+
+          **Implementation approach:**
+
+          RenderingSystem maintains a `ViewMode` enum and per-layer opacity values:
+          ```cpp
+          enum class ViewMode { Surface, Underground, Transition };
+
+          struct LayerSettings {
+              float opacity;         // 0.0 - 1.0
+              bool clickable;        // Can entities in this layer receive clicks?
+          };
+
+          std::map<RenderLayer, LayerSettings> get_layer_settings(ViewMode mode);
+          ```
+
+          **Why NOT separate render passes?**
+          - Same entities, different visibility - don't need multiple passes
+          - Transition blend requires seeing both simultaneously anyway
+          - Single pass with opacity is simpler and faster
+
+          **Why NOT scene swap?**
+          - Underground entities exist in same world space
+          - Camera position should persist across mode switches
+          - Entities can span both (building foundations extend underground)
+
+  - id: Q028
+    status: answered
+    author: "game-designer"
+    target: "systems-architect"
+    timestamp: "2026-01-27"
+    question: |
+      Regarding render layers, what is the canonical layer ordering? Terrain -> Infrastructure -> Buildings -> Beings -> UI? Should layers be configurable per-system or hardcoded?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-27"
+        answer: |
+          **Canonical render layer ordering (back to front):**
+
+          ```cpp
+          enum class RenderLayer : uint8_t {
+              // === UNDERGROUND (only visible in underground mode) ===
+              UndergroundTerrain = 0,    // Subterranean rock/void
+              UndergroundPipes   = 10,   // Water infrastructure
+              UndergroundRails   = 20,   // Subterra transit
+
+              // === SURFACE ===
+              Water              = 30,   // Water bodies (rendered below terrain at water level)
+              Terrain            = 40,   // Ground tiles
+              TerrainDecor       = 50,   // Grass, rocks, vegetation (non-interactive)
+              Roads              = 60,   // Road surfaces
+              Rails              = 70,   // Surface rail tracks
+              Conduits           = 80,   // Power lines, visible pipes
+              Zones              = 90,   // Zone highlight overlays (semi-transparent)
+              Buildings          = 100,  // All structures
+              BuildingDetails    = 110,  // Smoke, lights, antennae on buildings
+              Beings             = 120,  // Population sprites (cosmetic)
+              Vehicles           = 130,  // Cars, trains (cosmetic)
+              Effects            = 140,  // Particles, weather, disasters
+
+              // === OVERLAYS ===
+              DataOverlay        = 200,  // Crime/pollution/power heat maps
+              SelectionHighlight = 210,  // Selected entity highlight
+              GridOverlay        = 220,  // Tile grid (debug/edit mode)
+              Cursor             = 230,  // Player cursors (own + multiplayer)
+
+              // === UI (always on top, handled by UISystem) ===
+              UI                 = 255
+          };
+          ```
+
+          **Configuration approach: Hardcoded enum, but layer-to-system mapping is data-driven.**
+
+          **Rationale:**
+
+          1. **Hardcoded layer enum**: Layer ordering is fundamental to visual correctness. Making it
+             "configurable" invites bugs where buildings render under terrain. The enum is the contract.
+
+          2. **Data-driven component mapping**: Which SpriteComponent gets which layer is defined in
+             component data or system logic, not the layer enum itself:
+             ```cpp
+             // BuildingSystem sets this when creating building entities
+             sprite.layer = RenderLayer::Buildings;
+             ```
+
+          3. **Systems don't own layers**: Multiple systems can emit sprites to the same layer.
+             RenderingSystem sorts by layer, then by depth within layer.
+
+          **Depth sorting within layer:**
+          Within a layer (e.g., Buildings), sort by isometric depth: `depth = grid_x + grid_y + elevation`.
+          This ensures correct occlusion for overlapping sprites at the same layer.
+
+  - id: Q029
+    status: answered
+    author: "game-designer"
+    target: "systems-architect"
+    timestamp: "2026-01-27"
+    question: |
+      For REQ-38-40 (multiplayer visuals), how does client receive other player cursor positions? Is this a dedicated component synced at high frequency, or piggybacked on input messages?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-27"
+        answer: |
+          **Dedicated cursor position message, broadcast at reduced frequency (10 Hz), with client-side
+          interpolation.**
+
+          **Why NOT piggyback on input messages:**
+          - Input messages are action-based (build, zone, demolish) - not continuous
+          - Player may not be taking actions but is still looking around
+          - Action messages go to server for validation; cursor display is peer-to-peer concern
+
+          **Why NOT ECS component sync:**
+          - Cursor position changes every frame - too high frequency for the 20Hz component sync
+          - Cursor is ephemeral display state, not gameplay state
+          - Would pollute the delta sync with noise
+
+          **Recommended architecture:**
+
+          ```
+          ┌─────────────┐     Cursor Update (10Hz)      ┌─────────────┐
+          │  Client A   │ ─────────────────────────────► │   Server    │
+          │  (cursor)   │                                │  (relay)    │
+          └─────────────┘                                └──────┬──────┘
+                                                                │ Broadcast to
+                                                                │ other clients
+                                                                ▼
+                                                         ┌─────────────┐
+                                                         │  Client B   │
+                                                         │  (renders)  │
+                                                         └─────────────┘
+          ```
+
+          **Message format:**
+          ```cpp
+          struct CursorUpdateMessage {
+              PlayerID player_id;
+              float world_x, world_y;    // World coordinates (not screen)
+              uint8_t tool_id;           // What tool they're holding (for cursor icon)
+              uint32_t timestamp;        // For interpolation
+          };
+          ```
+
+          **Client-side handling:**
+          1. Store last 2-3 cursor positions per remote player
+          2. Interpolate between positions for smooth movement
+          3. Extrapolate briefly if packets delayed
+          4. Render cursor sprite at interpolated position with player color
+
+          **Bandwidth:** ~20 bytes * 10 Hz * 3 other players = 600 bytes/sec - negligible.
+
+          **Latency tolerance:** Cursor position is cosmetic. 100-200ms delay is acceptable - players
+          aren't trying to click the same pixel simultaneously.
+
+  - id: Q030
+    status: answered
+    author: "game-designer"
+    target: "systems-architect"
+    timestamp: "2026-01-27"
+    question: |
+      What is the tick/render interpolation strategy? RenderingSystem needs to interpolate between discrete 20hz simulation ticks for smooth 60fps output. Is this a system-level concern or framework-level?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-27"
+        answer: |
+          **Framework-level concern, implemented in the core game loop with interpolation alpha passed
+          to RenderingSystem.**
+
+          **Architecture:**
+
+          The game loop manages the interpolation factor; individual systems don't calculate it:
+
+          ```cpp
+          // Core game loop (framework-level)
+          class GameLoop {
+              static constexpr float TICK_RATE = 20.0f;  // Hz
+              static constexpr float TICK_DURATION = 1.0f / TICK_RATE;  // 50ms
+
+              float m_accumulator = 0.0f;
+              GameState m_previous_state;
+              GameState m_current_state;
+
+              void run() {
+                  while (running) {
+                      float frame_time = get_frame_time();
+                      m_accumulator += frame_time;
+
+                      // Fixed timestep simulation
+                      while (m_accumulator >= TICK_DURATION) {
+                          m_previous_state = m_current_state;
+                          simulation_tick(TICK_DURATION);  // Server-authoritative or local
+                          m_accumulator -= TICK_DURATION;
+                      }
+
+                      // Interpolation factor: 0.0 = previous state, 1.0 = current state
+                      float alpha = m_accumulator / TICK_DURATION;
+                      render(alpha);
+                  }
+              }
+          };
+          ```
+
+          **What gets interpolated:**
+
+          | Data | Interpolate? | Notes |
+          |------|--------------|-------|
+          | Entity positions | YES | Smooth movement for beings, vehicles |
+          | Building state | NO | Discrete (constructing->active is instant visually) |
+          | Camera position | N/A | Camera updates per-frame, not per-tick |
+          | Animation frames | NO | AnimationSystem handles frame timing independently |
+          | UI values | Optional | Could smooth population counters |
+
+          **Component support:**
+          ```cpp
+          struct InterpolatableComponent {
+              float prev_x, prev_y;     // Position at tick N-1
+              float curr_x, curr_y;     // Position at tick N
+              // RenderingSystem computes: render_x = lerp(prev_x, curr_x, alpha)
+          };
+          ```
+
+          **Why framework-level:**
+          1. Interpolation alpha calculation is global - same value for all systems
+          2. State snapshot management (previous vs current) is a core concern
+          3. RenderingSystem just USES the alpha; it doesn't compute it
+          4. Decouples rendering from simulation tick rate (could change 20Hz without touching render code)
+
+          **Multiplayer consideration:**
+          Client receives state updates from server. The interpolation happens between received states,
+          not locally-simulated states. This naturally handles network jitter - we're always rendering
+          between two known-good server states.
+
+  - id: Q031
+    status: answered
+    author: "game-designer"
+    target: "graphics-engineer"
+    timestamp: "2026-01-27"
+    question: |
+      For REQ-17-20 (cell-shading), what shader techniques will achieve consistent cell-shaded look? Will SDL3's GPU features support custom shaders, or are we pre-rendering all sprites in a cell-shaded style?
+    answers:
+      - author: "graphics-engineer"
+        timestamp: "2026-01-27"
+        answer: |
+          For Epic 2, **pre-rendered cell-shaded sprites is the recommended approach**. Real-time shader-based cell-shading is not practical with our current tech stack.
+
+          **Why pre-rendered:**
+
+          1. **SDL_Renderer limitation**: SDL3's SDL_Renderer API does not support custom fragment shaders. All texture rendering uses fixed-function blending.
+
+          2. **SDL_GPU alternative**: SDL3 does include SDL_GPU which supports custom shaders, but:
+             - It's a much more complex API (similar to Vulkan in verbosity)
+             - Requires managing shader compilation, pipeline states
+             - Overkill for 2D sprite rendering
+             - Would delay Epic 2 significantly
+
+          3. **2D sprite games traditionally use pre-baked art**: Games like Hades, Hollow Knight, and classic isometric games achieve their distinctive looks through art direction, not runtime shaders.
+
+          **Art direction for cell-shaded sprites:**
+          - 2-3 tone shading with hard edges (no gradients)
+          - Bold black outlines (1-2 pixels at base resolution)
+          - Flat color fills within regions
+          - Consistent light direction across all assets (e.g., top-left light source)
+          - Limited color palette per object category
+
+          **What the renderer CAN support:**
+          - Color modulation (tinting) via SDL_SetTextureColorMod
+          - Alpha blending for transparency and overlays
+          - Additive blending for glows (energy conduits)
+          - Render targets for compositing effects
+
+          **Future enhancement (Phase 5):**
+          If we migrate to SDL_GPU for performance reasons, we could add post-processing like outline enhancement, color banding, or bloom. This should be a polish item, not blocking Epic 2.
+
+  - id: Q032
+    status: answered
+    author: "game-designer"
+    target: "graphics-engineer"
+    timestamp: "2026-01-27"
+    question: |
+      For REQ-36 (parallax), is multi-layer parallax achievable with SDL3's rendering model? What is the performance cost of multiple render targets?
+    answers:
+      - author: "graphics-engineer"
+        timestamp: "2026-01-27"
+        answer: |
+          Yes, **multi-layer parallax is achievable with SDL3** and the performance cost is manageable.
+
+          **Implementation approach:**
+
+          1. **Layer-based rendering**: Each parallax layer is rendered to the main render target with different scroll rates. No separate render targets needed for basic parallax.
+
+          2. **Scroll rate calculation**:
+             ```cpp
+             // Parallax factor: 1.0 = moves with camera, 0.0 = static, 0.5 = half speed
+             float layer_offset_x = camera_x * parallax_factor;
+             float layer_offset_y = camera_y * parallax_factor;
+             ```
+
+          3. **Layer order**: Background layers (low parallax factor) render first, foreground layers (high factor) render last.
+
+          **Performance considerations:**
+
+          - **Without render targets**: Drawing layers directly is very efficient. Each layer is just a different scroll offset. Cost is proportional to visible sprites, not layers.
+
+          - **With render targets** (if needed for effects):
+            - Creating a render target: ~0.1ms one-time cost
+            - Switching render targets: ~0.01-0.05ms per switch
+            - For 3-5 parallax layers: negligible impact at 60fps
+
+          **Recommended layer setup:**
+          ```
+          Layer 0: Sky/background gradient (parallax 0.0 - static)
+          Layer 1: Distant terrain/clouds (parallax 0.2 - slow)
+          Layer 2: Far buildings/mountains (parallax 0.4)
+          Layer 3: Main game layer (parallax 1.0 - camera-locked)
+          Layer 4: Foreground elements (parallax 1.2 - slightly faster)
+          Layer 5: UI (no parallax, screen-space)
+          ```
+
+          **Memory budget:**
+          Each render target costs width * height * 4 bytes (RGBA). At 1920x1080: ~8MB per target. Budget 2-3 render targets (~24MB) for effects if needed.
+
+          **Verdict:** Parallax adds minimal performance cost. Implement in Epic 2.
+
+  - id: Q033
+    status: answered
+    author: "game-designer"
+    target: "graphics-engineer"
+    timestamp: "2026-01-27"
+    question: |
+      Regarding sprite batching (Epic 2 scope), what is the expected draw call budget per frame? How many sprites can we push before performance degrades on target hardware?
+    answers:
+      - author: "graphics-engineer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Target budget: 200-500 draw calls per frame at 60fps** on mid-range hardware.
+
+          **Sprite capacity estimates:**
+
+          With SDL_RenderGeometry batching:
+          - **Per batch**: 1000-5000 sprites sharing the same texture
+          - **Total per frame**: 10,000-50,000 sprites before CPU becomes bottleneck
+          - **Limiting factor**: CPU time for vertex generation and sorting, not GPU
+
+          **Target hardware baseline (mid-range 2023):**
+          - GPU: GTX 1060 / RX 580 equivalent or integrated graphics
+          - CPU: 4-core @ 3GHz
+          - RAM: 8GB system, 2GB VRAM
+
+          **Performance breakdown per frame (16.6ms budget):**
+          ```
+          Input/Update:     1-2ms
+          Frustum culling:  0.5-1ms
+          Depth sorting:    1-3ms (varies with visible count)
+          Batch building:   1-2ms
+          GPU submission:   2-4ms
+          Present/VSync:    remaining time
+          ```
+
+          **Optimization priorities:**
+          1. **Texture atlasing**: Group related sprites to minimize texture switches. Target 4-8 atlas textures.
+          2. **Frustum culling**: Only process visible sprites. Typically 500-2000 visible.
+          3. **Spatial sorting**: Use buckets to reduce sort complexity.
+          4. **Static batching**: Terrain and unchanging elements can be pre-batched.
+
+          **Warning thresholds:**
+          - 5000+ visible sprites: Profile carefully
+          - 500+ draw calls: Investigate batching failures
+          - 8ms+ in rendering: Optimization needed
+
+          **Recommendation:** Design for 2000 visible sprites as comfortable target, supporting 5000+ if needed.
+
+  - id: Q034
+    status: answered
+    author: "game-designer"
+    target: "graphics-engineer"
+    timestamp: "2026-01-27"
+    question: |
+      For the 64x64 tile size with 32 elevation levels, what is the expected total sprite count for a "typical" colony? This affects batching strategy and memory budget.
+    answers:
+      - author: "graphics-engineer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Estimated sprite counts for a typical colony:**
+
+          **Map dimensions assumed:** 128x128 tiles per player territory
+
+          **Total entities (all elevations, full colony):**
+          - Terrain tiles: 128 * 128 = 16,384 base tiles
+          - With elevation variety: ~20,000 terrain sprites (cliffs, slopes)
+          - Buildings (developed city): 2,000-5,000 structures
+          - Infrastructure (roads, conduits): 3,000-8,000 segments
+          - Decorative/animated: 500-2,000 beings, vehicles, effects
+          - **Total entities: 25,000-35,000**
+
+          **Visible sprites (typical viewport):**
+          At default zoom, approximately 30x20 tiles visible = 600 base tiles.
+          With elevation, buildings, overlays: **800-2,000 visible sprites**
+          At max zoom-out: **2,000-4,000 visible sprites**
+
+          **Memory budget calculation:**
+
+          Texture atlas memory:
+          - Terrain atlas: 2048x2048 RGBA = 16MB
+          - Building atlas: 2048x2048 RGBA = 16MB
+          - Infrastructure atlas: 1024x1024 RGBA = 4MB
+          - UI/effects atlas: 1024x1024 RGBA = 4MB
+          - **Total texture memory: ~40MB**
+
+          Sprite instance data (per visible sprite):
+          ```cpp
+          struct SpriteInstance {
+              float x, y, z;                    // 12 bytes
+              uint16_t atlas_x, atlas_y, w, h;  // 8 bytes
+              uint32_t color_mod;               // 4 bytes
+              uint8_t flags;                    // 1 byte
+          };  // ~25 bytes, padded to 32
+          ```
+          - 4000 sprites * 32 bytes = 128KB per frame (trivial)
+
+          **Batching strategy implications:**
+          - 4-8 texture atlases means 4-8 batches minimum
+          - Depth sorting within batches adds overhead
+          - Target: merge all terrain into 1-2 batches, buildings into 1-2 batches
+
+          **Recommendation:** Architecture should handle 50,000 total entities with 5,000 visible. Profile with 100,000 entities for stress testing.
+
+  - id: Q035
+    status: answered
+    author: "game-designer"
+    target: "graphics-engineer"
+    timestamp: "2026-01-27"
+    question: |
+      What asset format should art direction plan for? PNG with transparency? Atlas sheets with defined regions? Does SDL3 have preferences for loading performance?
+    answers:
+      - author: "graphics-engineer"
+        timestamp: "2026-01-27"
+        answer: |
+          **Recommended asset format: PNG texture atlases with JSON metadata.**
+
+          **Image format: PNG**
+          - Full alpha channel support (required for sprites)
+          - Lossless compression (no artifacts on cell-shaded art)
+          - Universal tool support (Aseprite, Photoshop, etc.)
+          - SDL3 loads via SDL_image with no conversion needed
+
+          **Atlas organization:**
+          ```
+          assets/
+            sprites/
+              terrain_atlas.png       (2048x2048)
+              terrain_atlas.json      (sprite regions)
+              buildings_atlas.png     (2048x2048)
+              buildings_atlas.json
+              ...
+          ```
+
+          **Metadata format (JSON):**
+          ```json
+          {
+            "atlas": "terrain_atlas.png",
+            "sprites": {
+              "grass_flat": {"x": 0, "y": 0, "w": 64, "h": 32},
+              "grass_slope_n": {"x": 64, "y": 0, "w": 64, "h": 40},
+              "water_01": {"x": 128, "y": 0, "w": 64, "h": 32, "frames": 4, "fps": 8}
+            }
+          }
+          ```
+
+          **SDL3 loading considerations:**
+
+          1. **Texture size**: Maximum 4096x4096 safe on all hardware. Recommend 2048x2048 for atlases.
+
+          2. **Pixel format**: SDL_PIXELFORMAT_RGBA32 is optimal. PNG with alpha loads directly.
+
+          3. **Loading performance**:
+             - PNG decode: ~5-20ms per 2048x2048 atlas
+             - Texture upload: ~1-5ms per atlas
+             - Load during startup or async during gameplay
+             - Once loaded, rendering is fast (GPU handles textures)
+
+          4. **Streaming consideration**: For our scope (4-8 atlases), load all at startup.
+
+          **Art pipeline recommendations:**
+          - Create sprites at 1x resolution (64x64 base tiles)
+          - Consider 2x assets for high-DPI displays (future)
+          - Use TexturePacker, Aseprite, or similar for atlas generation
+          - Export both PNG and JSON in one step
+          - Version control source files (individual sprites), generate atlases in build
+
+          **Animation format:**
+          - Animation frames adjacent in atlas
+          - JSON metadata includes frame count and FPS
+          - AnimatedSpriteComponent handles playback

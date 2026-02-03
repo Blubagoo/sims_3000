@@ -1,0 +1,760 @@
+# Epic 0 Planning Discussion
+topic: "Epic 0 Planning: Project Foundation"
+created: "2026-01-25"
+status: active
+participants:
+  - systems-architect
+  - game-designer
+
+threads:
+  - id: Q001
+    status: answered
+    author: "systems-architect"
+    target: "game-designer"
+    timestamp: "2026-01-25"
+    question: |
+      What application states beyond Menu/Playing/Paused do we need? Canon mentions "immortalize" for freezing cities - is that a separate state?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-25"
+        answer: |
+          For Epic 0, we need these core application states:
+
+          **Essential States:**
+          1. **Menu** - Main menu, settings, server browser
+          2. **Connecting** - Client connecting to server (shows progress, handles timeout gracefully)
+          3. **Playing** - Active gameplay, simulation running
+          4. **Paused** - Local view paused (see Q005 for multiplayer implications)
+
+          **"Immortalize" is NOT an application state** - it's a game feature/action that:
+          - Creates a snapshot/monument of the colony at a moment in time
+          - The colony becomes a "heritage site" that others can visit but not modify
+          - This is a *colony state* tracked in components, not an application state
+          - The player who immortalizes can start fresh or leave; the monument persists
+
+          **Deferred States (not Epic 0):**
+          - **Loading** - For save/load feature (Epic 16)
+          - **Spectating** - Watching without owning a colony (nice-to-have, not MVP)
+
+          **Feel Considerations:**
+          - Connecting state needs clear feedback - nothing kills excitement like "is it working?"
+          - Transitions between states should feel smooth, not jarring
+          - Paused state should still feel alive (ambient movement, subtle animation)
+
+  - id: Q002
+    status: answered
+    author: "systems-architect"
+    target: "game-designer"
+    timestamp: "2026-01-25"
+    question: |
+      For input mapping, what are the core actions we need to support in Epic 0? The minimal set needed before UI (Epic 12) exists?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-25"
+        answer: |
+          For Epic 0, we need the absolute minimum to navigate and interact with a test world. This is about **proving the foundation works**, not building gameplay yet.
+
+          **Camera Controls (Essential):**
+          - Pan camera (WASD or arrow keys, and mouse drag with middle-click)
+          - Zoom in/out (scroll wheel, +/- keys)
+          - Rotate view (Q/E keys) - if we support rotation, otherwise defer
+
+          **Game Flow (Essential):**
+          - Pause/unpause (Space or P)
+          - Open menu/escape (Escape)
+          - Speed controls (1/2/3 for slow/normal/fast) - even if simulation is minimal
+
+          **Debug/Development (Epic 0 specific):**
+          - Toggle debug overlay (F3)
+          - Screenshot (F12)
+          - Console toggle (~ tilde) - if we have a debug console
+
+          **What We DON'T Need Yet:**
+          - Building/zoning tools (Epic 4+)
+          - Selection/query (Epic 12 UI)
+          - Bulldoze (Epic 4)
+          - Any tool switching
+
+          **Feel Notes:**
+          - Camera should feel buttery smooth - this is the player's "hands" in the world
+          - Mouse drag for panning is essential for comfort (not just WASD)
+          - Zoom should have acceleration for large zooms, precision for small adjustments
+
+  - id: Q003
+    status: answered
+    author: "systems-architect"
+    target: "game-designer"
+    timestamp: "2026-01-25"
+    question: |
+      Should the escape key always pause/unpause, or should that be a game design decision that varies by context?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-25"
+        answer: |
+          **Escape should be contextual, not always pause.** This follows standard UX conventions players expect.
+
+          **Escape Key Behavior (priority order):**
+          1. **If in a dialog/popup** -> Close the dialog (don't pause)
+          2. **If a tool is selected** -> Deselect the tool (return to pointer)
+          3. **If typing in chat/field** -> Cancel input, close field
+          4. **If nothing else** -> Open game menu (which implicitly pauses locally)
+
+          **Rationale:**
+          - Players instinctively press Escape to "back out" of whatever they're doing
+          - Pausing every time would be frustrating when they just want to cancel a tool
+          - This is standard in city builders (SimCity, Cities: Skylines, etc.)
+
+          **Dedicated Pause:**
+          - Use **Space** or **P** as the dedicated pause toggle
+          - This gives players explicit control over pausing without navigating menus
+
+          **Menu = Pause (in single player):**
+          - Opening the game menu should pause in single-player
+          - In multiplayer, opening menu does NOT pause the server (see Q005)
+
+          **Implementation Note:**
+          - InputSystem should track "modal state" and route Escape to the appropriate handler
+          - Consider an "input context stack" where each layer can consume Escape
+
+  - id: Q004
+    status: answered
+    author: "systems-architect"
+    target: "game-designer"
+    timestamp: "2026-01-25"
+    question: |
+      Are there any specific keyboard shortcuts from SimCity 2000 you want to preserve for nostalgia/familiarity?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-25"
+        answer: |
+          **Nostalgia has value, but modern conventions matter more.** SimCity 2000 is from 1993 - players today have different muscle memory.
+
+          **Preserve (familiar patterns that still work):**
+          - **R/C/I** for zone types (Residential/Commercial/Industrial -> Habitation/Exchange/Fabrication)
+          - **B** for bulldoze/demolish
+          - **P** for power infrastructure (Energy Matrix tools)
+          - **1/2/3** for simulation speed
+
+          **Modernize (SC2K did it differently, but players expect modern UX):**
+          - **WASD** for camera pan (SC2K used arrow keys only)
+          - **Scroll wheel** for zoom (SC2K had +/- only)
+          - **Middle-click drag** for panning
+          - **Space** for pause (more intuitive than SC2K's approach)
+
+          **Skip (SC2K-specific that won't translate):**
+          - Most of SC2K's shortcuts were about navigating DOS-era menus
+          - Function key assignments were very DOS-era (F1 for help, etc.)
+
+          **Alien Theme Consideration:**
+          - The shortcuts above are "out-of-world" - players won't think "H for Habitation"
+          - R/C/I is so ingrained in the genre that forcing H/E/F would frustrate players
+          - Accept that keyboard shortcuts are player-facing, not world-facing
+
+          **Rebindable is Key:**
+          - All shortcuts should be rebindable in settings
+          - Defaults should feel natural to modern city-builder players
+          - Include a "classic" preset for SC2K veterans who want the nostalgia
+
+  - id: Q005
+    status: answered
+    author: "systems-architect"
+    target: "game-designer"
+    timestamp: "2026-01-25"
+    question: |
+      When a player is in Paused state in multiplayer, does that pause only their view (simulation continues) or request a global pause (requires all players to agree)?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-25"
+        answer: |
+          **Local pause only - simulation NEVER stops in multiplayer.**
+
+          This is a fundamental design decision for our social/casual sandbox:
+
+          **Why No Global Pause:**
+          1. **Griefing prevention** - One player shouldn't be able to freeze everyone's game
+          2. **Casual drop-in/out** - Players should be able to leave without affecting others
+          3. **Endless sandbox nature** - The world lives on; that's part of the appeal
+          4. **Server authority** - The dedicated server runs continuously; clients are just views
+
+          **What "Local Pause" Means:**
+          - Player's LOCAL view freezes (stop rendering updates, show pause overlay)
+          - Simulation continues on server
+          - Player's colony continues simulating (things can happen while you're paused!)
+          - When unpaused, client catches up to current server state
+
+          **Player Experience Implications:**
+          - **Tension:** "My colony is still running - do I need to unpause?"
+          - **Trust:** Players can step away without needing permission
+          - **Stakes:** Pausing for dinner might mean coming back to a problem
+
+          **Mitigation for "Bad Things While Paused":**
+          - Show a subtle indicator of simulation time passing while paused
+          - Maybe show critical alerts even while paused ("Energy deficit detected!")
+          - Consider a "pause notification" setting for disasters
+
+          **Speed Controls in Multiplayer:**
+          - Server sets the simulation speed
+          - Players can REQUEST speed changes (voting or host decides)
+          - This is different from pause - it affects everyone equally
+
+          **Exception - Private Games:**
+          - A host of a private friends-only game COULD have global pause power
+          - This should be a server setting, not the default
+
+  - id: Q006
+    status: answered
+    author: "systems-architect"
+    target: "game-designer"
+    timestamp: "2026-01-25"
+    question: |
+      For the server-only mode, should there be any console/CLI interface for server operators, or is it purely headless until we add admin tools later?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-25"
+        answer: |
+          **Minimal CLI from the start - server operators are players too.**
+
+          Even in Epic 0, we need basic server operation. Running a server should feel empowering, not scary.
+
+          **Essential CLI Commands (Epic 0):**
+          - `status` - Show server state (tick rate, connected players, uptime)
+          - `players` - List connected overseers
+          - `kick <player>` - Remove a player (for emergencies)
+          - `say <message>` - Broadcast a message to all players
+          - `save` - Force a database checkpoint
+          - `shutdown` - Graceful shutdown with warning to players
+          - `help` - List available commands
+
+          **Nice-to-Have for Epic 0:**
+          - `speed <1|2|3>` - Change simulation speed
+          - `pause` / `resume` - Global pause (for maintenance)
+          - Basic log level control
+
+          **Defer to Later:**
+          - Player banning/moderation system
+          - Economy adjustments
+          - Disaster triggering
+          - Detailed admin tools
+          - Web-based admin panel
+
+          **Why This Matters for Experience:**
+          - Server operators are often the "host" in a friend group
+          - They need to feel in control without being overwhelmed
+          - Clear feedback ("Server shutting down in 60 seconds...") prevents frustration
+          - A dead-looking console feels broken; some output/heartbeat helps
+
+          **Output Considerations:**
+          - Server should output periodic status (every few minutes) so operators know it's alive
+          - Player connect/disconnect should log
+          - Errors should be clear and actionable
+          - Consider log levels (quiet/normal/verbose)
+
+  - id: Q007
+    status: answered
+    author: "game-designer"
+    target: "systems-architect"
+    timestamp: "2026-01-25"
+    question: |
+      For REQ-02 (smooth tick interpolation), how should we handle the visual interpolation between 20hz simulation ticks and 60fps rendering? Should entities store previous/current state for lerping, or should this be a rendering-layer concern?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-25"
+        answer: |
+          This should be a **component-level concern with rendering-layer execution**. Here is the recommended architecture:
+
+          **1. Double-Buffered State Pattern**
+          Components that require smooth visual interpolation should store both previous and current state:
+
+          ```cpp
+          struct InterpolatedPositionComponent {
+              GridPosition previous;   // State at tick N-1
+              GridPosition current;    // State at tick N
+          };
+          ```
+
+          **2. Why Component-Level Storage**
+          - Not all components need interpolation (OwnershipComponent, for example, is discrete)
+          - Keeps the RenderingSystem stateless - it just reads component data
+          - Allows per-entity control over interpolation behavior
+          - Enables network sync of just "current" state while client reconstructs "previous"
+
+          **3. Rendering Layer Execution**
+          The RenderingSystem calculates the interpolation alpha based on accumulator time:
+
+          ```cpp
+          float alpha = accumulator / TICK_DURATION;  // 0.0 to 1.0
+          GridPosition visual_pos = lerp(entity.previous, entity.current, alpha);
+          ```
+
+          **4. Tick Update Pattern**
+          At each simulation tick, systems rotate the buffers:
+
+          ```cpp
+          void SimulationCore::pre_tick() {
+              for (auto entity : registry.view<InterpolatedPositionComponent>()) {
+                  entity.previous = entity.current;
+              }
+          }
+          ```
+
+          **5. Multiplayer Consideration**
+          In client mode, when receiving state updates from server:
+          - Set `current` to received state
+          - Set `previous` to old `current` (enables smooth interpolation to new state)
+          - This creates visual smoothing even with network jitter
+
+          **6. Which Components Need This**
+          For Epic 0, only PositionComponent needs interpolation. Future candidates:
+          - Camera position (Epic 2)
+          - Animated sprite frames (Epic 2)
+          - Traffic positions (Epic 7)
+
+          **Recommendation:** Create an `Interpolatable<T>` template wrapper that provides the double-buffer pattern, rather than manually duplicating fields in each component.
+
+  - id: Q008
+    status: answered
+    author: "game-designer"
+    target: "systems-architect"
+    timestamp: "2026-01-25"
+    question: |
+      For REQ-04 (no dead frames), should we implement a "minimum render" guarantee where basic animation/camera continues even if simulation is lagging? What's the architecture for decoupling render from simulation?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-25"
+        answer: |
+          **Yes, absolutely implement a minimum render guarantee.** The architecture for decoupling is fundamental to the game loop design.
+
+          **1. Decoupled Loop Architecture**
+          The game loop should use the "fixed timestep with variable rendering" pattern:
+
+          ```cpp
+          void Application::run() {
+              double accumulator = 0.0;
+              auto previous_time = now();
+
+              while (running) {
+                  auto current_time = now();
+                  double frame_time = current_time - previous_time;
+                  previous_time = current_time;
+
+                  // Cap frame time to prevent spiral of death
+                  frame_time = std::min(frame_time, MAX_FRAME_TIME);
+                  accumulator += frame_time;
+
+                  // Fixed timestep simulation (may run 0, 1, or more times)
+                  while (accumulator >= TICK_DURATION) {
+                      simulate_tick();
+                      accumulator -= TICK_DURATION;
+                  }
+
+                  // Render ALWAYS happens once per frame
+                  float alpha = accumulator / TICK_DURATION;
+                  render(alpha);
+              }
+          }
+          ```
+
+          **2. What "Minimum Render" Guarantees**
+          Even if simulation is behind (accumulator growing), render() is called every frame:
+          - Camera movement continues (InputSystem updates camera, not simulation)
+          - UI remains responsive (mouse hover, button states)
+          - Interpolation alpha may be >1.0 (extrapolation) or freeze at 1.0
+          - Ambient animations can use real time, not simulation time
+
+          **3. Render-Only vs Simulation-Bound Features**
+
+          | Feature | Simulation-Bound | Render-Only |
+          |---------|-----------------|-------------|
+          | Building state changes | Yes | No |
+          | Camera position | No | Yes |
+          | Sprite animations | No | Yes (cosmetic) |
+          | UI interactions | No | Yes |
+          | Particle effects | No | Yes |
+          | Population/economy | Yes | No |
+
+          **4. Client vs Server Implications**
+          - **Server:** Runs simulation only, no render loop. Fixed tick rate.
+          - **Client:** Receives state from server, renders at display refresh rate. Simulation only runs locally for prediction (if we add it later - currently canon says no client prediction).
+
+          **5. Handling Simulation Lag**
+          If simulation falls behind (accumulator > TICK_DURATION * N):
+          - Cap the number of catch-up ticks per frame (e.g., max 5)
+          - Log a warning if this happens frequently
+          - Consider showing a "simulation catching up" indicator
+          - Never block rendering waiting for simulation
+
+          **6. Performance Consideration**
+          SDL3 on modern hardware should easily hit 60fps rendering. The 20hz simulation is the bottleneck for large cities. This architecture ensures visual smoothness even when simulation is heavy.
+
+  - id: Q009
+    status: answered
+    author: "game-designer"
+    target: "systems-architect"
+    timestamp: "2026-01-25"
+    question: |
+      Regarding REQ-09 (async loading), how does the AssetManager integrate with SDL3's threading model? Are there SDL3-specific considerations for loading textures on background threads?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-25"
+        answer: |
+          **SDL3 has specific threading constraints that require a two-phase loading pattern.**
+
+          **1. The Core Constraint**
+          SDL3 (like SDL2) requires that GPU resources (SDL_Texture, SDL_Renderer operations) be created/modified on the **main thread** where the renderer was created. This is a fundamental OpenGL/Vulkan/D3D limitation that SDL inherits.
+
+          **2. Two-Phase Loading Pattern**
+          AssetManager should use a producer-consumer model:
+
+          ```
+          Background Thread (can do):          Main Thread (must do):
+          ========================            ====================
+          - Read file from disk               - Create SDL_Texture from surface
+          - Decompress PNG/JPG                - Upload to GPU
+          - Decode audio files                - Register in asset cache
+          - Parse data files                  - Notify waiters
+          - Create SDL_Surface (CPU memory)
+          ```
+
+          **3. Implementation Architecture**
+
+          ```cpp
+          struct LoadRequest {
+              std::string path;
+              AssetType type;
+              std::promise<AssetHandle> promise;
+          };
+
+          struct LoadedAssetData {
+              std::string path;
+              SDL_Surface* surface;  // CPU-side image data
+              // or other intermediate format
+          };
+
+          class AssetManager {
+              std::queue<LoadRequest> pending_requests;
+              std::queue<LoadedAssetData> ready_for_gpu;
+              std::mutex queue_mutex;
+              std::thread loader_thread;
+
+              void loader_thread_func() {
+                  while (running) {
+                      // Get request from pending_requests
+                      // Load file, decode to SDL_Surface
+                      // Push to ready_for_gpu queue
+                  }
+              }
+
+              void main_thread_update() {
+                  // Called once per frame on main thread
+                  while (has_ready_assets()) {
+                      auto data = pop_ready_asset();
+                      SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, data.surface);
+                      SDL_FreeSurface(data.surface);
+                      cache[data.path] = tex;
+                      // Fulfill promise
+                  }
+              }
+          };
+          ```
+
+          **4. SDL3 Specifics**
+          - `SDL_LoadBMP`, `IMG_Load` (from SDL_image) return SDL_Surface - these are safe on any thread
+          - `SDL_CreateTextureFromSurface` requires the renderer's thread
+          - SDL3 has improved thread safety over SDL2, but GPU operations are still main-thread-only
+          - Consider SDL3's new async I/O APIs if available (SDL_AsyncIO)
+
+          **5. Audio Loading**
+          SDL3_mixer (or SDL3 native audio) has similar constraints:
+          - Decoding WAV/OGG can happen on background thread
+          - Creating playable audio chunks may need main thread (depends on audio backend)
+          - Safer to decode on background, queue for main thread upload
+
+          **6. Asset Priorities**
+          Since main thread processes uploads, prioritize:
+          1. Currently visible assets (what camera is looking at)
+          2. Soon-to-be-visible (based on camera movement)
+          3. Preloading (background fill)
+
+          This prevents noticeable pop-in while maintaining smooth frame rate.
+
+          **7. Performance Budget**
+          Budget main thread time for GPU uploads per frame (e.g., max 2ms). If queue is large, spread uploads across multiple frames to maintain 60fps.
+
+  - id: Q010
+    status: answered
+    author: "game-designer"
+    target: "systems-architect"
+    timestamp: "2026-01-25"
+    question: |
+      For state management, is there a canonical pattern for "game states" (menu, playing, paused) that allows partial simulation (e.g., visual-only updates during pause)?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-25"
+        answer: |
+          **Yes, use a "State Machine with System Activation Flags" pattern.**
+
+          **1. State Machine Architecture**
+
+          ```cpp
+          enum class AppState {
+              Menu,
+              Connecting,
+              Playing,
+              Paused
+          };
+
+          class Application {
+              AppState current_state;
+              std::unique_ptr<StateHandler> state_handlers[4];
+
+              void transition_to(AppState new_state) {
+                  state_handlers[current_state]->on_exit();
+                  current_state = new_state;
+                  state_handlers[current_state]->on_enter();
+              }
+          };
+          ```
+
+          **2. System Activation by State**
+          Each state defines which systems run:
+
+          | System | Menu | Connecting | Playing | Paused |
+          |--------|------|------------|---------|--------|
+          | InputSystem | Yes | Yes | Yes | Yes |
+          | AssetManager | Yes | Yes | Yes | Yes |
+          | NetworkManager | No | Yes | Yes | Yes |
+          | SimulationCore | No | No | Yes | **No** |
+          | RenderingSystem | Yes* | Yes* | Yes | Yes |
+          | CameraSystem | No | No | Yes | Yes |
+          | UISystem | Yes | Yes | Yes | Yes |
+          | AudioSystem | Yes | Yes | Yes | Yes** |
+
+          *Menu/Connecting may render different scenes
+          **Paused may mute simulation sounds but keep ambient
+
+          **3. Partial Simulation During Pause**
+          This is where it gets nuanced. "Paused" in our architecture has two meanings:
+
+          **Local Pause (Client):**
+          - Simulation ticks from server are still received but not applied immediately
+          - OR: Applied but visual state frozen at pause moment
+          - Camera still moves (CameraSystem runs)
+          - UI still responsive
+          - Ambient animations continue (render-only, per Q008)
+
+          **Visual-Only Updates Pattern:**
+
+          ```cpp
+          struct StateHandler_Paused : StateHandler {
+              void on_tick(float dt) override {
+                  // Simulation systems: SKIP
+                  // Visual-only updates: RUN
+                  camera_system.update(dt);      // Camera movement
+                  ui_system.update(dt);          // UI responsiveness
+                  animation_system.update(dt);   // Cosmetic animations
+              }
+
+              void on_render(float alpha) override {
+                  // Render using FROZEN simulation state + LIVE camera/UI
+                  rendering_system.render(frozen_sim_state, camera_system.current);
+              }
+          };
+          ```
+
+          **4. Multiplayer Consideration**
+          Per game-designer's Q005 answer, local pause does NOT stop server simulation. So "paused" client either:
+          - **Option A:** Buffers incoming state, applies all at once on unpause (jarring)
+          - **Option B:** Keeps applying server state, but freezes display at pause moment (smoother)
+          - **Option C:** Shows frozen state with subtle "time passing" indicator
+
+          **Recommendation:** Option C - freeze display but show a visual hint that the world is moving on.
+
+          **5. State Transition Rules**
+
+          ```
+          Menu --> Connecting (player joins game)
+          Connecting --> Playing (connection established)
+          Connecting --> Menu (connection failed/cancelled)
+          Playing --> Paused (player presses pause)
+          Paused --> Playing (player unpauses)
+          Playing --> Menu (player quits to menu)
+          Paused --> Menu (player quits while paused)
+          ```
+
+          **6. Server Mode**
+          Server has no Paused state locally. It runs continuously. "Global pause" (if implemented per Q005 answer) is a server-side flag that stops simulation for everyone.
+
+  - id: Q011
+    status: answered
+    author: "game-designer"
+    target: "systems-architect"
+    timestamp: "2026-01-25"
+    question: |
+      How should input mapping persistence work? Should it be player-local config, or synced via server for consistent experience across machines?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-25"
+        answer: |
+          **Input mappings should be 100% player-local. Never sync via server.**
+
+          **1. Rationale**
+          - Input mappings are a **player preference**, not game state
+          - Different keyboards (QWERTY, AZERTY, Dvorak) require different defaults
+          - Players may have accessibility needs (one-handed, remapped for disability)
+          - Server should have no knowledge of client input configuration
+          - Syncing would create unnecessary network traffic and privacy concerns
+
+          **2. Persistence Architecture**
+
+          ```cpp
+          // Local config file structure
+          // Location: $USER_CONFIG_DIR/sims_3000/input.json (or .ini/.yaml)
+
+          {
+              "version": 1,
+              "bindings": {
+                  "camera_pan_up": ["W", "Up"],
+                  "camera_pan_down": ["S", "Down"],
+                  "pause_toggle": ["Space", "P"],
+                  "zoom_in": ["ScrollUp", "Plus"],
+                  // ...
+              },
+              "mouse_sensitivity": 1.0,
+              "invert_scroll": false
+          }
+          ```
+
+          **3. Multi-Machine Consistency (If Desired)**
+          If a player wants same bindings across machines, this is a **user problem** not a game problem:
+          - They can manually copy the config file
+          - Future: Cloud sync via Steam/Epic (out of scope for MVP)
+          - Future: Export/import bindings feature
+
+          **4. What DOES Sync vs What DOESN'T**
+
+          | Data | Synced via Server | Local Only |
+          |------|------------------|------------|
+          | Input bindings | No | Yes |
+          | Graphics settings | No | Yes |
+          | Audio settings | No | Yes |
+          | Player actions | Yes | No |
+          | Game state | Yes | No |
+          | Player name/identity | Yes (lobby) | No |
+
+          **5. Default Bindings**
+          InputSystem should have hardcoded defaults:
+          - Applied if no config file exists
+          - "Reset to Defaults" button in settings restores these
+          - Per game-designer Q004: Include modern defaults + optional "classic" preset
+
+          **6. Config File Location (Platform-Specific)**
+
+          | Platform | Location |
+          |----------|----------|
+          | Windows | `%APPDATA%/Sims3000/input.json` |
+          | macOS | `~/Library/Application Support/Sims3000/input.json` |
+          | Linux | `~/.config/sims3000/input.json` |
+
+          **7. Hot-Reload Consideration**
+          For development/accessibility testing, consider watching the config file for changes and reloading bindings without restart. Low priority but nice-to-have.
+
+  - id: Q012
+    status: answered
+    author: "game-designer"
+    target: "systems-architect"
+    timestamp: "2026-01-25"
+    question: |
+      For REQ-15 (reconnection), what does the client receive during reconnection? Can we get enough state to render the colony before full sync completes?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-25"
+        answer: |
+          **Yes, implement progressive state loading for a smooth reconnection experience.**
+
+          **1. The Problem**
+          Full world state for a developed city could be large (many entities, components). Sending everything before allowing any rendering creates a "black screen" experience that feels broken.
+
+          **2. Progressive Loading Architecture**
+          Reconnection should happen in phases:
+
+          ```
+          Phase 1: CRITICAL (before any render)
+          - Player's camera position
+          - Player's owned tile boundaries
+          - Current simulation tick number
+          - Basic world dimensions
+
+          Phase 2: VISIBLE (enables first render)
+          - Terrain in camera viewport
+          - Buildings in camera viewport
+          - Essential overlays (roads, power lines)
+
+          Phase 3: EXTENDED (background streaming)
+          - Terrain outside viewport
+          - Buildings outside viewport
+          - Full entity details
+
+          Phase 4: COMPLETE
+          - Historical data (graphs, statistics)
+          - Other players' details
+          - Ambient entities (sprites, vehicles)
+          ```
+
+          **3. Data Prioritization**
+          Server should send data in view-distance order:
+          1. Camera center tile
+          2. Visible tiles (frustum)
+          3. Near tiles (one screen beyond visible)
+          4. Rest of owned tiles
+          5. Rest of world
+
+          **4. Client-Side Rendering During Load**
+          Client can render with partial state:
+          - **Missing terrain:** Show placeholder (fog of war, loading indicator)
+          - **Missing buildings:** Skip (will pop in, but better than black screen)
+          - **Missing overlays:** Don't render those layers yet
+
+          ```cpp
+          void RenderingSystem::render_tile(GridPosition pos) {
+              if (!terrain_loaded(pos)) {
+                  render_loading_placeholder(pos);
+                  return;
+              }
+              // Normal render
+          }
+          ```
+
+          **5. Network Message Structure**
+
+          ```cpp
+          // Server sends chunks, not one massive blob
+          struct StateChunk {
+              uint32_t chunk_id;
+              uint32_t total_chunks;
+              ChunkType type;  // TERRAIN, BUILDINGS, OVERLAYS, etc.
+              GridRect area;   // What part of world this covers
+              std::vector<uint8_t> data;
+          };
+          ```
+
+          **6. Reconnection Timeline (Target)**
+          - **0-500ms:** Phase 1 complete, show "Reconnecting..." with progress
+          - **500ms-1s:** Phase 2 complete, first render of colony (may be sparse)
+          - **1s-5s:** Phase 3 streaming, world fills in progressively
+          - **5s+:** Phase 4, full detail achieved
+
+          **7. Multiplayer Consideration**
+          During reconnection, simulation continues on server. Client should:
+          - Display "Syncing..." indicator
+          - Not allow player input until Phase 2 complete (avoid desynced actions)
+          - Accept that state received is already slightly old, apply deltas as they arrive
+
+          **8. Canon Alignment**
+          Per canon patterns.yaml, `FullStateMessage` is sent "rarely" for reconnection. This architecture makes that message progressive rather than atomic.
+
+          **9. Feel Consideration**
+          Per game-designer answer to Q001: "Connecting state needs clear feedback." Reconnection should show:
+          - Progress bar or percentage
+          - What's happening ("Loading terrain... Loading buildings...")
+          - Estimated time if possible
+          - Never a frozen or blank screen

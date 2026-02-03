@@ -1,0 +1,136 @@
+# Epic Planning Agent Assignments
+#
+# Defines which agents collaborate on planning each epic.
+# systems-architect and game-designer are ALWAYS included (strategic perspective).
+#
+# Usage: /plan-epic <N> uses these defaults, or override with --agents flag
+
+version: "1.0.0"
+
+# Core agents included in ALL epic planning
+core_agents:
+  - systems-architect    # Cross-system connections, dependencies, multiplayer
+  - game-designer        # Player experience, fun, alien theme
+
+# Per-epic specialist assignments
+epics:
+  epic_0:
+    name: "Project Foundation"
+    specialists:
+      - engine-developer     # SDL3, window, game loop
+    focus: "Core infrastructure that everything else depends on"
+
+  epic_1:
+    name: "Multiplayer Networking"
+    specialists:
+      - engine-developer     # Network layer implementation
+      - qa-engineer          # Connection testing, edge cases
+    focus: "Foundational multiplayer - affects all future systems"
+
+  epic_2:
+    name: "Core Rendering"
+    specialists:
+      - graphics-engineer    # SDL3 renderer, sprites, projection
+    focus: "Visual foundation, dimetric projection"
+
+  epic_3:
+    name: "Terrain System"
+    specialists:
+      - graphics-engineer    # Terrain rendering, tiles
+    focus: "World foundation, procedural generation"
+
+  epic_4:
+    name: "Zoning & Building"
+    specialists:
+      - zone-engineer        # Zone mechanics, RCI
+      - building-engineer    # Building spawning, states
+    focus: "Core city-builder gameplay loop"
+
+  epic_5:
+    name: "Power Infrastructure"
+    specialists:
+      - services-engineer    # Coverage systems, utility networks
+    focus: "First utility system, sets pattern for water"
+
+  epic_6:
+    name: "Water Infrastructure"
+    specialists:
+      - services-engineer    # Coverage systems, utility networks
+    focus: "Second utility, follows power patterns"
+
+  epic_7:
+    name: "Transportation"
+    specialists:
+      - infrastructure-engineer  # Roads, pathfinding, traffic
+    focus: "Connectivity, affects building viability"
+
+  epic_8:
+    name: "Ports & External"
+    specialists:
+      - economy-engineer     # Trade, external connections
+    focus: "External trade, demand bonuses"
+
+  epic_9:
+    name: "City Services"
+    specialists:
+      - services-engineer    # Service buildings, coverage
+      - qa-engineer          # Service effectiveness testing
+    focus: "Enforcers, hazard response, medical, education"
+
+  epic_10:
+    name: "Simulation Core"
+    specialists:
+      - population-engineer  # Demographics, migration
+      - economy-engineer     # Demand factors, land value
+    focus: "The beating heart - population, demand, crime, pollution"
+
+  epic_11:
+    name: "Financial System"
+    specialists:
+      - economy-engineer     # Treasury, taxes, budget
+    focus: "Money management, player resource constraints"
+
+  epic_12:
+    name: "UI Systems"
+    specialists:
+      - ui-developer         # Panels, overlays, tools
+    focus: "Player information and interaction"
+
+  epic_13:
+    name: "Disasters"
+    specialists:
+      - services-engineer    # Emergency response
+    focus: "Tension events, recovery gameplay"
+
+  epic_14:
+    name: "Progression & Rewards"
+    specialists: []          # Core agents sufficient
+    focus: "Milestones, unlocks, long-term goals"
+
+  epic_15:
+    name: "Audio System"
+    specialists:
+      - audio-engineer       # Music, SFX, ambient
+    focus: "Sound design, atmosphere"
+
+  epic_16:
+    name: "Save/Load"
+    specialists:
+      - data-engineer        # Serialization, persistence
+      - qa-engineer          # Save corruption, edge cases
+    focus: "State persistence, database integration"
+
+  epic_17:
+    name: "Polish & Theming"
+    specialists:
+      - qa-engineer          # Bug verification, balance testing
+    focus: "Final pass - terminology, performance, balance"
+
+# Optional agents that can be added to any epic
+optional_agents:
+  qa-engineer:
+    when: "Testing strategy is critical or complex edge cases expected"
+  debug-engineer:
+    when: "Epic involves tricky debugging scenarios"
+  explorer:
+    when: "Need to understand existing codebase before planning"

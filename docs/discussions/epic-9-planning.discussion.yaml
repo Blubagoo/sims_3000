@@ -1,0 +1,335 @@
+# Epic 9: City Services Planning Discussion
+# Generated: 2026-01-29
+# Status: RESOLVED
+
+topic: "Epic 9 Planning: City Services"
+created: "2026-01-29"
+status: resolved
+participants:
+  - systems-architect
+  - game-designer
+  - services-engineer
+  - qa-engineer
+
+# ============================================================================
+# CROSS-CUTTING REQUIREMENTS
+# ============================================================================
+
+cross_cutting_requirements:
+  CCR-1:
+    title: "ServicesSystem replaces Epic 10 IServiceQueryable stub"
+    description: |
+      Epic 10 created a stub returning neutral values (0.5 coverage).
+      Epic 9 must implement the real interface with actual calculations.
+    status: confirmed
+    affects:
+      - DisorderSystem (enforcer coverage)
+      - PopulationSystem (medical coverage)
+      - LandValueSystem (education coverage)
+
+  CCR-2:
+    title: "Two service models: radius-based vs global"
+    description: |
+      - Radius-based: enforcer, hazard_response (per-tile coverage)
+      - Global: medical, education (colony-wide effectiveness)
+    status: confirmed
+    resolution: |
+      Both models implemented. Radius-based uses ServiceCoverageGrid.
+      Global uses simple aggregation: capacity / population.
+
+  CCR-3:
+    title: "Service buildings require power to function"
+    description: |
+      All service buildings need energy coverage to operate.
+      Unpowered buildings have 0% effectiveness.
+    status: confirmed
+    resolution: |
+      Check EnergySystem.has_power(building_entity) before calculating coverage.
+      No water requirement (differs from zone buildings).
+
+  CCR-4:
+    title: "Per-player service boundaries"
+    description: |
+      Service buildings only provide coverage to tiles owned by the same player.
+    status: confirmed
+    resolution: |
+      Cross-ownership coverage rejected. Your enforcers only help your tiles.
+
+# ============================================================================
+# RESOLVED THREADS
+# ============================================================================
+
+threads:
+  # --------------------------------------------------------------------------
+  # COVERAGE ALGORITHM QUESTIONS
+  # --------------------------------------------------------------------------
+
+  - id: Q001
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Coverage overlap behavior: When two enforcer posts overlap, should coverage be:
+      (A) Max of the two values (simpler)
+      (B) Additive with cap (more buildings = better)
+      (C) Diminishing returns formula
+    resolution:
+      answer: "(A) Max of the two values"
+      rationale: |
+        Simpler to implement and understand. Prevents "stack enforcers" exploit.
+        Players should spread coverage, not pile buildings.
+      resolved_by: "game-designer"
+
+  - id: Q002
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      What are the proposed tile radii for each service tier?
+    resolution:
+      answer: |
+        Enforcer: Post=8, Station=12, Nexus=16
+        Hazard Response: Post=10, Station=15, Nexus=20
+        Medical: Global (no radius), capacity-based
+        Education: Global (no radius), capacity-based
+      rationale: "Hazard response needs larger radius since fires spread."
+      resolved_by: "systems-architect"
+
+  - id: Q003
+    status: resolved
+    author: "services-engineer"
+    target: "game-designer"
+    question: |
+      What falloff curve should radius-based services use?
+      Linear, quadratic, or stepped?
+    resolution:
+      answer: "Linear falloff"
+      rationale: |
+        coverage = max_effectiveness * (1 - distance/radius)
+        Simple, predictable, easy to visualize for players.
+      resolved_by: "game-designer"
+
+  # --------------------------------------------------------------------------
+  # TICK PRIORITY
+  # --------------------------------------------------------------------------
+
+  - id: Q004
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      When does ServicesSystem tick relative to Epic 10 systems?
+    resolution:
+      answer: "tick_priority: 55"
+      rationale: |
+        After PopulationSystem (50) but before EconomySystem (60).
+        This allows DisorderSystem (70) to use current tick coverage.
+      resolved_by: "systems-architect"
+
+  # --------------------------------------------------------------------------
+  # GLOBAL SERVICE MODEL
+  # --------------------------------------------------------------------------
+
+  - id: Q005
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Medical and education have "global" effects per canon. Does this mean:
+      (A) Average coverage across all owned tiles
+      (B) Per-tile coverage affecting nearby habitation
+      (C) Threshold system (need X% coverage citywide)
+    resolution:
+      answer: "(A) Average coverage - capacity-based colony-wide effectiveness"
+      rationale: |
+        Global services don't have coverage radii. Instead:
+        - Medical: capacity / (population * BEINGS_PER_MEDICAL_UNIT)
+        - Education: capacity / (population * BEINGS_PER_EDUCATION_UNIT)
+        Clamped to 0.0-1.0. One nexus serves small colony; large colonies need more.
+      resolved_by: "game-designer"
+
+  - id: Q006
+    status: resolved
+    author: "services-engineer"
+    target: "game-designer"
+    question: |
+      What are the capacity ratios for global services?
+    resolution:
+      answer: |
+        Medical: 1 capacity unit per 500 beings
+        Education: 1 capacity unit per 300 beings
+        Small post: 500 capacity, Station: 2000, Nexus: 5000
+      rationale: |
+        A small colony (2000 beings) needs 4 medical posts or 1 station.
+        Education needs more buildings to maintain high quotient.
+      resolved_by: "game-designer"
+
+  # --------------------------------------------------------------------------
+  # INTEGRATION WITH EPIC 10
+  # --------------------------------------------------------------------------
+
+  - id: Q007
+    status: resolved
+    author: "systems-architect"
+    target: "services-engineer"
+    question: |
+      What's the relationship between enforcer coverage and disorder reduction?
+    resolution:
+      answer: |
+        suppression_factor = coverage_strength * SUPPRESSION_MULTIPLIER
+        disorder_reduction = base_disorder_generation * suppression_factor
+
+        At 100% coverage: 70% reduction in disorder generation
+        At 50% coverage: 35% reduction
+        At 0% coverage: no reduction
+      rationale: |
+        Enforcers reduce disorder generation, not existing disorder.
+        Existing disorder still decays naturally per Epic 10 rules.
+      resolved_by: "services-engineer"
+
+  - id: Q008
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      How does medical coverage affect life expectancy?
+    resolution:
+      answer: |
+        base_longevity = 60 cycles
+        max_medical_bonus = 40 cycles
+        actual_longevity = base + (medical_effectiveness * max_medical_bonus)
+
+        0% medical: 60 cycles longevity
+        50% medical: 80 cycles longevity
+        100% medical: 100 cycles longevity
+      rationale: |
+        Matches Epic 10's PopulationSystem life expectancy calculation.
+        Medical effectiveness comes from IServiceQueryable.get_coverage(Medical, player).
+      resolved_by: "systems-architect"
+
+  - id: Q009
+    status: resolved
+    author: "services-engineer"
+    target: "systems-architect"
+    question: |
+      Hazard response integration: Since DisasterSystem is Epic 13,
+      what should hazard_response coverage be used for now?
+    resolution:
+      answer: "Store coverage for future use, no immediate effect"
+      rationale: |
+        Hazard response buildings can be placed and coverage calculated.
+        The coverage data is available via IServiceQueryable.
+        Epic 13 (Disasters) will query this data for fire suppression speed.
+        No placeholder behavior needed - just calculate and store.
+      resolved_by: "systems-architect"
+
+  # --------------------------------------------------------------------------
+  # FUNDING EFFECTS
+  # --------------------------------------------------------------------------
+
+  - id: Q010
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      How does funding level affect service effectiveness?
+      What curve should we use?
+    resolution:
+      answer: |
+        Linear curve with cap:
+        - 0% funding: 0% effectiveness (building disabled)
+        - 50% funding: 50% effectiveness
+        - 100% funding: 100% effectiveness
+        - 125% funding: 110% effectiveness (diminishing returns)
+        - 150% funding: 115% effectiveness (cap)
+      rationale: |
+        Simple linear is easy to understand and balance.
+        Slight bonus for overfunding rewards investment but not exponentially.
+        Until Epic 11, IEconomyQueryable stub returns 100% funding.
+      resolved_by: "game-designer"
+
+  # --------------------------------------------------------------------------
+  # BUILDING SPECIFICATIONS
+  # --------------------------------------------------------------------------
+
+  - id: Q011
+    status: resolved
+    author: "game-designer"
+    target: "services-engineer"
+    question: |
+      What are the footprint sizes for each service tier?
+    resolution:
+      answer: |
+        Post (Tier 1): 1x1
+        Station (Tier 2): 2x2
+        Nexus (Tier 3): 3x3
+      rationale: |
+        Larger buildings have more coverage/capacity but use more land.
+        Trade-off between efficiency and land usage.
+      resolved_by: "services-engineer"
+
+  - id: Q012
+    status: resolved
+    author: "qa-engineer"
+    target: "systems-architect"
+    question: |
+      Does service coverage cross player ownership boundaries?
+    resolution:
+      answer: "No - services only cover tiles owned by same player"
+      rationale: |
+        Consistent with other systems (energy, fluid).
+        Your enforcers don't help your neighbors.
+        Multiplayer balance: each player must build own services.
+      resolved_by: "systems-architect"
+
+  # --------------------------------------------------------------------------
+  # DENSE GRID PATTERN
+  # --------------------------------------------------------------------------
+
+  - id: Q013
+    status: resolved
+    author: "services-engineer"
+    target: "systems-architect"
+    question: |
+      Should ServiceCoverageGrid follow the dense_grid_exception pattern?
+    resolution:
+      answer: "Yes - add to patterns.yaml dense_grid_exception.applies_to"
+      rationale: |
+        ServiceCoverageGrid stores 1 byte/tile per service type per player.
+        Fits the existing pattern used by EnergyGrid, FluidGrid, etc.
+        Memory: 4 types * 4 players * 256KB = 4MB max at 512x512.
+      resolved_by: "systems-architect"
+
+# ============================================================================
+# CANON UPDATES REQUIRED
+# ============================================================================
+
+canon_updates:
+  interfaces_yaml:
+    - action: "Add ServicesSystem tick_priority: 55 to ISimulatable implemented_by"
+    - action: "Move IServiceQueryable from stubs section to services section"
+    - action: "Confirm IServiceProvider interface definition"
+
+  patterns_yaml:
+    - action: "Add ServiceCoverageGrid to dense_grid_exception.applies_to"
+
+  systems_yaml:
+    - action: "Add tick_priority: 55 to ServicesSystem"
+    - action: "Add note: replaces Epic 10 IServiceQueryable stub"
+
+# ============================================================================
+# SUMMARY
+# ============================================================================
+
+summary: |
+  Epic 9 planning resolved all cross-agent questions. Key decisions:
+
+  1. Coverage overlap: MAX value (not additive)
+  2. Falloff curve: LINEAR (simple and predictable)
+  3. Tick priority: 55 (after Population, before Economy)
+  4. Global services: capacity-based effectiveness
+  5. Ownership boundaries: services only cover own tiles
+  6. Funding curve: linear with 115% cap
+  7. Dense grid: yes, follows existing pattern
+
+  Ready for ticket synthesis.

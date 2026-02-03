@@ -1,0 +1,925 @@
+topic: "Epic 4 Planning: Zoning & Building System"
+created: "2026-01-28"
+status: resolved
+canon_version: "0.6.0"
+participants:
+  - systems-architect
+  - game-designer
+  - zone-engineer
+  - building-engineer
+
+# ============================================================
+# CROSS-AGENT QUESTIONS -- EXTRACTED FROM ALL 4 ANALYSES
+# ============================================================
+
+threads:
+  # -------------------------------------------------------
+  # FROM: systems-architect
+  # -------------------------------------------------------
+  - id: Q001
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Zone removal with existing building: When a player unzones a tile that
+      has an active building on it, should the building be demolished immediately,
+      should it remain but stop receiving zone benefits (and eventually abandon),
+      or should unzoning be blocked while a building exists?
+    answer: |
+      De-zoning an occupied tile triggers demolition of the building. The player
+      is making a deliberate choice to remove the zone, so immediate demolition
+      (with the standard demolition cost) is correct. Blocking de-zone while a
+      building exists removes player agency. Leaving the building without a zone
+      creates an undefined state. Demolished -> debris -> cleared -> tile returns
+      to unzoned state. This matches zone-engineer's de-zoning design (Section 6).
+    resolution: "De-zoning occupied tile triggers building demolition with standard cost."
+
+  - id: Q002
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Density upgrade trigger: What conditions should cause a zone tile to upgrade
+      from Low to High density? Options: (a) land value exceeds threshold,
+      (b) time + demand, (c) player explicitly upgrades via tool,
+      (d) automatic when services available.
+    answer: |
+      Density is player-chosen, not automatic. The player explicitly designates
+      a tile as low or high density using the zone tool. To change density, the
+      player redesignates. This is a critical design decision documented in the
+      Game Designer analysis Section 3: "Density is designated by the player,
+      not automatically upgraded." This preserves player agency and creates
+      meaningful strategic decisions about when to invest in high density.
+    resolution: "Player-chosen density. No automatic upgrades. Redesignation tool changes density."
+
+  - id: Q003
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Building spawn rate: How many buildings should spawn per tick across the
+      entire map? Should we target N buildings per simulation second per player?
+    answer: |
+      Building Engineer recommends: scan every 20 ticks (1 second), max 3 per
+      player per scan. Game Designer wants 15-20 structures in first 5 minutes
+      for early game pacing. At 3 per scan, that is 3/second = 180 in 1 minute.
+      This is too fast for late game but the scan should respect demand -- when
+      demand is low, fewer spawn. Resolution: max 3 spawns per player per scan
+      as a hard cap, with actual spawn count gated by demand strength. Early game
+      with high demand = fast. Late game with balanced demand = slow and steady.
+      Configurable constants for tuning.
+    resolution: "Max 3 spawns/player/scan (20 ticks). Actual count gated by demand. Configurable."
+
+  - id: Q004
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Demand formula: What should the baseline demand be for each zone type at
+      game start? What is the saturation curve -- linear, logarithmic, stepped?
+      Should demand ever go negative (causing building abandonment)?
+    answer: |
+      Zone Engineer defines the formula (Section 5): base_pressure + stub_factors
+      - supply_saturation. Base: Habitation=+10, Exchange=+5, Fabrication=+5.
+      Saturation is linear for simplicity in Epic 4 (DemandSystem in Epic 10
+      can introduce curves). Yes, demand can go negative, clamped to [-100, +100].
+      Negative demand triggers building abandonment (handled by BuildingSystem
+      state machine). Soft cap at +80 (diminishing returns). These are starting
+      values for playtesting -- all configurable.
+    resolution: "Linear saturation. H=+10, E=+5, F=+5 base. Range [-100,+100]. Configurable."
+
+  - id: Q005
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Abandoned building behavior: How long should a building remain in Degraded
+      state before transitioning to Abandoned? Should abandoned buildings eventually
+      self-demolish?
+    answer: |
+      Building Engineer defines the timeline (Section 3): Active -> Abandoned
+      (grace period 100 ticks/5s), Abandoned -> Derelict (200 ticks/10s),
+      Derelict -> Deconstructed (500 ticks/25s auto-demolish), Deconstructed
+      -> Entity removed (60 ticks/3s debris clear). Game Designer says derelict
+      structures should persist indefinitely (Section 5.4). Resolution: compromise --
+      Derelict auto-demolishes after a LONG timer (configurable, default 500 ticks)
+      to prevent eternal debris on the map. All timers configurable. Note:
+      Building Engineer uses 5-state (Materializing/Active/Abandoned/Derelict/
+      Deconstructed). Systems Architect uses 5-state with slightly different names
+      (Degraded vs Abandoned). Align on Building Engineer's naming.
+    resolution: |
+      5-state machine: Materializing -> Active -> Abandoned (5s grace) ->
+      Derelict (10s) -> Deconstructed (25s auto) -> Removed (3s debris).
+      All timers configurable. Use Building Engineer's state names.
+
+  - id: Q006
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Building level/upgrade visual: When a building upgrades from level 1 to
+      level 2 (or low density to high density), should it visually transform
+      in-place (construction animation again), or should it demolish and rebuild?
+    answer: |
+      Two separate cases:
+      1. Level upgrade (within same density): In-place metamorphosis with brief
+         animation (~20 ticks/1s). Building stays Active, occupants stay. Model
+         swaps during animation. Building Engineer Section 6 confirms.
+      2. Density change (low->high via zone redesignation): Building Engineer
+         Section 6 says existing structures are NOT auto-demolished. They remain
+         low-density until naturally replaced (abandoned/demolished). New structures
+         spawn at the new density. This avoids disruption from zone redesignation.
+      Game Designer wanted "metamorphosis" for density change (Section 3) but
+      Building Engineer's approach is architecturally simpler and avoids mass
+      disruption. Resolution: follow Building Engineer for density change.
+    resolution: |
+      Level upgrade: in-place metamorphosis (20 tick animation), occupants stay.
+      Density change: existing buildings persist at old density until naturally replaced.
+      New buildings spawn at new density. No forced metamorphosis on redesignation.
+
+  - id: Q007
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      (originally @graphics-engineer) Building model requirements for Epic 4:
+      What minimum 3D model infrastructure is needed from Epic 2 for buildings?
+    answer: |
+      Epic 4 does not own rendering -- RenderingSystem (Epic 2) does. For
+      planning purposes: Epic 4 defines the data (template_id, state, construction
+      progress, rotation, color_accent_index). RenderingSystem reads this data.
+      For MVP/testing, procedural box geometry with bioluminescent tinting is
+      acceptable. Proper models added later. The toon shader from Epic 2 should
+      handle building rendering. Building-specific shader variants are a
+      RenderingSystem concern, not Epic 4.
+    resolution: "Epic 4 provides data. RenderingSystem provides visuals. Procedural box geometry for MVP."
+
+  - id: Q008
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      (originally @graphics-engineer) Construction animation rendering: How
+      should ConstructionComponent.progress drive the materializing effect?
+    answer: |
+      Game Designer describes 3-phase animation (Emergence/Formation/Activation).
+      Building Engineer defines 4-phase ConstructionPhase enum (Foundation/
+      Framework/Exterior/Finalization). Resolution: use Building Engineer's
+      4-phase enum since it maps to concrete render states. RenderingSystem reads
+      ConstructionComponent.phase and phase_progress (0-255) to drive the visual.
+      The exact visual effect (Y-scale lerp, alpha fade, particle overlay) is a
+      RenderingSystem decision, not Epic 4's. Epic 4 provides the progress data.
+    resolution: "4-phase construction (Foundation/Framework/Exterior/Finalization). Epic 4 provides data only."
+
+  - id: Q009
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      (originally @graphics-engineer) Building state visual feedback: Active
+      buildings glow, degraded flicker, abandoned have no glow. Per-entity
+      emissive uniform or building-specific shader variant?
+    answer: |
+      This is a RenderingSystem concern (Epic 2/12). Epic 4's responsibility is
+      to expose BuildingComponent.state per entity. RenderingSystem reads the
+      state and applies appropriate visual treatment. Whether this is a per-entity
+      uniform, shader variant, or material swap is RenderingSystem's decision.
+      Epic 4 does not need to provide additional data beyond the state enum.
+    resolution: "Epic 4 exposes BuildingComponent.state. RenderingSystem handles visual treatment."
+
+  - id: Q010
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      (originally @orchestrator) Epic 4/Epic 5 parallelism: Can Epic 5 begin
+      before Epic 4 is complete, given Epic 4 defines the interfaces Epic 5
+      depends on?
+    answer: |
+      Yes. Epic 4 ticket B-06 (forward dependency interfaces) and B-07 (stubs)
+      can be delivered early as standalone tickets. Once IEnergyProvider interface
+      is defined and the stub exists, Epic 5 can begin implementing against that
+      interface. The stub pattern with dependency injection enables this parallelism.
+      Key: lock the interface signatures early in Epic 4 planning.
+    resolution: "Yes, deliver B-06/B-07 early. Lock interface signatures. Epic 5 can start in parallel."
+
+  # -------------------------------------------------------
+  # FROM: game-designer
+  # -------------------------------------------------------
+  - id: Q011
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      How should BuildingSystem handle the absence of EnergySystem, FluidSystem,
+      and TransportSystem? Stub interfaces or skip checks?
+    answer: |
+      Stub interfaces. Systems Architect Section 3.3 and Building Engineer
+      Section 8 both define the same pattern: abstract interface with stub
+      implementation returning permissive defaults (has_power=true, has_fluid=true,
+      is_road_accessible=true). Dependency injection swaps stubs for real
+      implementations when later epics ship. This is the canonical forward
+      dependency pattern.
+    resolution: "Stub interfaces with permissive defaults. Dependency injection for swap."
+
+  - id: Q012
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      What is the expected data flow for demand calculation? Does ZoneSystem's
+      basic demand get replaced by DemandSystem (Epic 10), or do they coexist?
+    answer: |
+      ZoneSystem owns a simplified basic demand calculation for Epic 4. When
+      DemandSystem (Epic 10) is implemented, it completely replaces ZoneSystem's
+      demand calculation. The transition: ZoneSystem's get_demand() method
+      delegates to an IDemandProvider interface. In Epic 4, the provider is
+      ZoneSystem's own basic calculator. In Epic 10, the provider becomes
+      DemandSystem. Zone Engineer Section 5 confirms this pattern with
+      "demand factor extension points" (ticket Z-09).
+    resolution: "ZoneSystem basic demand replaced by DemandSystem in Epic 10 via IDemandProvider."
+
+  - id: Q013
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      Template selection needs server-authoritative seeded RNG. How should
+      BuildingSystem access it? Central RNG service or per-system generator?
+    answer: |
+      Per-system seeded generator. BuildingSystem maintains its own PRNG seeded
+      from a deterministic seed (e.g., world seed + simulation tick). The seed
+      for each template selection is: hash(tile_x, tile_y, sim_tick). This
+      ensures: (1) same selection on all clients if they need to predict,
+      (2) deterministic replay, (3) no cross-system interference. The server
+      makes the actual selection; clients only need to render the result.
+    resolution: "Per-system seeded PRNG. Seed = hash(tile_x, tile_y, sim_tick). Server-authoritative."
+
+  - id: Q014
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      Should BuildingConstructedEvent include template ID and variation parameters,
+      or should clients derive these from seeded RNG?
+    answer: |
+      Include them explicitly. The BuildingSpawnedMessage (Building Engineer
+      Section 10) already includes template_id, rotation, and color_accent.
+      Clients should NOT re-derive from RNG -- that creates fragility if the
+      RNG implementation changes. Server sends full building data; clients render
+      it. This is consistent with the server-authoritative model.
+    resolution: "BuildingSpawnedMessage includes template_id, rotation, color_accent. No client-side derivation."
+
+  - id: Q015
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      How should redesignation (density upgrade) work at the ECS level? Destroy
+      and recreate entity, or update components in place?
+    answer: |
+      Building Engineer resolved this (Section 6): existing buildings are NOT
+      demolished on redesignation. They persist at old density until naturally
+      replaced. New buildings spawn at new density level. At the ECS level,
+      ZoneComponent.density is updated in place (simple field change). Existing
+      BuildingComponent.density stays at old value. No entity destruction needed
+      for the zone. The building entity lifecycle is unchanged.
+    resolution: "ZoneComponent.density updated in place. Existing buildings persist at old density."
+
+  - id: Q016
+    status: resolved
+    author: "game-designer"
+    target: "zone-engineer"
+    question: |
+      What data structure should ZoneComponent use? Is zone_type, density, and
+      designation_state sufficient?
+    answer: |
+      Zone Engineer defines ZoneComponent as 4 bytes: zone_type (ZoneType),
+      density (ZoneDensity), state (ZoneState: Designated/Occupied/Stalled),
+      desirability (uint8_t, 0-255 cached score). This is slightly different from
+      Game Designer's suggestion (which had "designation_state") and Systems
+      Architect's (which had "demand_weight"). The desirability field is more
+      useful -- it caches the aggregate attractiveness score for BuildingSystem
+      template selection. Demand is calculated at the system level, not per-tile.
+    resolution: |
+      ZoneComponent: zone_type, density, state (Designated/Occupied/Stalled),
+      desirability (0-255 cached). 4 bytes total.
+
+  - id: Q017
+    status: resolved
+    author: "game-designer"
+    target: "zone-engineer"
+    question: |
+      The 3-tile road proximity rule: should it gate zone designation or building
+      materialization?
+    answer: |
+      Gate building development, NOT zone designation. Zone Engineer Section 3
+      confirms: "IMPORTANT design decision: The 3-tile road proximity rule should
+      gate BUILDING DEVELOPMENT, not zone designation." Players can zone before
+      building roads. Zones without road access show as Stalled state. This matches
+      SimCity convention and preserves the plan-ahead workflow.
+    resolution: "Road proximity gates building development. Zone designation is unrestricted."
+
+  - id: Q018
+    status: resolved
+    author: "game-designer"
+    target: "zone-engineer"
+    question: |
+      Pathway check timing: Should it be checked at designation time or at
+      building spawn time?
+    answer: |
+      Same as Q017. Road proximity is checked by BuildingSystem at spawn time,
+      not by ZoneSystem at designation time. However, ZoneSystem also checks
+      road proximity periodically to set ZoneState::Stalled for UI feedback.
+      The check exists in both systems but serves different purposes:
+      ZoneSystem = UI feedback. BuildingSystem = spawn gating.
+    resolution: "BuildingSystem checks at spawn time (gating). ZoneSystem checks for UI feedback (Stalled state)."
+
+  # -------------------------------------------------------
+  # FROM: zone-engineer
+  # -------------------------------------------------------
+  - id: Q019
+    status: resolved
+    author: "zone-engineer"
+    target: "systems-architect"
+    question: |
+      When a zone is de-zoned, should the entity be destroyed immediately or
+      recycled? Is there an entity pool pattern for ECS?
+    answer: |
+      Destroy immediately. ECS frameworks handle entity creation/destruction
+      efficiently through archetype storage. Entity recycling adds complexity
+      without meaningful performance benefit for zone entities (zone operations
+      are infrequent, player-driven). The ECS registry reuses entity IDs
+      internally. No entity pool pattern needed.
+    resolution: "Destroy zone entity immediately on de-zone. No entity pooling needed."
+
+  - id: Q020
+    status: resolved
+    author: "zone-engineer"
+    target: "systems-architect"
+    question: |
+      ZoneGrid vs IGridQueryable: Should ZoneSystem implement IGridQueryable, or
+      is ZoneGrid a private implementation detail?
+    answer: |
+      ZoneGrid is a private implementation detail of ZoneSystem. ZoneSystem
+      exposes purpose-specific methods (get_zone_type_at, has_zone_at, etc.)
+      rather than implementing a generic IGridQueryable. This preserves
+      encapsulation and allows ZoneSystem to optimize its internal storage
+      without affecting consumers. IGridQueryable is for cross-cutting spatial
+      queries; zone queries are domain-specific.
+    resolution: "ZoneGrid is private. ZoneSystem exposes purpose-specific query methods."
+
+  - id: Q021
+    status: resolved
+    author: "zone-engineer"
+    target: "systems-architect"
+    question: |
+      Cross-player tile queries: Should zone entities for all players be synced
+      to all clients?
+    answer: |
+      Yes. Canon states all component changes sync via SyncSystem (Epic 1). All
+      zones are visible to all players (no fog of war). All clients maintain a
+      complete ECS state including all players' zones. This is confirmed by
+      Systems Architect Section 6.5: "All zone and building data is visible to
+      all players."
+    resolution: "All zone entities sync to all clients. Full visibility, no fog of war."
+
+  - id: Q022
+    status: resolved
+    author: "zone-engineer"
+    target: "systems-architect"
+    question: |
+      Demand calculation ownership: ZoneSystem owns basic demand, DemandSystem
+      (Epic 10) replaces it. How to handle the handoff? Pluggable provider?
+    answer: |
+      Same as Q012. Use IDemandProvider interface. ZoneSystem's basic demand is
+      the default provider. DemandSystem (Epic 10) replaces it. Zone Engineer's
+      ticket Z-09 (Demand Factor Extension Points) covers this design. The
+      handoff is via dependency injection: swap the IDemandProvider pointer.
+    resolution: "IDemandProvider interface. ZoneSystem default. DemandSystem replaces in Epic 10."
+
+  - id: Q023
+    status: resolved
+    author: "zone-engineer"
+    target: "building-engineer"
+    question: |
+      Zone-to-building interface: When BuildingSystem places a building on a zone,
+      it calls set_zone_state(x, y, Occupied). When demolished, it calls
+      set_zone_state(x, y, Designated). Does this bidirectional dependency work,
+      or should we use events?
+    answer: |
+      Use both. Direct method call for state mutation (set_zone_state) since the
+      caller knows exactly what state to set. Events for notification to other
+      systems (BuildingConstructedEvent includes zone position). The bidirectional
+      dependency is acceptable: BuildingSystem depends on ZoneSystem for queries
+      and state mutation. ZoneSystem does NOT depend on BuildingSystem -- it only
+      provides the mutation method. This is a one-way dependency with a callback.
+    resolution: |
+      Direct method call for state mutation (BuildingSystem -> ZoneSystem.set_zone_state).
+      Events for notifications to other systems. One-way dependency is acceptable.
+
+  - id: Q024
+    status: resolved
+    author: "zone-engineer"
+    target: "building-engineer"
+    question: |
+      De-zone with building: Should ZoneSystem directly call BuildingSystem to
+      demolish, or emit a DemolitionRequestEvent?
+    answer: |
+      Emit a DemolitionRequestEvent. This decouples ZoneSystem from BuildingSystem.
+      ZoneSystem emits the event; BuildingSystem handles the demolition. This
+      avoids a circular dependency (ZoneSystem -> BuildingSystem -> ZoneSystem).
+      The flow: player de-zones -> ZoneSystem emits DemolitionRequestEvent with
+      position -> BuildingSystem processes demolition -> BuildingSystem calls
+      ZoneSystem.set_zone_state(Designated) after demolition completes -> ZoneSystem
+      destroys the zone entity.
+    resolution: "DemolitionRequestEvent from ZoneSystem. BuildingSystem handles demolition. Decoupled."
+
+  - id: Q025
+    status: resolved
+    author: "zone-engineer"
+    target: "building-engineer"
+    question: |
+      Building template density field: Canon building_templates has density.
+      Confirming BuildingSystem selects templates based on ZoneComponent.density.
+      Is there any scenario where building density differs from zone density?
+    answer: |
+      No. Building density always matches the zone density at the time of
+      spawning. Once spawned, the building's density is fixed (stored in
+      BuildingComponent.density). If the zone density is later changed via
+      redesignation, the existing building retains its original density.
+      New buildings spawn at the new zone density. There is no scenario where
+      a building spawns at a different density than its zone.
+    resolution: "Building density always matches zone density at spawn time. Fixed after spawn."
+
+  - id: Q026
+    status: resolved
+    author: "zone-engineer"
+    target: "game-designer"
+    question: |
+      Zone designation cost: I proposed 2 credits/tile for low density, 5
+      credits/tile for high density. Is this the right ballpark? Should
+      designation be free to reduce friction?
+    answer: |
+      Small nominal cost is correct. Free designation encourages spam zoning
+      (zone the entire map immediately). A small cost creates meaningful
+      commitment without being punitive. The proposed 2/5 credits is a starting
+      point for playtesting. Game Designer agrees zone designation should "cost
+      credits, claims sectors, and sets expectations" (Section 1, Emotional Arc
+      point 2: Commitment). The exact values are tuning parameters.
+    resolution: "Low density: 2 credits/tile. High density: 5 credits/tile. Configurable for tuning."
+
+  - id: Q027
+    status: resolved
+    author: "zone-engineer"
+    target: "game-designer"
+    question: |
+      Redesignation workflow: Should players be able to change zone type without
+      de-zoning first if the tile is empty (Designated state)?
+    answer: |
+      Yes. If the zone tile is in Designated state (no building), direct
+      redesignation should be allowed as a single atomic operation: change
+      zone_type and/or density in place, deduct the cost difference. This
+      avoids unnecessary de-zone + re-zone for empty tiles. If a building
+      exists (Occupied state), de-zone triggers demolition first. Zone
+      Engineer's ticket Z-07 covers this.
+    resolution: "Direct redesignation for empty zones (Designated state). De-zone first if building exists."
+
+  - id: Q028
+    status: resolved
+    author: "zone-engineer"
+    target: "game-designer"
+    question: |
+      Stalled zones display: How should stalled zones (designated but no road
+      access) appear in the UI? Different overlay color? Flashing? Icon?
+    answer: |
+      Stalled zones should show a dimmed/desaturated version of the zone overlay
+      color plus a small icon indicating the missing prerequisite (disconnected
+      pathway icon, no-power icon, etc.). This provides "at a glance" feedback
+      without cluttering the display. Game Designer Risk 1 ("Nothing Is
+      Happening" Syndrome) emphasizes: "When a zone is designated but
+      prerequisites are missing, show specific icons on the zone overlay."
+      ZoneSystem exposes ZoneState::Stalled and the specific missing prerequisite.
+    resolution: "Dimmed overlay + prerequisite icons. ZoneSystem exposes stalled state + reason."
+
+  - id: Q029
+    status: resolved
+    author: "zone-engineer"
+    target: "game-designer"
+    question: |
+      Density upgrade without de-zone: Should players be able to upgrade an
+      empty zone's density (low->high) without de-zoning and re-zoning?
+    answer: |
+      Yes. This is the same as Q027. For empty zones (Designated state), direct
+      density change via redesignation tool. Cost: difference between high and
+      low designation cost (5-2 = 3 credits). Downgrade (high->low): allowed
+      for empty zones, no refund.
+    resolution: "Yes, direct density change for empty zones. Cost = difference. No refund on downgrade."
+
+  - id: Q030
+    status: resolved
+    author: "zone-engineer"
+    target: "building-engineer"
+    question: |
+      (originally @infrastructure-engineer) Road proximity rule detail: The canon
+      says "3 tiles" for road proximity. Manhattan, Euclidean, or Chebyshev distance?
+    answer: |
+      Chebyshev distance (max of |dx| and |dy|). This creates a square area
+      around each road tile, which is simpler to compute and more intuitive on
+      a grid. Chebyshev distance of 3 means a 7x7 square centered on the road
+      tile. This is the most generous interpretation and matches typical grid-
+      based city builder conventions. For multi-tile buildings, distance is
+      measured from the nearest edge of the footprint, not the anchor.
+    resolution: "Chebyshev distance. 3 = 7x7 square. Measured from nearest footprint edge."
+
+  - id: Q031
+    status: resolved
+    author: "zone-engineer"
+    target: "systems-architect"
+    question: |
+      (originally @graphics-engineer) Zone overlay rendering: How does
+      RenderingSystem want zone data -- per-entity query or dense grid?
+    answer: |
+      This is a RenderingSystem concern (Epic 2/12). ZoneSystem should expose
+      both options: per-entity query (get_zone_type_at) for point lookups, and
+      the ZoneGrid spatial index for area rendering. RenderingSystem can iterate
+      the ZoneGrid for efficient overlay rendering. The ZoneGrid stores EntityIDs;
+      RenderingSystem looks up ZoneComponent.zone_type from the entity to get
+      the color. Alternatively, ZoneSystem could expose a lightweight color grid
+      derived from zone types -- but that's an optimization for later.
+    resolution: "Expose both per-entity query and ZoneGrid access. RenderingSystem decides approach."
+
+  - id: Q032
+    status: resolved
+    author: "zone-engineer"
+    target: "systems-architect"
+    question: |
+      (originally @graphics-engineer) Should stalled zones have distinct visual
+      treatment in overlay?
+    answer: |
+      Yes. ZoneSystem exposes ZoneState per tile (including Stalled). The
+      RenderingSystem reads this and applies a dimmed/desaturated overlay for
+      stalled zones. This is consistent with Q028 resolution.
+    resolution: "Yes. ZoneSystem exposes ZoneState. RenderingSystem applies dimmed overlay for Stalled."
+
+  # -------------------------------------------------------
+  # FROM: building-engineer
+  # -------------------------------------------------------
+  - id: Q033
+    status: resolved
+    author: "building-engineer"
+    target: "zone-engineer"
+    question: |
+      How does ZoneSystem communicate zone designation to BuildingSystem?
+      Does BuildingSystem query ZoneComponent on tiles directly, or does
+      ZoneSystem emit events? Poll or subscribe?
+    answer: |
+      Both. ZoneSystem emits ZoneDesignatedEvent when zones are created (for
+      immediate reaction). BuildingSystem also polls zone state periodically
+      during its spawn scan -- it queries ZoneSystem.get_designated_zones()
+      to find tiles eligible for building. The event is useful for optimizing
+      the dirty list (only scan recently designated tiles), but the poll is
+      the primary mechanism since spawn conditions also depend on demand,
+      utilities, and road access which change independently of zone designation.
+    resolution: "Both events and polling. Events for optimization. Polling for spawn scan."
+
+  - id: Q034
+    status: resolved
+    author: "building-engineer"
+    target: "zone-engineer"
+    question: |
+      When a zone is redesignated (e.g., habitation->exchange), what happens
+      to existing structures? Should BuildingSystem immediately demolish
+      mismatched structures or let them decay naturally?
+    answer: |
+      If the zone is Occupied (has a building), redesignation requires de-zoning
+      first, which triggers demolition (per Q001 resolution). If the zone is
+      Designated or Stalled (empty), redesignation can happen directly (per Q027).
+      There is no scenario of a "mismatched" building (building type != zone type)
+      because the zone must be empty before type change.
+    resolution: "Occupied zones require demolition before type change. No mismatched buildings possible."
+
+  - id: Q035
+    status: resolved
+    author: "building-engineer"
+    target: "zone-engineer"
+    question: |
+      Does ZoneSystem handle density levels per-tile or per-zone-area? Can
+      adjacent tiles within the same zone have different densities?
+    answer: |
+      Per-tile. Each tile has its own ZoneComponent with independent density.
+      Adjacent tiles CAN have different densities. There is no concept of a
+      "zone area" -- zones are per-tile designations. This gives maximum
+      flexibility: a player could designate a block of low-density habitation
+      with a single high-density habitation tile in the center.
+    resolution: "Per-tile density. Adjacent tiles can have different densities. No zone areas."
+
+  - id: Q036
+    status: resolved
+    author: "building-engineer"
+    target: "systems-architect"
+    question: |
+      BuildingGrid follows the dense-grid-exception pattern. Should this be
+      formally added to canon patterns.yaml?
+    answer: |
+      Yes. BuildingGrid has the same rationale as TerrainGrid: per-tile
+      occupancy data, every tile potentially occupied, O(1) spatial lookups
+      required. The dense_grid_exception in patterns.yaml should be updated
+      to include BuildingGrid alongside TerrainGrid. This is a canon update
+      for Phase 6 (Decision Capture).
+    resolution: "Yes, add BuildingGrid to dense_grid_exception in patterns.yaml. Canon update needed."
+
+  - id: Q037
+    status: resolved
+    author: "building-engineer"
+    target: "systems-architect"
+    question: |
+      Forward dependency stub pattern uses raw interface pointers with setter
+      injection. Is this consistent with other systems, or should we use a
+      service locator?
+    answer: |
+      Raw interface pointers with setter injection is the correct pattern.
+      It is simple, explicit, and testable. A service locator adds indirection
+      and makes dependencies implicit. Both Systems Architect and Building
+      Engineer describe the same pattern (constructor or setter injection of
+      interface pointers). This should be the canonical forward dependency
+      pattern. Consistent with existing patterns.yaml guidance.
+    resolution: "Setter injection of interface pointers. No service locator. This is the canonical pattern."
+
+  - id: Q038
+    status: resolved
+    author: "building-engineer"
+    target: "systems-architect"
+    question: |
+      ConstructionComponent is removed on completion. Does the ECS efficiently
+      handle frequent add/remove? Or should we use a flag in BuildingComponent?
+    answer: |
+      Separate ConstructionComponent is correct. Modern ECS frameworks handle
+      component add/remove efficiently through archetype migration. The number
+      of simultaneously materializing buildings is small (dozens, not thousands).
+      The alternative (flag in BuildingComponent + construction fields always
+      present) wastes memory on every building and violates ECS composition
+      principles. Transient components are an established ECS pattern.
+    resolution: "Separate ConstructionComponent. Transient component pattern is correct and efficient."
+
+  - id: Q039
+    status: resolved
+    author: "building-engineer"
+    target: "game-designer"
+    question: |
+      What are actual capacity values for each zone type and density? Canon
+      does not specify. Suggested: low-density habitation = 4-8 beings,
+      high-density = 50-200 beings.
+    answer: |
+      Suggested initial values (all configurable per template):
+      - Low-density habitation: 4-12 beings per building (varies by template)
+      - High-density habitation: 40-200 beings per building
+      - Low-density exchange: 2-6 laborers per building
+      - High-density exchange: 20-80 laborers per building
+      - Low-density fabrication: 4-10 laborers per building
+      - High-density fabrication: 30-120 laborers per building
+      These are starting points. Tuning depends on map size and target colony
+      population. Game Designer notes that "per-structure simulation" should be
+      avoided -- these are aggregate contributions, not individually tracked.
+    resolution: |
+      Initial values per template. Hab: 4-12 low, 40-200 high.
+      Exchange: 2-6 low, 20-80 high. Fabrication: 4-10 low, 30-120 high. Configurable.
+
+  - id: Q040
+    status: resolved
+    author: "building-engineer"
+    target: "game-designer"
+    question: |
+      Should structures have a happiness/harmony bonus or penalty based on
+      surroundings? Does BuildingComponent need additional fields?
+    answer: |
+      Happiness/harmony effects from surroundings (contamination, services,
+      land value) are handled at the system level, not per-building. The
+      desirability field in ZoneComponent captures this. BuildingComponent
+      does not need a harmony field. HarmonySystem (Epic 10) reads zone/building
+      data and computes aggregate harmony. No additional BuildingComponent fields.
+    resolution: "No BuildingComponent harmony field. System-level calculation. Zone desirability handles this."
+
+  - id: Q041
+    status: resolved
+    author: "building-engineer"
+    target: "game-designer"
+    question: |
+      Upgrade cooldown of 10 seconds (200 ticks) -- is this the right pace?
+      Should structures upgrade faster or slower?
+    answer: |
+      10 seconds is reasonable for a starting value. In the early game, upgrades
+      should feel responsive (the colony is growing). In late game, upgrades
+      are less frequent because conditions stabilize. The cooldown prevents
+      rapid oscillation (upgrade/downgrade/upgrade). Game Designer emphasizes
+      configurable pacing. Resolution: 200 ticks default, configurable. Consider
+      a shorter cooldown for the first upgrade (encouraging early visible growth)
+      and longer for subsequent upgrades.
+    resolution: "200 ticks default. Configurable. Consider shorter cooldown for first upgrade."
+
+  - id: Q042
+    status: resolved
+    author: "building-engineer"
+    target: "systems-architect"
+    question: |
+      (originally @infrastructure-engineer) 3-tile road proximity rule: Manhattan,
+      Euclidean, or Chebyshev? From nearest footprint edge or anchor?
+    answer: |
+      Same as Q030. Chebyshev distance. Measured from nearest edge of multi-tile
+      footprint, not anchor. This is the most generous and grid-natural approach.
+    resolution: "Chebyshev distance from nearest footprint edge."
+
+  - id: Q043
+    status: resolved
+    author: "building-engineer"
+    target: "game-designer"
+    question: |
+      (originally @graphics-engineer) RenderingSystem data needs for construction
+      animation. ConstructionComponent.phase and phase_progress directly, or
+      separate RenderingHint component?
+    answer: |
+      RenderingSystem reads ConstructionComponent directly. No separate
+      RenderingHint component needed. The ConstructionComponent already contains
+      phase (0-3) and phase_progress (0-255) which is sufficient for the
+      materializing visual. Adding a RenderingHint would duplicate data.
+    resolution: "RenderingSystem reads ConstructionComponent directly. No RenderingHint needed."
+
+  - id: Q044
+    status: resolved
+    author: "building-engineer"
+    target: "game-designer"
+    question: |
+      (originally @graphics-engineer) For level upgrades, does RenderingSystem
+      need to interpolate between two 3D models, or simple swap with flash?
+    answer: |
+      Simple swap with flash effect. Model interpolation (morphing between two
+      meshes) is technically complex and visually unnecessary for a city builder
+      viewed from a distance. The upgrade animation: brief glow pulse -> model
+      swap -> new model's normal glow resumes. This is handled by attaching a
+      temporary ConstructionComponent with short duration (~20 ticks).
+      RenderingSystem sees the ConstructionComponent and plays the materializing
+      effect, which covers the model swap.
+    resolution: "Simple swap with glow flash. Temporary ConstructionComponent covers the transition."
+
+  - id: Q045
+    status: resolved
+    author: "building-engineer"
+    target: "game-designer"
+    question: |
+      (originally @population-engineer) When a structure is abandoned, do
+      occupants leave immediately or gradually?
+    answer: |
+      PopulationSystem concern (Epic 10). From BuildingSystem's perspective,
+      the transition to Abandoned state is instant. BuildingSystem emits
+      BuildingAbandonedEvent. PopulationSystem reads this and handles occupant
+      migration (gradual departure over several ticks). BuildingComponent.
+      current_occupancy is managed by PopulationSystem, not BuildingSystem.
+      Epic 4 does not need to implement occupant migration.
+    resolution: "BuildingSystem transitions instantly. PopulationSystem handles gradual occupant departure (Epic 10)."
+
+  - id: Q046
+    status: resolved
+    author: "building-engineer"
+    target: "game-designer"
+    question: |
+      (originally @economy-engineer) Does demolition cost come from the player's
+      treasury (EconomySystem) or does BuildingSystem handle credits directly?
+    answer: |
+      EconomySystem (Epic 11) owns the treasury. In Epic 4, credits are a stub
+      -- BuildingSystem tracks a simple per-player credit counter. When
+      EconomySystem (Epic 11) is implemented, credit operations delegate to it.
+      For Epic 4: BuildingSystem deducts credits from a simple stub treasury.
+      The interface: ICreditProvider with deduct_credits(player, amount) and
+      has_credits(player, amount). Stub always returns true (unlimited credits)
+      or manages a simple counter.
+    resolution: "Stub treasury in Epic 4. ICreditProvider interface. EconomySystem replaces in Epic 11."
+
+# ============================================================
+# CROSS-CUTTING RESOLUTIONS
+# ============================================================
+
+cross_cutting_resolutions:
+  - id: CCR-001
+    topic: "State machine naming alignment"
+    resolution: |
+      All agents agree on 5-state machine: Materializing -> Active -> Abandoned ->
+      Derelict -> Deconstructed -> [Entity removed]. Use Building Engineer's naming.
+      Systems Architect's "Degraded" is merged into "Abandoned" (the grace period
+      before transitioning happens within Active state, tracked by a timer).
+
+  - id: CCR-002
+    topic: "ZoneComponent field set"
+    resolution: |
+      Final ZoneComponent: zone_type (ZoneType), density (ZoneDensity),
+      state (ZoneState: Designated/Occupied/Stalled), desirability (uint8_t).
+      4 bytes total. Systems Architect's demand_weight is dropped -- demand is
+      system-level, not per-tile. Zone Engineer's design is canonical.
+
+  - id: CCR-003
+    topic: "BuildingComponent field set"
+    resolution: |
+      Building Engineer's 28-byte struct is canonical. Systems Architect's simpler
+      version is subsumed. Key fields: template_id, zone_type, density, state,
+      level, health, capacity, current_occupancy, footprint_w/h, state_changed_tick,
+      abandon_timer, rotation, color_accent_index.
+
+  - id: CCR-004
+    topic: "Dense grid usage"
+    resolution: |
+      ZoneGrid: sparse index (EntityID per cell, most cells empty). Not a dense
+      grid exception -- zones are sparse. BuildingGrid: dense grid exception
+      (same pattern as TerrainGrid). Both use flat arrays for O(1) lookup.
+      Canon update needed: add BuildingGrid to dense_grid_exception.
+
+  - id: CCR-005
+    topic: "Density change behavior"
+    resolution: |
+      Density is player-chosen at designation time. Redesignation changes zone
+      density. Existing buildings persist at old density. New buildings spawn
+      at new density. No forced metamorphosis. Empty zones can change density
+      directly. Occupied zones require demolition first for type change, but
+      density change on an occupied zone just updates the zone -- existing
+      building keeps its density until naturally replaced.
+
+  - id: CCR-006
+    topic: "Forward dependency stub pattern"
+    resolution: |
+      Abstract interface + stub implementation + setter injection. Five stubs:
+      IEnergyProvider, IFluidProvider, ITransportProvider, ILandValueProvider,
+      IDemandProvider. All return permissive defaults. Swapped when real epics
+      ship. Building Engineer's Section 8 is the canonical implementation.
+      Additionally: ICreditProvider stub for treasury (unlimited credits).
+
+  - id: CCR-007
+    topic: "Road proximity distance metric"
+    resolution: |
+      Chebyshev distance (max of |dx|, |dy|). 3 tiles = 7x7 square area.
+      Measured from nearest edge of multi-tile building footprint, not anchor.
+      Gates building development, not zone designation.
+
+  - id: CCR-008
+    topic: "Demand calculation architecture"
+    resolution: |
+      ZoneSystem owns basic demand (Epic 4). IDemandProvider interface allows
+      DemandSystem (Epic 10) to replace it. Basic formula: base_pressure +
+      stub_factors - supply_saturation. Range [-100, +100]. Per-player, per-type.
+      Updated once per tick. Configurable parameters.
+
+  - id: CCR-009
+    topic: "Template count target"
+    resolution: |
+      Minimum 30 templates (5 per zone_type+density pair). Target 30-47 for
+      variety. Building Engineer recommends 30-47. Game Designer recommends
+      23-28. Resolution: start with 30 (5 per bucket) as minimum viable pool.
+      Expand based on visual variety assessment during testing.
+
+  - id: CCR-010
+    topic: "Scale variation"
+    resolution: |
+      Systems Architect and Game Designer include scale variation (0.95-1.05x).
+      Building Engineer explicitly rejects scale variation: "Structures must fit
+      their tile footprint exactly. Scale variation would cause overlap or gaps."
+      Resolution: NO scale variation. Rotation and color accent only. Height
+      variation could be achieved through template selection (taller/shorter
+      templates) rather than per-instance scaling.
+
+  - id: CCR-011
+    topic: "Construction phase count"
+    resolution: |
+      Game Designer: 3 phases (Emergence/Formation/Activation).
+      Building Engineer: 4 phases (Foundation/Framework/Exterior/Finalization).
+      Resolution: Use Building Engineer's 4 phases. More granular control for
+      RenderingSystem. Maps cleanly to 0-25%, 25-50%, 50-75%, 75-100%.
+
+  - id: CCR-012
+    topic: "De-zoning occupied tile flow"
+    resolution: |
+      ZoneSystem emits DemolitionRequestEvent. BuildingSystem handles demolition.
+      BuildingSystem calls ZoneSystem.set_zone_state(Designated) after demolition
+      completes. ZoneSystem then destroys the zone entity. Decoupled via events.
+      Player pays demolition cost.
+
+# ============================================================
+# CANON UPDATE FLAGS (for Phase 6)
+# ============================================================
+
+canon_updates_needed:
+  - file: "patterns.yaml"
+    change: "Add BuildingGrid to dense_grid_exception applies_to list"
+    rationale: "Same pattern as TerrainGrid -- per-tile occupancy, O(1) lookups"
+
+  - file: "systems.yaml"
+    change: "Add ISimulatable priorities for ZoneSystem (30) and BuildingSystem (40)"
+    rationale: "Formal tick ordering for new systems"
+
+  - file: "interfaces.yaml"
+    change: "Add IZoneQueryable, IBuildingQueryable, IBuildingTemplateQuery interfaces"
+    rationale: "New interfaces defined by Epic 4"
+
+  - file: "interfaces.yaml"
+    change: "Add forward dependency stubs (IEnergyProvider, IFluidProvider, ITransportProvider, ILandValueProvider, IDemandProvider, ICreditProvider)"
+    rationale: "Stub interfaces for Epic 5/6/7/10/11"
+
+  - file: "terminology.yaml"
+    change: "Add building states: materializing, active, abandoned, derelict, deconstructed"
+    rationale: "Canonical state names for building lifecycle"

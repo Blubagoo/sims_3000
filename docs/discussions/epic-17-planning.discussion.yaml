@@ -1,0 +1,177 @@
+# Epic 17: Polish & Alien Theming - Planning Discussion
+# Created: 2026-02-01
+# Status: COMPLETE
+
+metadata:
+  epic: 17
+  epic_name: "Polish & Alien Theming"
+  created: "2026-02-01"
+  completed: "2026-02-01"
+  status: "resolved"
+  participants:
+    - systems-architect
+    - game-designer
+    - qa-engineer
+
+# Discussion Summary
+summary: |
+  Epic 17 is unique - no new systems, only polish. All agents aligned on:
+  - 60 FPS is non-negotiable, use automatic quality scaling
+  - Alien terminology for game-world, human terms for software UI
+  - Disasters are setbacks, never colony-ending
+  - Cozy sandbox philosophy governs all decisions
+  - Accessibility features are P0/P1 requirements
+
+# Design Decisions Finalized
+
+design_decisions:
+  DD-1:
+    topic: "LOD Transition Strategy"
+    decision: "Use dithered blending over 10-15 tile ranges. Never lose bioluminescent glow even at LOD2."
+    rationale: "Cozy sandbox philosophy - no jarring visual pop-in"
+    resolved_by: [game-designer]
+
+  DD-2:
+    topic: "Performance vs Quality Priority"
+    decision: "60 FPS is absolute priority. Implement automatic quality scaling. Cut vegetation/shadows first, never cut bioluminescence or UI responsiveness."
+    rationale: "Responsiveness is critical for cozy feel; long sessions need smooth framerates"
+    resolved_by: [game-designer, systems-architect]
+
+  DD-3:
+    topic: "Terminology Scope"
+    decision: |
+      - Player-facing game-world content: Alien terminology
+      - Debug/developer strings: Technical terminology
+      - Meta-UI (Settings, Quit, Save): Human terminology
+    rationale: "Immersion in game world, efficiency in debugging, usability for software controls"
+    resolved_by: [game-designer, systems-architect]
+
+  DD-4:
+    topic: "Loading Screen Content"
+    decision: "Rotating tips (60%) and lore (40%) with bioluminescent animation. For reconnection, show colony stats."
+    rationale: "Builds familiarity while loading, reinforces alien theme"
+    resolved_by: [game-designer]
+
+  DD-5:
+    topic: "Performance Indicators"
+    decision: "Hidden by default, optional subtle display with themed labels (Render Rate, Link Latency). Auto-warning only when degraded."
+    rationale: "Avoid optimization anxiety while allowing power users to monitor"
+    resolved_by: [game-designer]
+
+  DD-6:
+    topic: "Test Coverage Targets"
+    decision: "80% unit test coverage, 60% integration code coverage with 100% interface coverage. Focus on cross-system boundaries."
+    rationale: "Diminishing returns beyond 80%; interface coverage catches real bugs"
+    resolved_by: [qa-engineer]
+
+  DD-7:
+    topic: "Performance Benchmarks"
+    decision: "Use both fixed targets AND previous-release comparison. Fixed ensures minimum bar, relative catches regressions."
+    rationale: "Comprehensive regression detection"
+    resolved_by: [qa-engineer, systems-architect]
+
+  DD-8:
+    topic: "Stress Test Duration"
+    decision: "Tiered: 1hr hourly, 8hr nightly, 24hr pre-release, 72hr release candidate"
+    rationale: "Different durations catch different leak rates and race conditions"
+    resolved_by: [qa-engineer]
+
+  DD-9:
+    topic: "Regression Thresholds"
+    decision: |
+      - Frame time: 5% warn, 10% fail
+      - Tick time: 10% warn, 20% fail
+      - Memory: 15% warn, 30% fail
+      - Network: 20% warn, 50% fail
+    rationale: "Frame time most player-visible, needs tightest threshold"
+    resolved_by: [qa-engineer, systems-architect]
+
+  DD-10:
+    topic: "Terminology CI Enforcement"
+    decision: "Hard fail on player-facing code (UI, tooltips, notifications). Warning only on internal/debug code."
+    rationale: "Core Principle #5 compliance for player-facing; allow technical terms for debugging"
+    resolved_by: [qa-engineer, systems-architect]
+
+  DD-11:
+    topic: "Save Compatibility"
+    decision: "Support all saves from same major version (0.x.x). Chained migration (v16->v17, etc). Backup before migration."
+    rationale: "Player trust requires save compatibility; chained migration is maintainable"
+    resolved_by: [qa-engineer, systems-architect]
+
+  DD-12:
+    topic: "Minimum Acceptable Performance"
+    decision: "30 FPS absolute floor on 512x512 with automatic quality scaling. 60 FPS target. Warn at world creation for large maps on low spec."
+    rationale: "Below 30 FPS, input latency is unacceptable"
+    resolved_by: [game-designer, systems-architect]
+
+  DD-13:
+    topic: "Difficulty Settings"
+    decision: "No explicit Easy/Normal/Hard. Offer sandbox modifiers (starting credits, growth speed, catastrophe frequency) without judgment labels."
+    rationale: "Cozy sandbox doesn't imply 'correct' way to play"
+    resolved_by: [game-designer]
+
+  DD-14:
+    topic: "Tutorial System"
+    decision: "No mandatory tutorial. Optional contextual hints (dismissible). Searchable help panel. First-time welcome modal with opt-in."
+    rationale: "Cozy vibe means no forced scripted sequences"
+    resolved_by: [game-designer]
+
+  DD-15:
+    topic: "Disaster Balance"
+    decision: "Always recoverable, never colony-ending. Max damage caps (15-25% depending on type). Tutorial protection below 5K population."
+    rationale: "Core Principle #4 - no win/lose states"
+    resolved_by: [game-designer, qa-engineer]
+
+  DD-16:
+    topic: "Accessibility Priority"
+    decision: |
+      P0 (Must Have): Colorblind modes, key rebinding, text scaling, pause anytime
+      P1 (Should Have): Reduced motion, high contrast, audio cues, keyboard-only
+      P2 (Post-Launch): Screen reader, custom colors, dyslexia font
+    rationale: "Baseline accessibility is expected; advanced features can follow"
+    resolved_by: [game-designer, qa-engineer]
+
+  DD-17:
+    topic: "Bug Count Threshold"
+    decision: "0 Critical, 0 High, <10 Medium (documented), <25 Low for release"
+    rationale: "Polished release with acceptable known issues documented"
+    resolved_by: [qa-engineer, game-designer]
+
+  DD-18:
+    topic: "Balance Data Externalization"
+    decision: "Balance values in YAML files with hot-reload support. Layered override system for playtesting."
+    rationale: "Enables rapid iteration without recompilation"
+    resolved_by: [systems-architect]
+
+  DD-19:
+    topic: "String Externalization"
+    decision: "Centralized StringTable with ID-based lookup. Format placeholders for dynamic strings. CI terminology linter."
+    rationale: "Enforces terminology consistency, enables future localization"
+    resolved_by: [systems-architect, qa-engineer]
+
+  DD-20:
+    topic: "Dense Grid Optimization"
+    decision: "Sparse conversion for PathwayGrid/BuildingGrid. SIMD for contamination/disorder decay. Consider tiled layout for neighbor-scanning grids."
+    rationale: "Memory savings 50-80% for typical maps; SIMD 4-16x speedup"
+    resolved_by: [systems-architect]
+
+  DD-21:
+    topic: "Celebration Effects"
+    decision: "Queue-based with priority levels. Max 2 concurrent particle effects. Disableable via settings. Auto-scale based on framerate."
+    rationale: "Prevent frame drops while preserving reward feedback"
+    resolved_by: [systems-architect]
+
+  DD-22:
+    topic: "UX Telemetry"
+    decision: "Track click counts per action with targets. Detect friction patterns (repeated failures, rage demolition). In-game sentiment prompts."
+    rationale: "Quantify cozy feel without intrusive surveys"
+    resolved_by: [qa-engineer]
+
+# Questions (all resolved - see answer files for full details)
+# Answer files:
+#   - systems-architect-answers.md
+#   - game-designer-answers.md
+#   - qa-engineer-answers.md
+
+questions_resolved: 40
+questions_total: 40

@@ -1,0 +1,141 @@
+# Epic 15 Planning Discussion
+# Auto-generated during /plan-epic workflow
+
+epic: 15
+title: "Audio System"
+date: 2026-02-01
+status: complete
+phase: 4_synthesis
+
+participants:
+  - systems-architect
+  - game-designer
+
+# Questions extracted from agent analyses
+
+questions:
+  # Systems Architect → Game Designer
+  - id: SA-1
+    from: systems-architect
+    to: game-designer
+    question: "Should there be multiple sound variants per action?"
+    status: answered
+    answer: "Yes, tiered approach - 3-4 variants for frequent sounds, 2-3 for medium, 1 for rare special events"
+
+  - id: SA-2
+    from: systems-architect
+    to: game-designer
+    question: "Should disaster sounds scale with severity?"
+    status: answered
+    answer: "Yes, intensity should scale but remain pleasant even at maximum - engaging not anxiety-inducing"
+
+  - id: SA-3
+    from: systems-architect
+    to: game-designer
+    question: "How long should milestone achievement sounds be?"
+    status: answered
+    answer: "Hybrid - 1.5-2 sec minor, 3-4 sec major, 6-8 sec transcendence"
+
+  - id: SA-4
+    from: systems-architect
+    to: game-designer
+    question: "When another player achieves a milestone, should there be audio feedback?"
+    status: answered
+    answer: "Yes, subtle 0.5-1 sec distinct chime, clearly different from own achievements, disableable"
+
+  - id: SA-5
+    from: systems-architect
+    to: game-designer
+    question: "Should ambient audio continue during pause?"
+    status: answered
+    answer: "Fade to 30-40% volume, don't cut completely. Music at 50%. Maintain atmosphere."
+
+  - id: SA-6
+    from: systems-architect
+    to: game-designer
+    question: "Should each disaster type have unique sounds?"
+    status: answered
+    answer: "Yes, critical for gameplay clarity. Each catastrophe needs distinct audio signature with alien twist."
+
+  - id: SA-7
+    from: systems-architect
+    to: game-designer
+    question: "Should different building densities have different completion sounds?"
+    status: answered
+    answer: "Yes, subtle differentiation through sound layering. Low-density lighter, high-density fuller."
+
+  - id: SA-8
+    from: systems-architect
+    to: game-designer
+    question: "Should music change based on game state?"
+    status: answered
+    answer: "Yes, dynamic music with careful crossfades. Layer tension during disasters, not hard-cut."
+
+  # Game Designer → Systems Architect
+  - id: GD-1
+    from: game-designer
+    to: systems-architect
+    question: "AudioSystem as ECS or Core?"
+    status: answered
+    answer: "Core System - doesn't participate in simulation tick, has no components, is client-authoritative"
+
+  - id: GD-2
+    from: game-designer
+    to: systems-architect
+    question: "What interface do systems use to trigger sounds?"
+    status: answered
+    answer: "Both - EventBus primary (automatic, decoupled), IAudioProvider for explicit UI control"
+
+  - id: GD-3
+    from: game-designer
+    to: systems-architect
+    question: "What audio formats does SDL3 support?"
+    status: answered
+    answer: "OGG/Vorbis for bundled audio, support MP3/FLAC for user music. Use SDL_mixer."
+
+  - id: GD-4
+    from: game-designer
+    to: systems-architect
+    question: "How far should positional sounds travel?"
+    status: answered
+    answer: "Default 50 tiles max, zoom-aware scaling. Different categories have different ranges."
+
+  - id: GD-5
+    from: game-designer
+    to: systems-architect
+    question: "Should large music files stream, or preload?"
+    status: answered
+    answer: "Stream music (~256KB buffer), preload SFX (~20MB total). Instant SFX response, efficient memory."
+
+# Key design decisions from discussion
+decisions:
+  - id: D-1
+    topic: "System Type"
+    decision: "AudioSystem is Core System (not ECS)"
+    rationale: "Client-authoritative, no components, no simulation tick participation"
+    requires_canon_update: true
+
+  - id: D-2
+    topic: "Sound Variants"
+    decision: "Tiered variant system based on action frequency"
+    rationale: "Prevents audio fatigue while managing asset scope"
+
+  - id: D-3
+    topic: "Audio Formats"
+    decision: "OGG primary, MP3/FLAC for user music"
+    rationale: "No licensing issues, good compression, wide compatibility"
+
+  - id: D-4
+    topic: "Positional Audio"
+    decision: "Zoom-aware distance model, 50 tile max default"
+    rationale: "Consistent feel regardless of camera distance"
+
+  - id: D-5
+    topic: "Dynamic Music"
+    decision: "Implement with careful crossfades during game state changes"
+    rationale: "Adds engagement without stress, maintains cozy vibe"
+
+  - id: D-6
+    topic: "Pause Behavior"
+    decision: "Fade ambient to 30-40%, maintain atmosphere"
+    rationale: "Creates 'thinking mode' without jarring silence"

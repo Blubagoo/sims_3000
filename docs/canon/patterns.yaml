@@ -1,0 +1,1124 @@
+# ============================================================================
+# ZERGCITY CANONICAL PATTERNS
+# ============================================================================
+# How we build things in this project. All implementations must follow
+# these patterns unless a canon exception is granted.
+#
+# Version: 0.13.0
+# Last Updated: 2026-01-29
+# ============================================================================
+
+version: "0.17.0"
+
+# ============================================================================
+# ECS PATTERNS
+# ============================================================================
+
+ecs:
+  overview: |
+    Entity-Component-System is our core architecture pattern.
+    - Entities: Just IDs (uint32 or uint64)
+    - Components: Pure data structs, no methods beyond accessors
+    - Systems: Stateless logic that operates on component queries
+
+  components:
+    rules:
+      - "Components are pure data - no logic, no methods (except trivial accessors)"
+      - "One component per concern (EnergyComponent, FluidComponent - not UtilityComponent)"
+      - "Components should be small and focused"
+      - "Components use snake_case for field names"
+      - "Components must be trivially copyable for network serialization"
+      - "No pointers in components - use entity IDs for references"
+
+    naming:
+      pattern: "{Concept}Component"
+      examples:
+        - EnergyComponent
+        - FluidComponent
+        - PositionComponent
+        - OwnershipComponent
+        - BuildingComponent
+
+    template: |
+      struct EnergyComponent {
+          uint32_t energy_required = 0;
+          uint32_t energy_received = 0;
+          bool is_powered = false;
+          uint32_t grid_id = 0;
+      };
+
+  systems:
+    rules:
+      - "Systems contain ALL logic - components have none"
+      - "Systems are stateless - all state lives in components or is derived"
+      - "Systems operate on component queries (entities with specific components)"
+      - "Systems should do one thing well"
+      - "Systems declare their dependencies explicitly"
+      - "Systems run in a defined order each tick"
+
+    naming:
+      pattern: "{Concept}System"
+      examples:
+        - EnergySystem
+        - FluidSystem
+        - BuildingSystem
+        - PopulationSystem
+
+    template: |
+      class EnergySystem : public ISimulatable {
+      public:
+          void tick(float delta_time) override;
+
+          // Queries
+          bool has_power(EntityID entity) const;
+          uint32_t get_grid_id(GridPosition pos) const;
+
+      private:
+          void calculate_grid_connectivity();
+          void distribute_energy();
+          void update_consumer_states();
+      };
+
+  entities:
+    rules:
+      - "Entities are just IDs - no data, no methods"
+      - "Entity meaning comes entirely from component composition"
+      - "Use entity IDs to reference other entities (not pointers)"
+      - "Entities can be created/destroyed at runtime"
+
+    examples:
+      building: "[PositionComponent, BuildingComponent, EnergyComponent, OwnershipComponent]"
+      zone_tile: "[PositionComponent, ZoneComponent, TerrainComponent]"
+      energy_nexus: "[PositionComponent, BuildingComponent, EnergyProducerComponent, OwnershipComponent]"
+
+  dense_grid_exception:
+    description: |
+      High-density spatial grid data (terrain, pathfinding grids, contamination grids)
+      may use dense array storage rather than per-entity ECS registration.
+      This is a canonical exception to Core Principle 2 ("ECS Everywhere").
+    conditions:
+      - "Data covers every grid cell (no sparse entities)"
+      - "Spatial locality is critical for performance (cache-friendly traversal)"
+      - "Per-entity overhead is prohibitive (24+ bytes/entity vs 4 bytes dense)"
+    spirit_compliance: |
+      Dense grids still preserve the ECS separation of concerns:
+      - Data: Pure data structs with no logic (e.g., TerrainTileData)
+      - Logic: Stateless system operations on grid data (e.g., TerrainSystem)
+      - Identity: Grid coordinates serve as implicit entity IDs (x, y)
+    applies_to:
+      - "TerrainGrid (Epic 3): 4 bytes/tile dense 2D array for terrain height, type, properties"
+      - "BuildingGrid (Epic 4): 4 bytes/tile dense EntityID array for O(1) spatial occupancy lookups"
+      - "EnergyCoverageGrid (Epic 5): 1 byte/tile dense 2D array for energy coverage zone tracking"
+      - "FluidCoverageGrid (Epic 6): 1 byte/tile dense 2D array for fluid coverage zone tracking"
+      - "PathwayGrid (Epic 7): 4 bytes/tile EntityID array for pathway spatial queries"
+      - "ProximityCache (Epic 7): 1 byte/tile distance-to-nearest-pathway cache for 3-tile rule"
+      - "DisorderGrid (Epic 10): 1 byte/tile (double-buffered) for disorder level"
+      - "ContaminationGrid (Epic 10): 2 bytes/tile (double-buffered) for contamination level + dominant type"
+      - "LandValueGrid (Epic 10): 2 bytes/tile for sector value (0-255) + terrain bonus flags"
+      - "ServiceCoverageGrid (Epic 9): 1 byte/tile per service type per player for coverage strength"
+      - "ConflagrationGrid (Epic 13): 3 bytes/tile (fire_intensity, flammability, fuel_remaining) for fire spread simulation"
+    decision_record: "plans/decisions/epic-3-terrain-dense-grid.md"
+
+    double_buffering:
+      description: |
+        Grids with circular dependencies use double-buffering to read PREVIOUS tick values.
+        This breaks the LandValue <-> Disorder <-> Contamination circular dependency.
+      applies_to:
+        - DisorderGrid
+        - ContaminationGrid
+      mechanism: |
+        - Two buffers: read_buffer (previous tick), write_buffer (current tick)
+        - Systems read from read_buffer, write to write_buffer
+        - SimulationCore swaps buffers at end of tick via grid_buffer_swap()
+        - LandValueGrid reads from others' read_buffers (no self-reference, single buffer)
+
+# ============================================================================
+# MULTIPLAYER PATTERNS
+# ============================================================================
+
+multiplayer:
+  overview: |
+    Dedicated server architecture. Server is a separate executable that runs
+    independently of any player. Clients connect to the server. Game state
+    is persisted to database continuously.
+
+  architecture:
+    model: dedicated_server
+    server:
+      - "Separate .exe that runs in terminal"
+      - "Manages all simulation"
+      - "Persists state to database continuously"
+      - "Can run on player's machine or cloud"
+    client:
+      - "Normal game executable"
+      - "Connects to server via network"
+      - "Renders game state, sends input"
+    database:
+      - "Stores all game state"
+      - "Updated continuously during play"
+      - "Survives server restarts"
+      - "Enables reconnection without data loss"
+
+  authority:
+    server_authoritative:
+      - "All simulation logic (ECS systems)"
+      - "Game state (component values)"
+      - "Random number generation"
+      - "Time progression"
+      - "Land ownership and transactions"
+
+    client_authoritative:
+      - "Local UI state"
+      - "Camera position"
+      - "Input buffering"
+      - "Audio/visual effects"
+
+    shared:
+      - "Input validation (client predicts, server confirms)"
+
+  synchronization:
+    tick_rate: 20  # Simulation ticks per second
+
+    rules:
+      - "Server runs simulation at fixed tick rate"
+      - "Server sends delta state updates to clients"
+      - "Clients interpolate between received states for smooth rendering"
+      - "No client-side prediction (simplicity over responsiveness)"
+      - "All random values come from server (seeded RNG)"
+      - "State continuously persisted to database"
+
+    what_syncs:
+      every_tick:
+        - "Changed component values"
+        - "Created/destroyed entities"
+        - "Simulation time"
+
+      on_change:
+        - "Player actions (build, zone, demolish)"
+        - "System events (disasters, milestones)"
+        - "Land purchases/sales"
+        - "Resource trades"
+
+      rarely:
+        - "Full state snapshot (for reconnection)"
+
+  disconnection:
+    player_disconnect:
+      - "Colony continues simulating"
+      - "Player returns to whatever state it's in"
+      - "No pause, no AI takeover"
+    server_disconnect:
+      - "All clients disconnect"
+      - "Data safe in database"
+      - "Restart server, clients reconnect"
+      - "Game continues from DB state"
+
+  ownership:
+    model: tile_purchase
+
+    game_master:
+      description: "Virtual entity that owns all unclaimed tiles"
+      id: 0  # GAME_MASTER = 0 in PlayerID
+      owns_at_start: "All tiles on the map"
+      sells_to: "Players only (not other direction)"
+      receives_from: "Ghost town decay process"
+
+    rules:
+      - "Game Master owns all tiles at game start"
+      - "Players purchase tiles from Game Master only"
+      - "Players CANNOT buy tiles from other players"
+      - "Players CANNOT sell tiles back to Game Master"
+      - "Only tile owner can build/modify on that tile"
+      - "Tiles can be abandoned (triggers ghost town process)"
+      - "Ownership stored in OwnershipComponent"
+
+    ghost_town_process:
+      trigger: "Player abandons colony (explicit restart) or prolonged inactivity"
+      stages:
+        - name: active
+          description: "Normal player-owned tile"
+          owner: "PlayerID"
+        - name: abandoned
+          description: "Player left/restarted - buildings begin decay"
+          owner: "PlayerID (frozen)"
+          duration: "Configurable (e.g., 50 cycles)"
+          effects:
+            - "Buildings stop functioning"
+            - "No maintenance paid"
+            - "Visual decay begins"
+        - name: ghost_town
+          description: "Decay complete - eerie empty state"
+          owner: "GAME_MASTER"
+          duration: "Configurable (e.g., 100 cycles)"
+          effects:
+            - "Buildings crumble to ruins"
+            - "Infrastructure degrades"
+            - "Contamination may linger"
+        - name: cleared
+          description: "Ruins cleared - tile available for purchase"
+          owner: "GAME_MASTER"
+          effects:
+            - "Tile returns to natural state"
+            - "Available for purchase by any player"
+
+      system_owner: "AbandonmentSystem (part of SimulationCore)"
+
+    component: |
+      struct OwnershipComponent {
+          PlayerID owner = GAME_MASTER;  // 0 = Game Master
+          OwnershipState state = OwnershipState::Available;  // Available, Owned, Abandoned, GhostTown
+          uint64_t state_changed_at = 0;  // Tick when state last changed
+      };
+
+      enum class OwnershipState {
+          Available,   // Owned by Game Master, can be purchased
+          Owned,       // Owned by a player
+          Abandoned,   // Player left, decay in progress
+          GhostTown    // Fully decayed, returning to Game Master
+      };
+
+  late_join:
+    allowed: true
+    rules:
+      - "New players can join anytime"
+      - "Start with default credits"
+      - "Must purchase unclaimed tiles"
+      - "Can restart anytime (current colony becomes ghost town)"
+
+  network_messages:
+    client_to_server:
+      - "InputMessage: Player action (build, zone, demolish, etc.)"
+      - "JoinMessage: Player joining game"
+      - "ChatMessage: Text chat"
+      - "PurchaseTileMessage: Buy a tile"
+      - "TradeMessage: Resource trade offer/accept"
+
+    server_to_client:
+      - "StateUpdateMessage: Delta component changes"
+      - "EventMessage: Game events (disaster, milestone)"
+      - "FullStateMessage: Complete snapshot (reconnect)"
+      - "TradeNotification: Trade offers and completions"
+
+# ============================================================================
+# RESOURCE & INFRASTRUCTURE PATTERNS
+# ============================================================================
+
+resources:
+  overview: |
+    Resources (electricity, water) use a POOL model, not physical flow simulation.
+    Infrastructure (lines, pipes) defines coverage zones, not transport routes.
+
+  pool_model:
+    description: |
+      Each player has resource pools. Generators add to pool, consumers draw from pool.
+      As long as pool has surplus, consumers are satisfied. No routing simulation.
+
+    electricity:
+      generator: "Energy nexus (power plant) adds to player's energy pool"
+      consumer: "Buildings draw from player's energy pool"
+      infrastructure: "Energy conduits (power lines) define coverage zone"
+      coverage_rule: "Tile must be in coverage zone AND pool must have surplus"
+      example: |
+        Player A's Energy Pool:
+          Generated: 500 units (from energy nexuses)
+          Consumed:  350 units (from buildings)
+          Surplus:   150 units ✓ (all buildings in coverage zone are powered)
+
+    water:
+      generator: "Fluid extractor (pump) adds to player's fluid pool"
+      consumer: "Buildings draw from player's fluid pool"
+      infrastructure: "Fluid conduits (pipes) define coverage zone"
+      coverage_rule: "Tile must be in coverage zone AND pool must have surplus"
+      required_for_development: true  # Buildings need water to develop
+
+  infrastructure_connectivity:
+    roads:
+      connects_across_ownership: true
+      description: "Roads connect physically regardless of tile ownership"
+      effect: "Traffic flows across all connected roads"
+      cosmetic_entities: "Cosmetic beings/vehicles move along roads (automated, not player-controlled)"
+
+    power_lines:
+      connects_across_ownership: false
+      description: "Power lines only extend YOUR coverage zone"
+      effect: "Adjacent player's lines don't share electricity"
+
+    pipes:
+      connects_across_ownership: false
+      description: "Pipes only extend YOUR coverage zone"
+      effect: "Adjacent player's pipes don't share water"
+
+  trading:
+    description: "Players can trade resources via a bank/trading system"
+    mechanism: "Separate from infrastructure - abstract resource transfer"
+    tradeable:
+      - electricity
+      - water
+      - credits
+
+  cosmetic_entities:
+    description: "3D animated entities providing visual feedback for colony activity"
+    behavior: "Automated, cosmetic - NOT player controlled"
+    scaling: "More entities appear as colony activity increases"
+    types:
+      - "Beings walking on pathways"
+      - "Vehicles on roads"
+      - "Activity around structures"
+
+# ============================================================================
+# FILE ORGANIZATION
+# ============================================================================
+
+file_organization:
+  structure:
+    src/:
+      core/: "Engine fundamentals (Application, Window, GameLoop, Timing)"
+      ecs/: "ECS framework (Registry, Entity, Component base)"
+      components/: "All component definitions"
+      systems/: "All system implementations"
+      network/: "Networking (Client, Server, Messages, Serialization)"
+      rendering/: "SDL_GPU 3D rendering, camera, shaders, toon pipeline"
+      ui/: "User interface elements"
+      input/: "Input handling"
+      audio/: "Audio system"
+      util/: "Utilities and helpers"
+
+    docs/:
+      canon/: "This canonical reference"
+      design/: "Design documents"
+      architecture/: "Architecture deep-dives"
+
+    plans/:
+      decisions/: "Technical decision records"
+      epics/: "Epic-level planning"
+
+    assets/:
+      models/: "3D models (.gltf/.glb) — buildings, landmarks, terrain features"
+      textures/: "Textures and materials for 3D models"
+      audio/: "Sound effects and ambient music"
+      fonts/: "Typography"
+
+  file_naming:
+    headers: "{ClassName}.h"
+    sources: "{ClassName}.cpp"
+    examples:
+      - "EnergySystem.h, EnergySystem.cpp"
+      - "EnergyComponent.h"
+      - "NetworkManager.h, NetworkManager.cpp"
+
+# ============================================================================
+# ERROR HANDLING PATTERNS
+# ============================================================================
+
+error_handling:
+  rules:
+    - "Use return values or std::optional for expected failures"
+    - "Use exceptions only for programmer errors (bugs)"
+    - "Log errors with context (what, where, why)"
+    - "Fail gracefully in release builds"
+    - "Fail fast in debug builds"
+
+  logging:
+    levels:
+      - "ERROR: Something went wrong that affects gameplay"
+      - "WARN: Something unexpected but recoverable"
+      - "INFO: Notable events (player actions, state changes)"
+      - "DEBUG: Detailed tracing (disabled in release)"
+
+# ============================================================================
+# RESOURCE MANAGEMENT PATTERNS
+# ============================================================================
+
+resources:
+  rules:
+    - "RAII for all resource ownership"
+    - "Smart pointers for heap allocations"
+    - "No raw new/delete outside of low-level allocators"
+    - "Resources loaded through AssetManager"
+    - "Async loading where possible"
+
+  asset_loading:
+    pattern: |
+      // Request asset (may load async)
+      AssetHandle<Model> handle = assets.load<Model>("path/to/building.glb");
+
+      // Check if ready
+      if (handle.is_loaded()) {
+          Model& model = handle.get();
+      }
+
+# ============================================================================
+# GRID AND COORDINATE PATTERNS
+# ============================================================================
+
+grid:
+  overview: |
+    The game world is a 3D grid with full camera controls (free orbit/pan/zoom/tilt)
+    and isometric preset snap views for a classic city builder feel.
+    Grid cells are 1x1 unit in 3D space.
+    Terrain has elevation (32 levels) represented as actual 3D height.
+    Rendering uses SDL3 with SDL_GPU for 3D graphics.
+
+  coordinate_system:
+    type: "3D grid with elevation"
+    origin: "Top-left of map (world origin)"
+    x_axis: "East (right)"
+    y_axis: "South (down)"
+    z_axis: "Elevation (up) - actual 3D height"
+
+  position_component: |
+    struct PositionComponent {
+        int32_t grid_x = 0;
+        int32_t grid_y = 0;
+        int32_t elevation = 0;  // 0-31 (actual 3D height levels)
+    };
+
+  tile_sizes:
+    grid_unit: 1.0            # 1x1 unit in 3D world space
+    pixels_at_default_zoom: 64  # ~64 pixels per grid cell at default camera distance
+    shape: square             # Square grid cells
+    elevation_levels: 32      # Total elevation levels (0-31)
+    notes:
+      - "Grid cells are 1x1 unit in 3D space"
+      - "Rendered size varies with camera zoom (distance)"
+      - "Default zoom renders cells at approximately 64 pixels"
+
+  rendering_stack:
+    graphics_api: SDL_GPU
+    renderer_type: "3D with free camera and isometric presets"
+    features:
+      - "3D model rendering"
+      - "Toon/cell shader for stylized look"
+      - "Depth buffer management"
+      - "Free camera: orbit, pan, zoom, tilt"
+      - "Isometric preset snap views (N/E/S/W at 45° increments)"
+      - "Toggle between free camera and preset modes"
+
+  art_style:
+    type: "3D cell-shaded / toon shaded"
+    description: "3D models with cell-shaded/toon shading for stylized modern feel"
+    camera: "Full camera controls (free orbit/pan/zoom/tilt) with isometric preset snap views"
+    default_camera_mode: "Isometric preset (familiar city builder feel)"
+    notes:
+      - "3D models, NOT 2D sprites"
+      - "Toon/cell shading for clean, stylized visuals"
+      - "NOT realistic lighting - stylized alien aesthetic"
+      - "Smooth gradients and clean outlines"
+      - "Alien theme should influence color palette"
+      - "Free camera for exploration, isometric presets for efficient building"
+
+# ============================================================================
+# EVENT PATTERNS
+# ============================================================================
+
+events:
+  overview: |
+    Systems communicate through events when direct coupling is undesirable.
+    Events are fire-and-forget notifications.
+
+  rules:
+    - "Events are immutable data"
+    - "Events are processed synchronously within a tick"
+    - "Systems subscribe to event types they care about"
+    - "Events should not be used for frequent per-entity updates (use queries)"
+
+  naming:
+    pattern: "{Subject}{Action}Event"
+    examples:
+      - "BuildingConstructedEvent"
+      - "GridCollapseEvent"
+      - "PlayerJoinedEvent"
+      - "DisasterStartedEvent"
+
+  template: |
+    struct BuildingConstructedEvent {
+        EntityID building;
+        PlayerID owner;
+        BuildingType type;
+        GridPosition position;
+    };
+
+# ============================================================================
+# ART DIRECTION
+# ============================================================================
+
+art_direction:
+  overview: |
+    Bioluminescent alien world — dark base environment with glowing accents.
+    Toon/cell-shaded 3D rendering for a stylized, clean look.
+    NOT realistic — stylized alien aesthetic throughout.
+
+  palette:
+    style: bioluminescent
+    description: |
+      Deep dark base tones with vivid glowing accents. Think Subnautica
+      or Avatar-like alien bioluminescence combined with toon shading.
+    base_tones:
+      - "Deep blues (terrain, shadows, background)"
+      - "Dark greens (vegetation base)"
+      - "Dark purples (night sky, deep terrain)"
+    glow_accents:
+      - "Neon cyan/teal (bioluminescent flora, UI highlights)"
+      - "Bright green (active structures, healthy zones)"
+      - "Warm orange/amber (energy systems, warnings)"
+      - "Magenta/pink (special structures, landmarks)"
+      - "Soft white/blue (water, fluid systems)"
+    rules:
+      - "Dark environments make glow effects pop"
+      - "Structures should have subtle glow when active (powered + watered)"
+      - "Unpowered/abandoned structures lose glow — visually 'dead'"
+      - "UI elements use glow accents on dark backgrounds"
+      - "Terrain features (crystal, spore) have distinct glow colors"
+
+  shading:
+    type: "Toon / cell-shaded"
+    features:
+      - "Hard shadow edges (2-3 tone shading, not smooth gradients)"
+      - "Outline pass for clean silhouettes"
+      - "Emissive materials for bioluminescent glow"
+      - "Bloom post-processing for glow bleed"
+      - "No realistic PBR — stylized materials only"
+
+# ============================================================================
+# ART PIPELINE
+# ============================================================================
+
+art_pipeline:
+  overview: |
+    Hybrid 3D model pipeline — procedural generation for building and terrain
+    variation, hand-modeled assets for key landmarks and unique structures.
+
+  model_format:
+    preferred: "glTF 2.0 (.glb binary)"
+    rationale: "Open standard, compact, supports PBR materials adaptable to toon shading"
+
+  procedural:
+    description: "Runtime-generated geometry for buildings and terrain variation"
+    used_for:
+      - "Zone buildings (habitation, exchange, fabrication)"
+      - "Terrain mesh generation"
+      - "Infrastructure (pathways, conduits, pipes)"
+      - "Vegetation placement and variation"
+    approach:
+      - "Template-based: predefined building templates with parameters"
+      - "Randomized selection: zone development picks from template pool"
+      - "Parameter variation: scale, color accent, rotation per instance"
+
+  hand_modeled:
+    description: "Authored in Blender or similar, exported as .glb"
+    used_for:
+      - "Landmark structures (command nexus, energy nexus types, etc.)"
+      - "Service buildings (enforcer post, medical nexus, etc.)"
+      - "Unique reward buildings (overseer's sanctum, arcology)"
+      - "Disaster-specific models (ruins, debris)"
+
+  construction_animation:
+    description: "Each building template includes a 'materializing' animation"
+    rules:
+      - "Buildings play construction animation when first placed"
+      - "Animation is part of the template definition"
+      - "Completed buildings transition to idle/active state"
+
+# ============================================================================
+# MAP CONFIGURATION
+# ============================================================================
+
+map_configuration:
+  overview: |
+    Map size is configurable per-game. The server host selects a size tier
+    when creating a new game. All players share the same map.
+
+  size_tiers:
+    small:
+      dimensions: "128x128"
+      total_tiles: 16384
+      recommended_players: "1-2"
+      notes: "Cozy, tight quarters, fast simulation"
+    medium:
+      dimensions: "256x256"
+      total_tiles: 65536
+      recommended_players: "2-3"
+      notes: "Comfortable spacing, similar to SimCity 2000 large city"
+    large:
+      dimensions: "512x512"
+      total_tiles: 262144
+      recommended_players: "2-4"
+      notes: "Expansive, wilderness between colonies, requires LOD/culling"
+
+  rules:
+    - "Map size is set at game creation and cannot change"
+    - "All size tiers use the same tile unit size (1x1 in 3D space)"
+    - "Larger maps require distance-based LOD and frustum culling"
+    - "Procedural terrain generation scales to selected size"
+    - "Default size: medium (256x256)"
+
+# ============================================================================
+# TERRAIN TYPES
+# ============================================================================
+
+terrain_types:
+  overview: |
+    Expanded alien terrain set. Classic city-builder terrain types plus
+    alien-specific biomes, each with distinct gameplay effects.
+    All terrain is visually themed to the bioluminescent art direction.
+
+  classic:
+    flat_ground:
+      description: "Standard buildable terrain"
+      buildable: true
+      gameplay_effect: "None — baseline terrain"
+      visual: "Dark soil/rock with subtle bioluminescent moss"
+
+    hills:
+      description: "Elevated terrain using the 32-level elevation system"
+      buildable: true
+      gameplay_effect: "Building costs increase with elevation changes"
+      visual: "Layered rock with glowing vein patterns"
+
+    water:
+      subtypes:
+        ocean: "Map-edge deep water, not buildable"
+        river: "Flowing water channels across map"
+        lake: "Inland water bodies"
+      buildable: false
+      gameplay_effect: "Required proximity for fluid extractors; boosts sector value"
+      visual: "Dark water with bioluminescent particles, soft glow"
+
+    forest:
+      description: "Alien vegetation clusters"
+      buildable: true  # Must clear first
+      gameplay_effect: "Must clear before building (cost); boosts nearby sector value"
+      visual: "Glowing alien trees/fungi, teal and green bioluminescence"
+
+  alien:
+    crystal_fields:
+      description: "Clusters of luminous crystal formations"
+      buildable: true  # Must clear first
+      gameplay_effect: "Bonus sector value for nearby tiles; clearing yields one-time credits"
+      visual: "Bright magenta/cyan crystal spires with strong glow emission"
+
+    spore_plains:
+      description: "Fields of bioluminescent spore-producing flora"
+      buildable: true  # Must clear (purge) first
+      gameplay_effect: "Boosts harmony (happiness) for nearby habitation zones; clearable via purge"
+      visual: "Pulsing green/teal spore clouds, soft ambient glow"
+
+    toxic_marshes:
+      description: "Pools of alien chemical runoff"
+      buildable: false
+      gameplay_effect: "Generates contamination in radius; reduces sector value"
+      visual: "Sickly yellow-green glow, bubbling surface, dark fog"
+
+    volcanic_rock:
+      description: "Hardened alien volcanic terrain"
+      buildable: true
+      gameplay_effect: "Increased building cost; natural barrier; geothermal energy bonus"
+      visual: "Dark obsidian-like rock with orange/red glow cracks"
+
+# ============================================================================
+# BUILDING TEMPLATES
+# ============================================================================
+
+building_templates:
+  overview: |
+    Buildings use a template system. Each template defines a 3D model (or
+    procedural generation parameters), a construction animation, and metadata.
+    When a zone develops, the system selects a template from the pool based
+    on zone type, density, and conditions (land value, services, etc.).
+
+  template_structure:
+    fields:
+      - name: template_id
+        type: string
+        description: "Unique identifier for this template"
+      - name: zone_type
+        type: "habitation | exchange | fabrication"
+        description: "Which zone type this template belongs to"
+      - name: density
+        type: "low | high"
+        description: "Density level this template is for"
+      - name: model_source
+        type: "procedural | asset"
+        description: "Whether model is generated or loaded from file"
+      - name: model_path
+        type: "string (optional)"
+        description: "Path to .glb file if model_source is asset"
+      - name: construction_animation
+        type: "AnimationDef"
+        description: "Materializing animation played during construction"
+      - name: footprint
+        type: "GridRect"
+        description: "Tiles occupied by this building"
+      - name: min_land_value
+        type: "uint32 (optional)"
+        description: "Minimum sector value to spawn this template"
+
+  selection_rules:
+    - "Templates are pooled per zone_type + density"
+    - "Selection is weighted by land value and service coverage"
+    - "Random variation: rotation, minor color accent shift"
+    - "Adjacent buildings should avoid identical templates where possible"
+    - "Template counts per zone/density to be defined in Epic 4"
+
+# ============================================================================
+# AUDIO
+# ============================================================================
+
+audio:
+  overview: |
+    Audio consists of externally sourced ambient music and engine-provided
+    sound effects for game actions. Music is user-curated, not procedural.
+    AudioSystem is a Core System (not ECS) that subscribes to game events
+    and provides playback services via IAudioProvider interface.
+
+  architecture:
+    system_type: core  # Not ECS - doesn't participate in simulation tick
+    authority: client  # Audio is purely client-side, never synced
+    integration: event_driven  # Subscribes to EventBus for automatic triggering
+
+  format_recommendations:
+    sfx:
+      format: "OGG Vorbis"
+      sample_rate: 48000
+      channels: mono
+      loading: preload  # Load all SFX at startup (~20MB)
+      notes: "Mono for positional audio, small file size, instant playback"
+    music:
+      format: "OGG Vorbis or FLAC"
+      sample_rate: 48000
+      channels: stereo
+      loading: stream  # Stream from disk (~128KB buffer)
+      notes: "Large files, only one plays at a time"
+    user_music:
+      formats: ["MP3", "OGG", "FLAC"]
+      notes: "Support common formats users have"
+
+  music:
+    source: "Externally sourced / user-curated ambient tracks"
+    playback: "Looping ambient background music"
+    features:
+      - "Playlist support (multiple tracks)"
+      - "Crossfade between tracks (3 seconds)"
+      - "Volume control separate from SFX"
+      - "Shuffle and repeat modes"
+      - "User music directory scanning"
+    crossfade_duration_seconds: 3  # Canon requirement
+
+  sound_effects:
+    description: "Engine-generated or loaded SFX for game actions"
+    categories:
+      construction:
+        - "Zone designation placed"
+        - "Building materializing (construction)"
+        - "Building complete"
+        - "Demolition / deconstruction"
+      infrastructure:
+        - "Pathway placed"
+        - "Conduit / pipe placed"
+        - "Infrastructure connected"
+      ui:
+        - "Button click"
+        - "Tool selected"
+        - "Menu open/close"
+        - "Alert / notification"
+      simulation:
+        - "Disaster warning"
+        - "Disaster event"
+        - "Milestone achieved"
+        - "Population threshold reached"
+      ambient:
+        - "Colony activity hum (scales with population)"
+        - "Wind / environmental"
+        - "Bioluminescent ambient pulses"
+
+  positional_audio:
+    max_distance_tiles: 50  # Default max audible range
+    reference_distance_tiles: 10  # Full volume within this range
+    zoom_aware: true  # Scale audible range with camera zoom
+    falloff: linear  # Linear falloff from reference to max
+    categories:
+      building_events: { reference: 10, max: 50 }
+      infrastructure: { reference: 8, max: 40 }
+      disasters: { reference: 20, max: 100 }  # Heard from far away
+      ambient: { reference: 15, max: 60 }
+
+  variant_tiers:
+    description: "Number of sound variants to prevent audio fatigue"
+    frequent_sounds: "3-4 variants"  # Zone placement, pathway, clicks
+    medium_sounds: "2-3 variants"    # Building complete, achievements
+    rare_sounds: "1 variant"         # Transcendence, arcology
+
+  pause_behavior:
+    music: "Reduce to 50% volume"
+    ambient: "Fade to 30-40% volume"
+    sfx: "Continue playing (or mute, per preference)"
+    notes: "Maintain atmosphere without demanding attention"
+
+  priority_levels:
+    critical: "Always play (disasters, milestones)"
+    high: "Usually play (UI, building complete)"
+    normal: "Play if room (construction, infrastructure)"
+    low: "Play if quiet (ambient variations)"
+    max_simultaneous_sounds: 32
+
+# ============================================================================
+# UI DESIGN
+# ============================================================================
+
+ui_design:
+  overview: |
+    Two toggleable UI modes. Players can switch between Classic and
+    Sci-fi Holographic at any time. Both modes provide identical
+    functionality with different visual presentation.
+
+  modes:
+    classic:
+      description: "Retro SimCity 2000-inspired layout"
+      layout:
+        - "Toolbar at top (tools, zones, infrastructure)"
+        - "Info panel at bottom (selected entity details, stats)"
+        - "Minimap in corner"
+        - "Budget/population readout in status bar"
+      visual_style:
+        - "Opaque panels with alien-themed borders"
+        - "Familiar grid-based button layout"
+        - "Bioluminescent accent colors on dark backgrounds"
+        - "Nostalgic feel with alien terminology"
+
+    holographic:
+      description: "Sci-fi holographic interface"
+      layout:
+        - "Floating translucent panels"
+        - "Radial/contextual menus"
+        - "Heads-up display overlays"
+        - "Minimap as holographic projection"
+      visual_style:
+        - "Translucent panels with glowing borders"
+        - "Hologram-style readouts and data visualization"
+        - "Scan-line and flicker effects (subtle)"
+        - "Alien glyphs as decorative accents"
+        - "Bioluminescent glow on interactive elements"
+
+  shared:
+    rules:
+      - "Both modes use identical keybindings and shortcuts"
+      - "Both modes display the same information"
+      - "Toggle via settings menu or hotkey"
+      - "Default mode: Classic (easier onboarding)"
+      - "UI elements use bioluminescent palette regardless of mode"
+    iconography:
+      - "Alien-themed icons for all tools and zones"
+      - "Consistent icon set shared across both modes"
+      - "Icons should be readable at small sizes"
+
+  animations:
+    panel_slide:
+      duration_ms: 200
+      easing: ease_out_cubic
+    overlay_fade:
+      duration_ms: 250
+      easing: linear
+    button_hover:
+      duration_ms: 100
+      easing: linear
+    notification_fade:
+      duration_ms: 300
+      easing: ease_out
+    camera_pan:
+      duration_ms: 500
+      easing: ease_in_out_cubic
+    value_change:
+      duration_ms: 200
+      easing: linear
+      description: "Animated number/bar changes (e.g., demand meters)"
+
+  notifications:
+    description: "Alert pulse notification system"
+    max_visible: 4
+    queue_behavior: "FIFO (newest pushes oldest)"
+    priorities:
+      critical:
+        color: "#ff3333"
+        duration_ms: 8000
+        audio: true
+        examples: ["grid_collapse", "core_breach", "treasury_empty"]
+      warning:
+        color: "#ffaa33"
+        duration_ms: 5000
+        audio: false
+        examples: ["energy_deficit", "service_underfunded", "disorder_rising"]
+      info:
+        color: "#33ffff"
+        duration_ms: 3000
+        audio: false
+        examples: ["building_complete", "milestone_achieved", "zone_developed"]
+
+# ============================================================================
+# PROGRESSION PATTERNS
+# ============================================================================
+
+progression:
+  progression_components:
+    description: "Lightweight per-player tracking for progression state"
+    pattern: "Entity-component attached to player entities, not dense grids"
+    applies_to:
+      - MilestoneComponent (per-player milestone flags)
+      - EdictComponent (per-player active edicts)
+    rationale: |
+      Unlike simulation grids (disorder, contamination), progression state is:
+      - Per-player only (4 players max)
+      - Rarely changing (milestones are one-time, edicts change infrequently)
+      - Not spatially distributed
+      Therefore, standard ECS components are appropriate, not dense grids.
+
+  transcendence_area_effects:
+    description: "Large radius area effects using pre-computed tile sets"
+    pattern: "Pre-compute affected tiles on placement, use spatial hash for O(1) lookup"
+    applies_to:
+      - TranscendenceAuraComponent
+    implementation:
+      computation: "O(r^2) one-time on placement"
+      lookup: "O(1) per tile check"
+      memory: "~150 KB per monument for all radii"
+    radii:
+      harmony_bonus: 30  # tiles
+      contamination_reduction: 25  # tiles
+      sector_value_boost: 15  # tiles
+      catastrophe_protection: 20  # tiles
+    notes:
+      - "Tile sets stored as std::unordered_set for O(1) lookup"
+      - "needs_recompute flag for rare position changes (never for monuments)"
+      - "Consuming systems check aura membership during their tick"
+
+  milestone_permanence:
+    description: "Milestones remain achieved even if population drops"
+    pattern: "One-way flag setting, track highest_population_ever monotonically"
+    rationale: |
+      Milestones represent historical achievements, not current state.
+      This prevents frustrating unlock/relock cycles during disasters
+      or economic downturns, aligning with the casual/social vibe.
+    implementation:
+      - "highest_population_ever field only increases, never decreases"
+      - "Milestone checks compare highest_population_ever to threshold"
+      - "UI shows current population AND milestone progress separately"
+
+# ============================================================================
+# PERSISTENCE PATTERNS
+# ============================================================================
+
+persistence:
+  overview: |
+    Epic 16 provides user-facing save/load features on top of Epic 1's continuous
+    database persistence. Save files are portable snapshots; the database is for
+    operational crash recovery. Players should never think about saving - it just works.
+
+  save_file_format:
+    description: "Binary save file format with sections"
+    pattern: "Header + Table of Contents + Compressed Sections"
+    magic: "ZCSV"  # ZergCity Save
+    sections:
+      - TERRAIN: "Dense terrain grid data"
+      - ENTITIES: "Entity registry (IDs, archetypes)"
+      - COMPONENTS: "Per-type component arrays with version tags"
+      - DENSE_GRIDS: "Coverage grids, contamination, land value, etc."
+      - PLAYERS: "Player info, ownership state"
+      - METADATA: "Game settings, RNG state, tick count"
+      - PREVIEW: "Stats and thumbnail for UI browser"
+    compression: "LZ4 per-section"
+    versioning: "Per-section version tags for migration support"
+    estimated_sizes:
+      small_map: "128x128 ~150KB compressed"
+      medium_map: "256x256 ~400KB compressed"
+      large_map: "512x512 ~1MB compressed"
+
+  component_versioning:
+    description: "Backwards compatibility for component format changes"
+    pattern: "Version tag per component type, migration function chain"
+    rules:
+      - "Every component type has a version number"
+      - "Save files store version with component data"
+      - "On load, apply migration functions: v1->v2->v3->current"
+      - "Migrations are tested in CI for all supported versions"
+      - "Very old versions may be dropped after major releases"
+
+  checkpoint_system:
+    description: "Automatic rolling snapshots for recovery"
+    pattern: "Periodic + event-triggered checkpoints"
+    rolling:
+      interval_cycles: 10
+      retention_count: 3
+    event_triggers:
+      - "First structure placed"
+      - "Population thresholds (every 10K)"
+      - "Arcology construction complete"
+      - "Player join/leave"
+      - "Major transactions (>50K credits)"
+      - "Idle detection (5 min no input)"
+      - "Pre-disaster (on warning)"
+    manual_snapshots:
+      slots_per_player: 5
+      purpose: "Experimentation backup"
+
+  multiplayer_rollback:
+    description: "Authority model for multiplayer save loading"
+    pattern: "Time-based authority thresholds"
+    rules:
+      - "Host authority for rollbacks <30 minutes"
+      - "Majority vote required for rollbacks >30 minutes"
+      - "Unanimous consent for rollbacks >24 hours"
+      - "2-minute response timeout, then host decision stands"
+      - "Prevents griefing while allowing legitimate recovery"
+
+  world_template_export:
+    description: "Shareable world format stripped of player data"
+    pattern: "Full save minus player identity/economy/progression"
+    includes:
+      - "Terrain and map seed"
+      - "All structures and infrastructure"
+      - "Named landmarks"
+      - "Basic statistics (population at export, cycle count)"
+    excludes:
+      - "Player identities and sessions"
+      - "Treasury amounts"
+      - "Achievement/milestone progress"
+      - "Disaster history and event logs"
+    file_extension: ".zcworld"
+
+  immortalize_feature:
+    description: "Freeze colony as permanent monument"
+    pattern: "Read-only snapshot with gallery metadata"
+    cost: 50000  # Credits
+    visibility_options:
+      - "Private (owner only)"
+      - "Friends (invited)"
+      - "Public (Monument Gallery)"
+    storage:
+      location: "saves/gallery/"
+      index_file: "gallery_index.json"
+      per_monument: "~150KB-1MB + ~50KB thumbnail"
+    visitor_mode: "Read-only exploration, no modifications"
+
+  client_settings:
+    description: "Local preferences separate from game state"
+    pattern: "JSON file in platform-specific user data directory"
+    scope:
+      - "Audio volume levels (per channel)"
+      - "Video settings (resolution, fullscreen, quality)"
+      - "Control keybindings"
+      - "UI preferences (mode, scale)"
+      - "Multiplayer saved servers"
+    paths:
+      windows: "%APPDATA%/ZergCity/settings.json"
+      macos: "~/Library/Application Support/ZergCity/settings.json"
+      linux: "~/.config/zergcity/settings.json"
+    notes:
+      - "Never synced to server"
+      - "Human-readable JSON format"
+      - "Versioned for migration"
+
+  corruption_detection:
+    description: "Integrity verification for save files"
+    pattern: "Multi-level checksums"
+    file_level: "CRC32 in header"
+    runtime_level: "Lightweight state hash (entity count, population, treasury)"
+    recovery: "Hash mismatch triggers full resync from server"

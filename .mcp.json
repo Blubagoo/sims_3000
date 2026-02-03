@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "computer-control": {
+      "command": "C:/Users/Jim/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/uvx.exe",
+      "args": ["--python", "3.13", "computer-control-mcp@latest"]
+    },
+    "clickup": {
+      "command": "npx",
+      "args": ["-y", "@chykalophia/clickup-mcp-server"],
+      "env": {
+        "CLICKUP_API_TOKEN": "pk_6325695_QGTNE88KC0E68WODJ5FMVM1JOC8TH8JA"
+      }
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    }
+  }
+}

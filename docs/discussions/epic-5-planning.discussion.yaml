@@ -1,0 +1,529 @@
+topic: "Epic 5 Planning: Energy Infrastructure (EnergySystem)"
+created: "2026-01-28"
+status: resolved
+canon_version: "0.6.0"
+participants:
+  - systems-architect
+  - game-designer
+  - services-engineer
+
+# ============================================================
+# CROSS-AGENT QUESTIONS -- EXTRACTED FROM ALL 3 ANALYSES
+# ============================================================
+
+threads:
+  # -------------------------------------------------------
+  # FROM: systems-architect
+  # -------------------------------------------------------
+  - id: Q001
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Energy deficit experience: During energy deficit, should structures function
+      at reduced capacity (e.g., fabrication at 50% output) or completely stop
+      functioning? What visual treatment differentiates energy deficit from grid collapse?
+    answer: |
+      Binary power only - structures are either fully powered or completely unpowered.
+      Partial power adds complexity without meaningful gameplay benefit. The difference
+      between energy deficit and grid collapse is SEVERITY, not mechanism:
+      - Energy deficit: some low-priority structures dark, high-priority structures lit
+      - Grid collapse: nearly all structures dark, only critical services (medical, command) lit
+      Visual differentiation: energy deficit shows amber warning indicators on conduits,
+      grid collapse shows red pulsing warnings. Game Designer analysis Section 4 confirms
+      this two-phase crisis model.
+    resolution: "Binary power. Energy deficit = some dark. Grid collapse = most dark."
+
+  - id: Q002
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Rationing visibility: Should overseers see which structures are being rationed
+      and in what order? Should they be able to manually adjust priority levels, or
+      are they fixed per structure type?
+    answer: |
+      Yes, overseers should see which structures are unpowered (visual = no glow).
+      The energy overlay should highlight unpowered structures with red indicators.
+      Priority levels are FIXED per structure type (derived from template), not
+      manually adjustable. This keeps the system simple and predictable. Manual
+      priority adjustment would add UI complexity and create "homework" for players.
+      The priority order (critical > important > normal > low) is deterministic and
+      visible in documentation/tooltips.
+    resolution: "Visual feedback on unpowered structures. Fixed priorities per type."
+
+  - id: Q003
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Nexus variety: How many energy nexus types should we target for MVP? The canon
+      lists 9 types, but some are "future tech." Which subset should Epic 5 implement?
+    answer: |
+      MVP should implement 6 nexus types:
+      1. Carbon (coal/plasma) - starter dirty option
+      2. Petrochemical (oil) - mid-game dirty option
+      3. Gaseous (gas) - cleaner transition option
+      4. Nuclear - high-risk high-reward option
+      5. Wind - clean renewable (variable output)
+      6. Solar - clean renewable (variable output)
+
+      Defer to later: Hydro (requires terrain integration), Geothermal (requires
+      ember_crust terrain), Fusion (future tech), MicrowaveReceiver (future tech).
+      These deferred types can be added in Epic 5.5 or as content updates.
+
+      Game Designer analysis Section 3 provides full fantasy/feel breakdown for each.
+    resolution: "6 nexus types for MVP. Hydro/Geothermal/Fusion/Microwave deferred."
+
+  - id: Q004
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Aging curve: How steep should nexus aging be? Should a nexus ever reach 0%
+      efficiency, or just asymptotically approach a minimum (e.g., 50%)? How does
+      maintenance (spending credits) affect aging?
+    answer: |
+      Nexuses should NEVER reach 0% efficiency. Use an asymptotic curve approaching
+      a floor (varies by type):
+      - Carbon: floor 60%, degrades over ~6000 ticks (~5 minutes)
+      - Nuclear: floor 75%, degrades over ~20000 ticks (~17 minutes)
+      - Wind/Solar: floor 80-85%, slow degradation
+
+      Maintenance (spending credits) is an Epic 11 (Economy) concern. For Epic 5,
+      efficiency = base_efficiency * age_factor. Maintenance hooks can be added
+      when EconomySystem exists. For now, nexuses degrade but never fail completely.
+
+      This creates ongoing management without harsh punishment.
+    resolution: "Asymptotic aging to type-specific floor. No 0% efficiency."
+
+  - id: Q005
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Coverage visualization: When the overseer is placing conduits, should they
+      see a real-time preview of how the coverage zone will expand?
+    answer: |
+      Yes, coverage preview is essential. Show:
+      1. The conduit's own coverage radius (highlighted)
+      2. Tiles that will GAIN coverage (new vs existing)
+      3. Cost preview for the placement
+
+      This makes conduit placement feel like puzzle-solving, not guesswork.
+      Game Designer analysis Section 5 emphasizes that coverage should always
+      be legible at a glance. Preview is part of that legibility.
+    resolution: "Yes, show coverage preview during conduit placement."
+
+  - id: Q006
+    status: resolved
+    author: "systems-architect"
+    target: "services-engineer"
+    question: |
+      Coverage calculation approach: The analysis proposes a dense coverage grid
+      with dirty tracking. Do you foresee any issues with this approach at 512x512
+      map scale with 4 overseers?
+    answer: |
+      No major issues. Analysis confirms:
+      - 256 KB memory for 512x512 grid (acceptable)
+      - BFS flood-fill is O(conduits), not O(grid cells)
+      - Dirty tracking limits recalculation to changed networks
+      - Per-overseer dirty flags prevent unnecessary recalculation
+
+      Benchmarking target: < 10ms coverage recalculation for 5,000 conduits.
+      The dense grid with dirty tracking is the right approach.
+    resolution: "Dense grid with dirty tracking approved. Target <10ms recalc."
+
+  - id: Q007
+    status: resolved
+    author: "systems-architect"
+    target: "services-engineer"
+    question: |
+      Shared utility abstraction: Given Epic 6 (FluidSystem) follows the same
+      pattern, should we design a shared UtilitySystem base class now, or implement
+      EnergySystem first and refactor later?
+    answer: |
+      Implement EnergySystem first, refactor shared code when implementing
+      FluidSystem. Services Engineer analysis Appendix A outlines the potential
+      template structure but recommends against premature abstraction.
+
+      Rationale:
+      1. FluidSystem may have nuances (reservoir storage, pressure) that
+         don't fit a naive shared template
+      2. Better to have one working system before abstracting
+      3. Refactoring from concrete to abstract is easier than designing
+         abstract upfront
+
+      Extract shared UtilitySystemBase when Epic 6 begins, not now.
+    resolution: "Implement EnergySystem first. Extract shared code during Epic 6."
+
+  - id: Q008
+    status: resolved
+    author: "systems-architect"
+    target: "services-engineer"
+    question: |
+      Contamination integration: For energy nexuses that implement IContaminationSource,
+      should they emit contamination every tick, or only when actively generating?
+      (Offline nexus = no contamination?)
+    answer: |
+      Contamination only when online and generating. An offline nexus (is_online=false
+      or current_output=0) produces zero contamination. This makes sense physically
+      (no combustion = no pollution) and creates interesting gameplay (shutting
+      down dirty plants during low demand reduces contamination).
+
+      Services Engineer analysis Section 5 confirms: get_active_contamination()
+      returns 0 if !is_online || current_output == 0.
+    resolution: "Contamination only when online. Offline nexus = no contamination."
+
+  # -------------------------------------------------------
+  # FROM: game-designer
+  # -------------------------------------------------------
+  - id: Q009
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      Coverage zone calculation approach: How will conduit coverage be calculated?
+      (radius-based, pathfinding-based, flood fill?)
+    answer: |
+      BFS flood-fill from nexuses through connected conduits. Each nexus and
+      conduit has a coverage_radius that marks nearby tiles as covered. The
+      algorithm:
+      1. Seed from nexuses (mark radius around each)
+      2. BFS through connected conduits (4-directional)
+      3. Each conduit marks its own radius
+      4. Stop at ownership boundaries
+
+      This is NOT pathfinding (no routing). Coverage is binary: in-zone or not.
+      Systems Architect analysis Section 5 provides pseudocode.
+    resolution: "BFS flood-fill from nexuses through conduits. Binary coverage."
+
+  - id: Q010
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      Pool calculation timing: When in the tick order should energy pool be
+      recalculated? Should energy distribution happen before or after building
+      state updates?
+    answer: |
+      EnergySystem runs at priority 10 (early in tick). Energy state must be
+      settled BEFORE other systems query is_powered().
+
+      Tick order:
+      - 5: TerrainSystem
+      - 10: EnergySystem <-- calculates pool, distributes energy
+      - 20: FluidSystem
+      - 30: ZoneSystem (may query is_powered)
+      - 40: BuildingSystem (uses is_powered for state machine)
+
+      Energy distribution happens during EnergySystem tick. BuildingSystem
+      reads the result when it runs at priority 40.
+    resolution: "Priority 10. Energy calculated before building state updates."
+
+  - id: Q011
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      Priority system implementation: Should priority be a component field or
+      derived from building type? How do we handle priority ties during deficit?
+    answer: |
+      Priority is stored in EnergyComponent.priority (uint8_t field). The value
+      is set at structure creation time based on the building template/type.
+      This allows the field to be potentially modified later (e.g., by ordinances)
+      without changing the template system.
+
+      Priority ties: deterministic by EntityID (lower ID = powered first).
+      This ensures server and clients agree on rationing order.
+
+      Services Engineer analysis Section 6 provides the sorting algorithm.
+    resolution: "EnergyComponent.priority field. Ties broken by EntityID."
+
+  - id: Q012
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      Multiplayer energy sync: How frequently should energy pool state sync?
+      Should rival energy state be synced (for visual observation)?
+    answer: |
+      - is_powered (boolean per structure): synced every tick via component sync
+      - Pool summary (generation, consumption, surplus): synced on change
+      - Rival energy state: YES, synced for all players (see rivals' grid status)
+
+      All players see all energy states. This enables the "schadenfreude" effect
+      when a rival's colony goes dark (Game Designer Section 6).
+
+      Coverage grid is NOT synced directly - clients reconstruct from synced
+      conduit positions using the same deterministic algorithm.
+    resolution: "is_powered every tick. Pool on change. All players see all states."
+
+  - id: Q013
+    status: resolved
+    author: "game-designer"
+    target: "services-engineer"
+    question: |
+      Energy priority for service buildings: What priority tier should each
+      service building type have? Should priority be configurable by the player
+      for service buildings?
+    answer: |
+      Priority by service building type:
+      - Priority 1 (Critical): Medical nexus, command nexus
+      - Priority 2 (Important): Enforcer post, hazard response post
+      - Priority 3 (Normal): Learning center, archive (education)
+      - Priority 3 (Normal): Recreation structures
+
+      Priority is NOT configurable by player. Fixed per template to keep the
+      system predictable and avoid "homework." Players manage energy supply,
+      not individual building priorities.
+
+      Funding level (Epic 11) does NOT affect energy priority.
+    resolution: "Fixed priority per type. Medical/command=1, enforcers=2, others=3."
+
+  # -------------------------------------------------------
+  # FROM: services-engineer
+  # -------------------------------------------------------
+  - id: Q014
+    status: resolved
+    author: "services-engineer"
+    target: "systems-architect"
+    question: |
+      Coverage grid vs entity tracking finalized? My analysis recommends dense
+      2D grid with dirty flags. Do you concur, or should we consider hybrid
+      approaches?
+    answer: |
+      Concur with dense 2D grid. The dense_grid_exception pattern from canon
+      applies here. Coverage data covers every cell, spatial locality matters
+      for iteration, and O(1) queries are required for 10,000+ structures.
+
+      No hybrid needed. The BFS flood-fill is efficient, and dirty flags
+      limit recalculation to actual changes.
+    resolution: "Dense 2D coverage grid approved. Matches dense_grid_exception pattern."
+
+  - id: Q015
+    status: resolved
+    author: "services-engineer"
+    target: "systems-architect"
+    question: |
+      Dirty flag propagation scope: When a conduit is placed, should we only
+      dirty the owning overseer's coverage, or also dirty adjacent overseers?
+    answer: |
+      Only dirty the owning overseer's coverage. Coverage does NOT cross
+      ownership boundaries, so adjacent overseers are unaffected by another
+      player's conduit changes.
+
+      The boundary enforcement is explicit: conduits only extend coverage
+      to tiles owned by the same player (or GAME_MASTER for unclaimed tiles).
+    resolution: "Dirty only owning overseer. Coverage doesn't cross boundaries."
+
+  - id: Q016
+    status: resolved
+    author: "services-engineer"
+    target: "systems-architect"
+    question: |
+      Coverage grid sync strategy: I recommend client-side reconstruction
+      (no sync). Does this align with multiplayer architecture?
+    answer: |
+      Yes, client-side reconstruction is correct. Coverage is deterministic
+      from conduit positions, which ARE synced via standard entity component
+      sync. Clients run the same BFS algorithm locally to generate the
+      coverage grid for overlay rendering.
+
+      This saves bandwidth and avoids sync complexity. The only requirement
+      is that clients have accurate conduit position data.
+    resolution: "Client reconstructs coverage locally. No direct grid sync."
+
+  - id: Q017
+    status: resolved
+    author: "services-engineer"
+    target: "game-designer"
+    question: |
+      Priority levels per structure type: The canon mentions 3 priority levels.
+      I've added a 4th (low) for habitation. Is this appropriate?
+    answer: |
+      4 priority levels is appropriate:
+      1. Critical: Medical nexus, command nexus
+      2. Important: Enforcer post, hazard response
+      3. Normal: Exchange, fabrication, education, recreation
+      4. Low: Habitation
+
+      Rationale for habitation as lowest: beings can survive short outages
+      better than economic shutdown. If exchange/fabrication lose power,
+      the economy stops. If habitation loses power, beings are uncomfortable
+      but survive.
+
+      Game Designer Section 4 confirms this priority order.
+    resolution: "4 priority levels. Habitation = priority 4 (lowest)."
+
+  - id: Q018
+    status: resolved
+    author: "services-engineer"
+    target: "game-designer"
+    question: |
+      Energy deficit duration before effects: How many ticks should a structure
+      be unpowered before negative effects apply? Immediate, or grace period?
+    answer: |
+      Effects are NOT immediate - there should be a grace period for
+      transient fluctuations.
+
+      Proposed grace periods:
+      - BuildingSystem state change: 100 ticks (5 seconds) before building
+        transitions to a degraded state
+      - Harmony impact: gradual, proportional to duration of outage
+      - Economic impact: immediate (unpowered exchange = no commerce)
+
+      This creates urgency without punishing momentary fluctuations.
+      Players have time to react before buildings start degrading.
+    resolution: "100 tick grace before building state change. Economic effects immediate."
+
+  - id: Q019
+    status: resolved
+    author: "services-engineer"
+    target: "game-designer"
+    question: |
+      Nexus output values: The configuration table has placeholder values.
+      Can you provide canonical output values relative to typical structure
+      consumption?
+    answer: |
+      Target balance: one Carbon nexus (100 units) should power ~20 low-density
+      habitation structures (5 units each) or ~10 exchange structures (10 units).
+
+      Proposed values (all configurable):
+      - Carbon nexus: 100 units, 5000 credits build, high contamination
+      - Petrochemical: 150 units, 8000 credits, medium contamination
+      - Gaseous: 120 units, 10000 credits, low contamination
+      - Nuclear: 400 units, 50000 credits, no contamination, meltdown risk
+      - Wind: 30 units (variable), 3000 credits, no contamination
+      - Solar: 50 units (variable), 6000 credits, no contamination
+
+      Structure consumption:
+      - Low-density habitation: 5 units
+      - High-density habitation: 20 units
+      - Low-density exchange: 10 units
+      - High-density exchange: 40 units
+      - Low-density fabrication: 15 units
+      - High-density fabrication: 60 units
+      - Service buildings: 20-50 units depending on type
+
+      These are starting values for playtesting balance.
+    resolution: "Carbon=100, structures=5-60 units. All values configurable."
+
+  - id: Q020
+    status: resolved
+    author: "services-engineer"
+    target: "game-designer"
+    question: |
+      Coverage visualization preview: When placing conduits, should the preview show
+      only the new conduit's radius, the complete updated coverage zone, or the delta?
+    answer: |
+      Show the DELTA (what tiles will GAIN coverage). This is most useful for
+      decision-making. The full coverage zone can be seen in the overlay mode;
+      during placement, players need to know what NEW area they're getting.
+
+      Visual treatment:
+      - Current coverage: standard overlay color
+      - NEW coverage (from placement): brighter/highlighted version
+      - Tiles that remain uncovered: dark
+
+      This makes conduit placement feel like "painting" new coverage onto the map.
+    resolution: "Show delta (new coverage tiles) during placement preview."
+
+# ============================================================
+# CROSS-CUTTING RESOLUTIONS
+# ============================================================
+
+cross_cutting_resolutions:
+  - id: CCR-001
+    topic: "Pool model confirmation"
+    resolution: |
+      The pool model is confirmed: per-overseer pools, no physical flow simulation.
+      Energy conduits define coverage zones, not transport routes. A structure is
+      powered if: (1) in coverage zone, AND (2) pool has surplus.
+
+  - id: CCR-002
+    topic: "Binary power model"
+    resolution: |
+      Structures are either fully powered or completely unpowered. No partial power.
+      This simplifies the system and provides clear visual feedback (glow/no glow).
+
+  - id: CCR-003
+    topic: "4 priority levels"
+    resolution: |
+      Priority 1 = Critical (medical, command)
+      Priority 2 = Important (enforcer, hazard response)
+      Priority 3 = Normal (exchange, fabrication, education, recreation)
+      Priority 4 = Low (habitation)
+      Fixed per template, not configurable by player.
+
+  - id: CCR-004
+    topic: "6 nexus types for MVP"
+    resolution: |
+      MVP implements: Carbon, Petrochemical, Gaseous, Nuclear, Wind, Solar.
+      Deferred: Hydro, Geothermal, Fusion, MicrowaveReceiver.
+
+  - id: CCR-005
+    topic: "Dense coverage grid"
+    resolution: |
+      Use dense 2D coverage grid (1 byte per cell) following dense_grid_exception
+      pattern. BFS flood-fill from nexuses through conduits. Dirty flag per overseer.
+      Client reconstructs locally from synced conduit positions.
+
+  - id: CCR-006
+    topic: "Aging curve"
+    resolution: |
+      Nexuses age asymptotically toward a type-specific floor (60-90% depending
+      on type). They never reach 0% efficiency. Maintenance mechanics deferred
+      to Epic 11 (Economy).
+
+  - id: CCR-007
+    topic: "Contamination when online only"
+    resolution: |
+      Dirty nexuses (Carbon, Petrochemical, Gaseous) only emit contamination
+      when is_online=true AND current_output > 0. Offline = no contamination.
+
+  - id: CCR-008
+    topic: "Energy state sync"
+    resolution: |
+      - is_powered: synced every tick per structure
+      - Pool summary: synced on change
+      - All players see all energy states (rivals visible)
+      - Coverage grid: client reconstructs, not synced
+
+  - id: CCR-009
+    topic: "Grace period before building effects"
+    resolution: |
+      100 ticks (5 seconds) grace period before unpowered structure transitions
+      to degraded state. Economic effects (unpowered exchange = no commerce)
+      are immediate. Harmony degradation is gradual.
+
+  - id: CCR-010
+    topic: "Coverage preview during placement"
+    resolution: |
+      Show delta (new coverage tiles) when placing conduits. Current coverage
+      in standard overlay, new coverage highlighted, uncovered tiles dark.
+
+# ============================================================
+# CANON UPDATE FLAGS (for Phase 6)
+# ============================================================
+
+canon_updates_needed:
+  - file: "interfaces.yaml"
+    change: "Add IEnergyProvider interface (replacing Epic 4 stub definition)"
+    rationale: "Formal interface definition for energy queries"
+
+  - file: "interfaces.yaml"
+    change: "Update IEnergyConsumer priority note to reflect 4 levels"
+    rationale: "Canon mentions 3 levels, we use 4 (added 'low' for habitation)"
+
+  - file: "systems.yaml"
+    change: "Add EnergySystem ISimulatable priority (10)"
+    rationale: "Formal tick order documentation"
+
+  - file: "terminology.yaml"
+    change: "Add energy nexus type terms: carbon_nexus, petrochemical_nexus, gaseous_nexus"
+    rationale: "Canonical names for dirty energy types"
+
+  - file: "patterns.yaml"
+    change: "Add coverage_grid to dense_grid_exception applies_to"
+    rationale: "Coverage grid follows same pattern as TerrainGrid"

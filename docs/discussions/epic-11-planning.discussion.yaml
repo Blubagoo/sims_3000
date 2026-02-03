@@ -1,0 +1,498 @@
+topic: "Epic 11 Planning: Financial System"
+created: "2026-01-29"
+status: resolved
+participants:
+  - systems-architect
+  - game-designer
+  - economy-engineer
+
+# ============================================================================
+# CROSS-CUTTING REQUIREMENTS
+# ============================================================================
+
+cross_cutting_requirements:
+  CCR-1:
+    title: "Per-Player Treasury Isolation"
+    description: "Each player has a completely separate treasury, tribute rates, funding levels, and credit advances. No shared economy in MVP."
+    status: confirmed
+    agreed_by: [systems-architect, game-designer, economy-engineer]
+
+  CCR-2:
+    title: "IEconomyQueryable Stub Replacement"
+    description: "Epic 11 replaces the Epic 10 stub (returning 7% tribute, 20000 credits) with real implementation that calculates actual values."
+    status: confirmed
+    agreed_by: [systems-architect, game-designer, economy-engineer]
+
+  CCR-3:
+    title: "EconomySystem Tick Priority 60"
+    description: "EconomySystem runs at tick_priority 60, after ServicesSystem (55), before DisorderSystem (70). This allows services to calculate costs first."
+    status: confirmed
+    agreed_by: [systems-architect, economy-engineer]
+
+  CCR-4:
+    title: "Sandbox-Safe Financial Design"
+    description: "No bankruptcy, no game over from finances. Deficit is a state to manage, not a failure condition. Colony can always recover."
+    status: confirmed
+    agreed_by: [game-designer]
+
+  CCR-5:
+    title: "Per-Phase Budget Processing"
+    description: "Tribute collection and maintenance payments occur at phase boundaries (12 times per cycle), not every tick."
+    status: confirmed
+    agreed_by: [systems-architect, economy-engineer]
+
+  CCR-6:
+    title: "Alien Terminology"
+    description: "Use canonical terms: credits (not money/dollars), tribute (not taxes), credit advance (not loan/bond), expenditure (not expenses), deficit (not debt)."
+    status: confirmed
+    agreed_by: [game-designer]
+
+# ============================================================================
+# RESOLVED DISCUSSION THREADS
+# ============================================================================
+
+threads:
+  # ============================================================================
+  # SYSTEMS ARCHITECT -> GAME DESIGNER
+  # ============================================================================
+
+  - id: Q001
+    status: resolved
+    author: systems-architect
+    target: game-designer
+    question: "Tribute rate range and defaults: Canon specifies 0-20% with 7% default. Is this per-zone or global? Proposed: Per-zone rates (habitation, exchange, fabrication) each 0-20%, default 7%."
+    resolution:
+      answer: "Per-zone rates confirmed. Each zone type (habitation, exchange, fabrication) has its own tribute rate 0-20%, all defaulting to 7%."
+      rationale: "Matches SimCity 2000's separate R/C/I tax rates. Gives players more control over economic policy."
+      resolved_by: game-designer
+      evidence: "Game Designer analysis Section 'Decision 1: Tribute Rate Balancing' confirms per-zone rates with tiered effects."
+
+  - id: Q002
+    status: resolved
+    author: systems-architect
+    target: game-designer
+    question: "Credit advance (bond) mechanics: How many bonds can a player have? Proposed: Max bonds = population/10000, capped at 10."
+    resolution:
+      answer: "Maximum 5 concurrent bonds per player, not population-based. Keeps the system simple and predictable."
+      rationale: "Economy Engineer analysis uses max 5 bonds. Game Designer emphasizes bonds as strategic tools, not traps. Fixed limit is easier to understand."
+      resolved_by: economy-engineer
+      evidence: "Economy Engineer Section 5.1 defines 4 bond types; Section 7 Q9 proposes max 5 bonds."
+
+  - id: Q003
+    status: resolved
+    author: systems-architect
+    target: game-designer
+    question: "Treasury deficit behavior: What happens when credits go negative? (A) Immediate service shutdown, (B) Grace period then effects, (C) Forced bond issuance. Proposed: (B) 10-cycle grace period."
+    resolution:
+      answer: "Combined approach: Warning at -5,000 credits. Emergency bond auto-offered at -10,000. Services reduce to 50% effectiveness (not shutdown). No hard game over."
+      rationale: "Sandbox-safe design. Deficit is manageable state, not punishment. Players have options: tighten budget, take emergency bond, or let services degrade temporarily."
+      resolved_by: game-designer
+      evidence: "Game Designer Section 'Credit Advance Balancing' states 'Never locked out of play'. Economy Engineer Section 3.4 defines deficit thresholds."
+
+  - id: Q004
+    status: resolved
+    author: systems-architect
+    target: game-designer
+    question: "Ordinances scope: Should Epic 11 include ordinances? Or defer to separate epic? Examples: Legalize gambling, Free clinics, Recycling program."
+    resolution:
+      answer: "Implement framework only in Epic 11 with 2-3 sample ordinances. Full ordinance library deferred to polish phase."
+      rationale: "Core economy mechanics are the priority. Framework allows future expansion. Sample ordinances prove the system works."
+      resolved_by: economy-engineer
+      evidence: "Economy Engineer Section 6 explicitly defers full ordinance system: 'Deferred to Epic 11 Phase 2'. Proposes Enhanced Patrol, Industrial Scrubbers, Free Transit as MVP samples."
+
+  - id: Q005
+    status: resolved
+    author: systems-architect
+    target: game-designer
+    question: "Income per being value: What's the base credit value per taxable being? This affects the entire economy scale. Proposed: 10 credits/being/cycle."
+    resolution:
+      answer: "Use per-building base tribute values, not per-being. Base values: Habitation low=50, high=200; Exchange low=100, high=400; Fabrication low=75, high=300 credits per phase."
+      rationale: "Per-building is simpler to calculate and balance. Occupancy factor (0-1) scales tribute within building."
+      resolved_by: economy-engineer
+      evidence: "Economy Engineer Section 2.3 provides complete base tribute table per zone type and density."
+
+  # ============================================================================
+  # SYSTEMS ARCHITECT -> ECONOMY ENGINEER
+  # ============================================================================
+
+  - id: Q006
+    status: resolved
+    author: systems-architect
+    target: economy-engineer
+    question: "Tribute calculation frequency: Should tribute be collected every tick or at phase boundaries? Every tick is smoother but computationally heavier."
+    resolution:
+      answer: "Per-phase processing (Option B). Collect tribute and pay expenses at phase transitions, ~12 times per cycle."
+      rationale: "Meaningful budget cycles, classic city builder feel. Computationally reasonable. Large balance swings are acceptable."
+      resolved_by: economy-engineer
+      evidence: "Economy Engineer Section 3 explicitly recommends Option B with full code example in Section 3.2."
+
+  - id: Q007
+    status: resolved
+    author: systems-architect
+    target: economy-engineer
+    question: "Funding level granularity: Should funding be 0-100% in 10% increments, or allow any value 0-150%?"
+    resolution:
+      answer: "0-150% continuous range. Allow overfunding for premium service effectiveness (up to 110% at 150% funding)."
+      rationale: "Game Designer analysis shows overfunding provides meaningful choice. 125% funding = 110% effectiveness gives diminishing returns above 100%."
+      resolved_by: game-designer
+      evidence: "Game Designer Section 'Funding Impact Table' shows effectiveness curve from 0% to 125% funding."
+
+  - id: Q008
+    status: resolved
+    author: systems-architect
+    target: economy-engineer
+    question: "Infrastructure maintenance formula: Scale with (A) Total tiles, (B) Buildings connected, (C) Flat per-entity? Proposed: (A) per-tile."
+    resolution:
+      answer: "Per-tile flat cost for infrastructure. Pathways 5 cr/tile/phase, Energy conduits 2 cr/tile/phase, Fluid conduits 3 cr/tile/phase, Rail 8 cr/tile/phase."
+      rationale: "Simple and predictable. Players understand cost scales with infrastructure extent."
+      resolved_by: economy-engineer
+      evidence: "Economy Engineer Section 2.5 provides complete maintenance cost table per entity type."
+
+  - id: Q009
+    status: resolved
+    author: systems-architect
+    target: economy-engineer
+    question: "Bond interest rates: Fixed, variable based on city rating, or increasing with number of existing bonds?"
+    resolution:
+      answer: "Tiered fixed rates by bond type. Small=5%, Standard=7.5%, Large=10%, Emergency=15%. Not dynamically calculated."
+      rationale: "Simple and transparent. Players know exactly what they're getting. Emergency bonds have punitive rate to discourage reliance."
+      resolved_by: economy-engineer
+      evidence: "Economy Engineer Section 5.1 Bond Types table specifies fixed rates per tier."
+
+  # ============================================================================
+  # SYSTEMS ARCHITECT -> SERVICES ENGINEER (answered by synthesizing available info)
+  # ============================================================================
+
+  - id: Q010
+    status: resolved
+    author: systems-architect
+    target: services-engineer
+    question: "Funding level effect curve: How does funding % translate to service effectiveness %?"
+    resolution:
+      answer: "Non-linear curve with diminishing returns. 0%=0%, 25%=40%, 50%=65%, 75%=85%, 100%=100%, 125%=110% effectiveness."
+      rationale: "Underfunding still provides some benefit. Overfunding has diminishing returns. Players rewarded for finding efficient allocation."
+      resolved_by: game-designer
+      evidence: "Game Designer Section 'Funding Impact Table' provides the exact curve. Matches Systems Architect's proposed formula in Section 4.Q10."
+
+  # ============================================================================
+  # GAME DESIGNER -> SYSTEMS ARCHITECT
+  # ============================================================================
+
+  - id: Q011
+    status: resolved
+    author: game-designer
+    target: systems-architect
+    question: "Tick Priority: Where should EconomySystem run relative to ServicesSystem (55)?"
+    resolution:
+      answer: "EconomySystem runs at tick_priority 60, after ServicesSystem (55), before DisorderSystem (70)."
+      rationale: "Services calculate costs first. Economy aggregates and processes. One-tick lag on funding changes is acceptable."
+      resolved_by: systems-architect
+      evidence: "Systems Architect Section 2.1 and interfaces.yaml both specify priority 60."
+
+  - id: Q012
+    status: resolved
+    author: game-designer
+    target: systems-architect
+    question: "Per-Player Treasury storage: ECS component on player entity, or dedicated EconomySystem member data?"
+    resolution:
+      answer: "TreasuryState as EconomySystem member data, indexed by PlayerID. Not an ECS component."
+      rationale: "Treasury is system-level state, not per-entity. EconomySystem owns and manages it directly."
+      resolved_by: systems-architect
+      evidence: "Systems Architect Appendix A defines TreasuryState struct as system-owned data, not a component. Economy Engineer Section 4.1 confirms TreasuryComponent is per-player state."
+
+  - id: Q013
+    status: resolved
+    author: game-designer
+    target: systems-architect
+    question: "IEconomyQueryable Interface: What methods does the real EconomySystem need to expose beyond the stub?"
+    resolution:
+      answer: |
+        Full interface includes:
+        - get_tribute_rate(zone_type, owner)
+        - get_average_tribute_rate(owner)
+        - get_treasury_balance(owner)
+        - can_afford(amount, owner)
+        - deduct_credits(amount, owner)
+        - add_credits(amount, owner)
+        - get_funding_level(service_type, owner)
+        - set_funding_level(service_type, level, owner)
+        - get_last_income/expense(owner)
+        - get_income_breakdown/expense_breakdown(owner)
+        - get_total_debt(owner)
+        - get_bond_count/max_bonds(owner)
+        - can_issue_bond/issue_bond(owner)
+      rationale: "Comprehensive interface for all economy queries needed by other systems and UI."
+      resolved_by: systems-architect
+      evidence: "Systems Architect Appendix C provides complete IEconomyQueryable interface definition."
+
+  - id: Q014
+    status: resolved
+    author: game-designer
+    target: systems-architect
+    question: "Credit Advance Tracking: How to track multiple outstanding bonds? Component per bond or vector in system?"
+    resolution:
+      answer: "Vector of CreditAdvance structs in TreasuryState. Each bond is ~32 bytes tracking principal, remaining_balance, interest_rate, term, cycles_remaining."
+      rationale: "Simple and efficient. Max 5 bonds = ~160 bytes per player. No need for per-bond entities."
+      resolved_by: systems-architect
+      evidence: "Systems Architect Appendix A defines CreditAdvance struct and shows active_bonds vector in TreasuryState."
+
+  # ============================================================================
+  # GAME DESIGNER -> SYSTEMS ARCHITECT (Service Integration)
+  # ============================================================================
+
+  - id: Q015
+    status: resolved
+    author: game-designer
+    target: systems-architect
+    question: "Service Funding Data Flow: Does Economy tell Services funding, or does Services query Economy?"
+    resolution:
+      answer: "ServicesSystem queries IEconomyQueryable.get_funding_level(service_type, owner). Economy stores funding levels, Services queries them."
+      rationale: "Clean separation. Services don't store economy data. Economy is the source of truth for budget allocation."
+      resolved_by: systems-architect
+      evidence: "Systems Architect Section 2.4 Budget Allocation Cycle diagram shows Services querying Economy."
+
+  - id: Q016
+    status: resolved
+    author: game-designer
+    target: systems-architect
+    question: "Infrastructure Maintenance: Query other systems for counts or use MaintenanceCostComponent?"
+    resolution:
+      answer: "MaintenanceCostComponent on infrastructure entities. EconomySystem iterates all entities with this component to sum costs."
+      rationale: "ECS pattern: data on entities, logic in systems. Avoids coupling to specific infrastructure systems."
+      resolved_by: systems-architect
+      evidence: "Systems Architect Section 3 defines MaintenanceCostComponent. Appendix A provides struct definition."
+
+  # ============================================================================
+  # GAME DESIGNER -> ECONOMY ENGINEER
+  # ============================================================================
+
+  - id: Q017
+    status: resolved
+    author: game-designer
+    target: economy-engineer
+    question: "Tribute Calculation Formula: Per-building or per-zone? Proposed per-building based on sector value."
+    resolution:
+      answer: "Per-building. Formula: base_tribute * occupancy_factor * sector_value_factor * tribute_rate."
+      rationale: "Granular calculation ties tribute to individual building performance. High-value, fully-occupied buildings contribute more."
+      resolved_by: economy-engineer
+      evidence: "Economy Engineer Section 2.2 provides complete calculate_building_tribute function."
+
+  - id: Q018
+    status: resolved
+    author: game-designer
+    target: economy-engineer
+    question: "Interest Compounding: Simple or compound interest? Proposed simple with 2x principal cap."
+    resolution:
+      answer: "Simple amortization. Equal principal payments + interest on remaining balance each phase. Total owed naturally limited by term length."
+      rationale: "Predictable payments. No infinite debt spiral. Players can calculate total cost upfront."
+      resolved_by: economy-engineer
+      evidence: "Economy Engineer Section 5.3 shows amortization formula. Section 5.4 provides payment schedule example."
+
+  - id: Q019
+    status: resolved
+    author: game-designer
+    target: economy-engineer
+    question: "Deficit Consequences: What happens at negative treasury? Proposed service effectiveness scaling."
+    resolution:
+      answer: "Warning at -5,000. Emergency bond offered at -10,000. Services continue running. No hard failure state. Game Designer's proposed scaling (80% at -10K, 50% at -50K, min 25%) is optional complexity - simpler approach is just offering bonds."
+      rationale: "Sandbox philosophy: deficit is a state, not a fail condition. Emergency bonds provide escape valve."
+      resolved_by: economy-engineer
+      evidence: "Economy Engineer Section 3.4 handle_deficit() shows warning and emergency bond thresholds."
+
+  # ============================================================================
+  # GAME DESIGNER -> ECONOMY ENGINEER (Ordinances)
+  # ============================================================================
+
+  - id: Q020
+    status: resolved
+    author: game-designer
+    target: economy-engineer
+    question: "Ordinance Implementation: ECS components on player entity or flags in EconomySystem?"
+    resolution:
+      answer: "OrdinanceComponent struct with type, is_active, cost_per_phase, effect_multiplier. Framework only for MVP."
+      rationale: "Data-driven design allows easy addition of new ordinances. Framework proves system works before full library."
+      resolved_by: economy-engineer
+      evidence: "Economy Engineer Section 6.3 defines OrdinanceComponent struct and enum."
+
+  - id: Q021
+    status: resolved
+    author: game-designer
+    target: economy-engineer
+    question: "Ordinance Limits: Unlimited ordinances (budget-limited) or hard cap?"
+    resolution:
+      answer: "No hard cap in MVP. Budget is the natural limit. Can revisit if needed for balance."
+      rationale: "Trust player agency. Budget pressure provides organic limit. Adding hard caps later is easy if needed."
+      resolved_by: game-designer
+      evidence: "Game Designer Section 'Ordinance Balancing' proposes no hard cap, budget-limited."
+
+  # ============================================================================
+  # ECONOMY ENGINEER -> SYSTEMS ARCHITECT
+  # ============================================================================
+
+  - id: Q022
+    status: resolved
+    author: economy-engineer
+    target: systems-architect
+    question: "IEconomyQueryable Ownership: Should Epic 11 move interface from stubs section to proper section?"
+    resolution:
+      answer: "Keep in interfaces.yaml stubs section but update notes to indicate 'replaced by EconomySystem (Epic 11)' similar to IServiceQueryable."
+      rationale: "Maintains history of stub -> real implementation pattern. Consistent with Epic 9 approach."
+      resolved_by: systems-architect
+      evidence: "interfaces.yaml shows IServiceQueryable stub pattern with 'replaces stub' note."
+
+  - id: Q023
+    status: resolved
+    author: economy-engineer
+    target: systems-architect
+    question: "Construction Cost Deduction: (A) Deduct immediately in BuildingSystem.tick(), or (B) via EconomySystem transaction queue?"
+    resolution:
+      answer: "Option A: Immediate deduction via IEconomyQueryable.deduct_credits() called by BuildingSystem during construction validation."
+      rationale: "Simple and direct. No need for queuing complexity. BuildingSystem already validates placement - cost check is part of validation."
+      resolved_by: systems-architect
+      evidence: "Systems Architect Section 5.2 Epic 9 Integration shows 'BuildingSystem calls deduct_credits() on construction'."
+
+  # ============================================================================
+  # ECONOMY ENGINEER -> GAME DESIGNER
+  # ============================================================================
+
+  - id: Q024
+    status: resolved
+    author: economy-engineer
+    target: game-designer
+    question: "Starting Treasury: Is 20,000 credits canonical? Should it vary by difficulty or map size?"
+    resolution:
+      answer: "20,000 credits confirmed as starting balance. Fixed for MVP - no difficulty/map variation."
+      rationale: "Canonical value from stub. Consistent starting point for all players. Variation adds complexity without clear benefit in sandbox mode."
+      resolved_by: game-designer
+      evidence: "interfaces.yaml stub_behavior specifies 20000. Game Designer Section 'Starting Economy' confirms 20,000 cr."
+
+  - id: Q025
+    status: resolved
+    author: economy-engineer
+    target: game-designer
+    question: "Default Tribute Rates: All zones 7%, or different defaults per zone?"
+    resolution:
+      answer: "All zones default to 7%. Uniform starting point. Players can differentiate as desired."
+      rationale: "7% is the balanced neutral rate per canon. Starting uniform is simpler to understand."
+      resolved_by: game-designer
+      evidence: "interfaces.yaml stub returns 7 for all. Game Designer confirms 7% as neutral baseline."
+
+  - id: Q026
+    status: resolved
+    author: economy-engineer
+    target: game-designer
+    question: "Tribute Rate Impact on Demand: How severely should high tribute reduce demand? Proposed formula: demand_modifier = 1.0 - (tribute_rate - 7) * 0.05"
+    resolution:
+      answer: |
+        Use tiered system per Game Designer:
+        0-3%: +15% demand bonus
+        4-7%: Neutral
+        8-12%: -10 to -20%
+        13-16%: -25 to -40%
+        17-20%: -50 to -60%
+      rationale: "Discrete tiers are easier for players to understand. Clear breakpoints in decision-making."
+      resolved_by: game-designer
+      evidence: "Game Designer Section 'Proposed Tribute Tiers' table provides exact values."
+
+  - id: Q027
+    status: resolved
+    author: economy-engineer
+    target: game-designer
+    question: "Bankruptcy Consequences: What happens at -50,000 credits? Options: forced restart, GM takeover, forced austerity, nothing (sandbox)."
+    resolution:
+      answer: "No bankruptcy/game over. Colony continues. Emergency bonds offered. Services may degrade but never fully stop. This is a sandbox."
+      rationale: "Core design principle: sandbox safety. Deficit is manageable state. Players have time and options to recover."
+      resolved_by: game-designer
+      evidence: "Game Designer Section 'Sandbox Financial Philosophy' explicitly states 'no bankruptcy, no game over'."
+
+  - id: Q028
+    status: resolved
+    author: economy-engineer
+    target: game-designer
+    question: "Ordinance Priority: MVP or deferred to polish pass?"
+    resolution:
+      answer: "Framework + 2-3 sample ordinances in Epic 11 MVP. Full ordinance library deferred to polish."
+      rationale: "Proves the system works. Allows testing economy impact. Full library is content, not architecture."
+      resolved_by: economy-engineer
+      evidence: "Economy Engineer Section 6.1 explicitly states 'Deferred to Epic 11 Phase 2' for full system."
+
+  - id: Q029
+    status: resolved
+    author: economy-engineer
+    target: game-designer
+    question: "Bond Limits: Maximum concurrent bonds per player?"
+    resolution:
+      answer: "Maximum 5 bonds per player."
+      rationale: "Simple limit. Prevents extreme leverage while allowing meaningful debt strategies."
+      resolved_by: economy-engineer
+      evidence: "Economy Engineer Section 4.6 shows 'max 5 bonds' in memory budget calculation."
+
+  # ============================================================================
+  # ECONOMY ENGINEER -> SERVICES ENGINEER (answered by available info)
+  # ============================================================================
+
+  - id: Q030
+    status: resolved
+    author: economy-engineer
+    target: services-engineer
+    question: "Service Funding Integration: Direct field in ServiceProviderComponent or query IEconomyQueryable?"
+    resolution:
+      answer: "ServicesSystem queries IEconomyQueryable.get_funding_level(ServiceType, owner). No funding field in component."
+      rationale: "Economy is source of truth for budget. Services don't cache economy data - they query it."
+      resolved_by: systems-architect
+      evidence: "Systems Architect Section 5.2 describes bidirectional integration. interfaces.yaml IEconomyQueryable includes get_funding_level method."
+
+  - id: Q031
+    status: resolved
+    author: economy-engineer
+    target: services-engineer
+    question: "Service Maintenance Costs: Scale with funding level or fixed regardless?"
+    resolution:
+      answer: "Costs scale with funding. 50% funding = 50% cost, 125% funding = 125% cost."
+      rationale: "Intuitive relationship. You pay for what you fund. Underfunding saves money but reduces effectiveness."
+      resolved_by: game-designer
+      evidence: "Game Designer 'Funding Impact Table' shows expenditure column scales linearly with funding."
+
+  # ============================================================================
+  # ECONOMY ENGINEER -> POPULATION ENGINEER (answered by available info)
+  # ============================================================================
+
+  - id: Q032
+    status: resolved
+    author: economy-engineer
+    target: population-engineer
+    question: "Population Effect on Tribute: Does PopulationSystem reliably update BuildingOccupancyComponent.current_occupancy each tick?"
+    resolution:
+      answer: "Yes. PopulationSystem (priority 50) updates occupancy before EconomySystem (priority 60) runs. EconomySystem can rely on current occupancy values."
+      rationale: "Tick ordering ensures data freshness. PopulationSystem completes before Economy needs the data."
+      resolved_by: systems-architect
+      evidence: "Systems Architect Section 2.1 Tick Order Context shows PopulationSystem at 50, EconomySystem at 60."
+
+  - id: Q033
+    status: resolved
+    author: economy-engineer
+    target: population-engineer
+    question: "Tribute Impact on Migration: Emit TributeChangedEvent or have PopulationSystem query tribute rates?"
+    resolution:
+      answer: "PopulationSystem queries IEconomyQueryable.get_average_tribute_rate(owner) for migration calculations. No event needed."
+      rationale: "Query pattern is simpler. DemandSystem already queries tribute rates - Population can too. Events add unnecessary complexity for slowly-changing values."
+      resolved_by: systems-architect
+      evidence: "Systems Architect Section 2.1 shows DemandSystem (52) queries tribute rates. Same pattern for Population."
+
+# ============================================================================
+# SUMMARY
+# ============================================================================
+
+summary:
+  total_threads: 33
+  resolved: 33
+  pending: 0
+  key_decisions:
+    - "Per-zone tribute rates (habitation, exchange, fabrication) each 0-20%, default 7%"
+    - "Per-phase budget processing (12 times per cycle)"
+    - "Funding levels 0-150% with non-linear effectiveness curve"
+    - "Maximum 5 bonds per player with tiered fixed interest rates"
+    - "Sandbox-safe design: no bankruptcy, deficit is manageable"
+    - "Ordinance framework + 2-3 samples in MVP, full library deferred"
+    - "MaintenanceCostComponent on infrastructure entities"
+    - "TreasuryState as system-owned data, not ECS component"

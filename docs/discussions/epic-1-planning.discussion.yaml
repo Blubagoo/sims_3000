@@ -1,0 +1,2046 @@
+# Epic 1 Planning Discussion
+topic: "Epic 1 Planning: Multiplayer Networking"
+created: "2026-01-25"
+status: active
+participants:
+  - systems-architect
+  - engine-developer
+  - qa-engineer
+  - game-designer
+
+threads:
+  # Questions from systems-architect to engine-developer
+  - id: Q001
+    status: answered
+    author: systems-architect
+    target: engine-developer
+    timestamp: "2026-01-25"
+    question: |
+      What socket library should we use? Options: raw BSD sockets, SDL_net (if it exists for SDL3), ENet, boost::asio, or custom abstraction over platform APIs?
+    answers:
+      - author: "engine-developer"
+        timestamp: "2026-01-26"
+        answer: |
+          Recommend **ENet** for the following reasons:
+
+          1. **Reliable UDP with ordered channels**: ENet provides reliable UDP which gives us the best of both worlds - low latency of UDP with reliability guarantees when needed. It supports multiple channels so we can separate time-critical state updates (unreliable) from important events like player actions (reliable).
+
+          2. **Simple C API**: Lightweight, no heavy dependencies. Integrates easily with our existing C++ codebase and vcpkg.
+
+          3. **Proven in games**: Battle-tested in many multiplayer games, well-documented failure modes.
+
+          4. **Cross-platform**: Works on Windows, Linux, macOS without platform-specific code.
+
+          Why NOT the alternatives:
+          - **Raw BSD sockets**: Too low-level, we would reimplement ENet poorly
+          - **SDL_net**: SDL3 does not include SDL_net; it is a separate library and only provides basic TCP/UDP without reliability layer
+          - **boost::asio**: Overkill, pulls in Boost dependency, designed for general networking not games
+          - **Custom abstraction**: Time sink with no benefit over ENet
+
+          Add `enet` to vcpkg.json. Wrap in a thin NetworkTransport abstraction for testability.
+
+  - id: Q002
+    status: answered
+    author: systems-architect
+    target: engine-developer
+    timestamp: "2026-01-25"
+    question: |
+      For database persistence, SQLite is simple but single-writer. Should we use a separate DB thread with message passing, or serialize all DB writes to the server's main thread?
+    answers:
+      - author: "engine-developer"
+        timestamp: "2026-01-26"
+        answer: |
+          Recommend **separate DB thread with message passing** for the following reasons:
+
+          **Architecture:**
+          ```
+          Main Thread (Simulation)     DB Thread
+          ----------------------       ---------
+          [Tick N completes] ------>   [Queue: Write tick N state]
+          [Tick N+1 starts]            [Writing to SQLite...]
+          [Tick N+1 completes] ---->   [Queue: Write tick N+1 state]
+          ```
+
+          **Why separate thread:**
+          1. **Non-blocking simulation**: SQLite writes can take 5-50ms depending on transaction size. At 20 ticks/sec (50ms budget), we cannot afford blocking.
+
+          2. **Write coalescing**: If DB falls behind, we can coalesce multiple tick states into one write (only latest state matters for crash recovery).
+
+          3. **Graceful degradation**: If disk is slow, simulation continues smoothly while DB catches up.
+
+          **Implementation approach:**
+          - Single producer (main thread), single consumer (DB thread)
+          - Lock-free queue (or simple mutex queue - contention is low)
+          - DB thread owns SQLite connection exclusively (no threading issues)
+          - Use SQLite WAL mode for better concurrent read performance
+
+          **Message types:**
+          - `PersistStateMessage`: Full or delta state to persist
+          - `ShutdownMessage`: Flush pending writes and exit cleanly
+
+          **Threading safety:**
+          - Main thread only produces messages, never touches SQLite
+          - DB thread only consumes messages, has exclusive SQLite access
+          - No shared mutable state beyond the message queue
+
+          **Why NOT main thread serialization:**
+          - 50ms tick budget is too tight for disk I/O variance
+          - Disk hiccups would cause visible stuttering for all players
+
+  - id: Q003
+    status: answered
+    author: systems-architect
+    target: engine-developer
+    timestamp: "2026-01-25"
+    question: |
+      What's the expected latency budget? 100ms round-trip is typical LAN, 200-500ms for internet. How should we tune keepalive intervals and timeout thresholds?
+    answers:
+      - author: "engine-developer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Target latency budget: 250ms round-trip for comfortable play**
+
+          This is a city builder, not a twitch shooter. Players are making strategic decisions, not frame-perfect inputs. 250ms RTT is acceptable for the genre.
+
+          **Recommended tuning:**
+
+          | Parameter | Value | Rationale |
+          |-----------|-------|-----------|
+          | Keepalive interval | 1000ms | Balance between responsiveness and overhead |
+          | Disconnect timeout | 5000ms | Allow for brief network hiccups |
+          | Reconnection grace period | 30000ms | Player can alt-tab, brief ISP blip, etc. |
+
+          **Latency tiers and expected experience:**
+          - **0-100ms (LAN)**: Excellent. Actions feel instant.
+          - **100-250ms (good internet)**: Good. Slight delay but acceptable for genre.
+          - **250-500ms (poor internet)**: Playable. Noticeable delay, but city builders tolerate this.
+          - **500ms+ (bad connection)**: Degraded. Show warning indicator, but keep trying.
+
+          **Keepalive implementation:**
+          - Client sends keepalive every 1000ms if no other traffic
+          - Server responds with timestamp for RTT measurement
+          - RTT displayed in UI (optionally) for player awareness
+          - If 5 consecutive keepalives fail (5000ms), trigger disconnect
+
+          **Reconnection flow:**
+          1. Connection lost -> show "Reconnecting..." overlay
+          2. Auto-retry every 2000ms for 30 seconds
+          3. If successful within 30s, seamless resume with state sync
+          4. If failed after 30s, show "Connection Lost" with manual retry button
+
+          **ENet specifics:**
+          - ENet handles keepalives internally, but we should add application-level for RTT stats
+          - Set `ENET_PEER_TIMEOUT` based on our 5000ms disconnect threshold
+
+  - id: Q004
+    status: answered
+    author: systems-architect
+    target: engine-developer
+    timestamp: "2026-01-25"
+    question: |
+      For message serialization, should we use a library (FlatBuffers, protobuf, Cap'n Proto) or hand-roll binary serialization? Epic 0 established manual serialization - continue that pattern?
+    answers:
+      - author: "engine-developer"
+        timestamp: "2026-01-26"
+        answer: |
+          Recommend **continue manual binary serialization** with structured helpers.
+
+          **Rationale:**
+
+          1. **Consistency with Epic 0**: We already have patterns established. Introducing a new serialization library adds cognitive overhead and a learning curve.
+
+          2. **Zero-copy potential**: Manual serialization lets us write directly to network buffers when needed.
+
+          3. **No external tooling**: Protobuf/FlatBuffers require schema compilers in the build pipeline.
+
+          4. **Minimal overhead**: Our components are simple POD types. The complexity of schema-based serializers is not justified.
+
+          **Improvements over naive manual approach:**
+
+          Create a `NetworkBuffer` class with helpers:
+          ```cpp
+          class NetworkBuffer {
+              void write_u8(uint8_t v);
+              void write_u16(uint16_t v);  // Little-endian
+              void write_u32(uint32_t v);
+              void write_i32(int32_t v);
+              void write_f32(float v);
+              void write_string(std::string_view s);  // Length-prefixed
+
+              uint8_t read_u8();
+              uint16_t read_u16();
+              // ... etc
+          };
+          ```
+
+          **Component serialization pattern:**
+          ```cpp
+          // Each component type provides serialize/deserialize
+          void PositionComponent::serialize(NetworkBuffer& buf) const {
+              buf.write_i32(grid_x);
+              buf.write_i32(grid_y);
+              buf.write_i32(elevation);
+          }
+          ```
+
+          **Message envelope:**
+          ```
+          [2 bytes: message type]
+          [2 bytes: payload length]
+          [N bytes: payload]
+          ```
+
+          **Versioning (for Q032):**
+          - Add version byte to message envelope when needed
+          - Start at version 1, increment on breaking changes
+
+          **Why NOT external libraries:**
+          - FlatBuffers: Good for complex schemas, overkill for our simple components
+          - Protobuf: Runtime overhead, requires .proto files and codegen
+          - Cap'n Proto: Complex, designed for larger scale systems
+
+  - id: Q005
+    status: answered
+    author: systems-architect
+    target: engine-developer
+    timestamp: "2026-01-25"
+    question: |
+      How should we handle the two-phase server startup? Phase 1: Load DB state. Phase 2: Accept connections. Should there be a "loading" period where connections are queued but not processed?
+    answers:
+      - author: "engine-developer"
+        timestamp: "2026-01-26"
+        answer: |
+          Recommend **accept connections immediately, but hold in "pending" state until ready**.
+
+          **Startup sequence:**
+
+          ```
+          Phase 1: Initialization (no network)
+          --------------------------------------
+          1. Parse config, validate settings
+          2. Initialize logging
+          3. Start listening socket (but do not process yet)
+
+          Phase 2: State Loading
+          --------------------------------------
+          4. Load world state from database
+          5. Reconstruct ECS registry
+          6. Validate loaded state integrity
+          7. Set server status = READY
+
+          Phase 3: Accept Players
+          --------------------------------------
+          8. Process pending connections
+          9. Begin simulation tick loop
+          ```
+
+          **Connection handling during loading:**
+
+          When socket receives connection during Phase 2:
+          1. Accept the TCP/ENet connection (do not reject)
+          2. Send immediate message: `ServerStatusMessage { status: LOADING, estimated_wait_ms }`
+          3. Hold connection in pending list (no gameplay messages processed)
+          4. Client shows "Server is loading world..." with optional progress
+
+          **Why accept early:**
+          - Rejecting connections means client retries repeatedly, creating load
+          - Players see immediate feedback that server exists and is working
+          - Prevents "is the server down?" confusion
+
+          **Estimated wait calculation:**
+          - Track DB load progress (rows loaded / total rows)
+          - Provide rough estimate to client for UX
+
+          **Transition to ready:**
+          1. Server sets status = READY
+          2. For each pending connection:
+             - Send `ServerReadyMessage`
+             - Send `FullStateMessage` (world snapshot)
+             - Move to active player list
+          3. Begin simulation ticks
+
+          **Failure handling:**
+          - If DB load fails, send `ServerErrorMessage` to pending connections
+          - Clean shutdown with clear error messaging
+
+          **Implementation notes:**
+          - Server state machine: `INITIALIZING -> LOADING -> READY -> RUNNING`
+          - Only `RUNNING` state processes gameplay messages
+          - Keepalives processed in all states to maintain connection health
+
+  # Questions from systems-architect to qa-engineer
+  - id: Q006
+    status: answered
+    author: systems-architect
+    target: qa-engineer
+    timestamp: "2026-01-25"
+    question: |
+      What network conditions should we test? Packet loss, high latency, jitter, reconnection scenarios? Should we build a network simulation layer for testing?
+    answers:
+      - author: "qa-engineer"
+        timestamp: "2026-01-26"
+        answer: |
+          Yes, we should build a network simulation layer. Here are the conditions to test:
+
+          **Network Condition Profiles:**
+          1. `PERFECT` - 0ms latency, 0% loss (unit test baseline)
+          2. `LAN` - 1-5ms latency, 0% loss (local multiplayer)
+          3. `GOOD_WIFI` - 20-50ms latency, 0.1% loss (typical home setup)
+          4. `POOR_WIFI` - 50-200ms latency, 2% loss (degraded conditions)
+          5. `MOBILE_3G` - 100-500ms latency, 5% loss (worst supported case)
+          6. `HOSTILE` - 500-2000ms latency, 20% loss (stress testing only)
+
+          **Specific Scenarios:**
+          - Packet loss: Random drops, burst drops (consecutive packets), asymmetric loss (send vs receive)
+          - Latency: Fixed delay, variable jitter (random variation around baseline)
+          - Bandwidth throttling: Simulate slow connections backing up message queues
+          - Reconnection: Clean disconnect, abrupt disconnect, rapid reconnect cycles
+          - Out-of-order delivery (if using UDP): Messages arriving in wrong sequence
+
+          **Implementation Recommendation:**
+          Build a `NetworkSimulator` wrapper that sits between our code and the real socket layer. In test mode, it intercepts all traffic and applies configurable degradation. This gives us:
+          - Deterministic tests (same seed = same packet drops)
+          - Fast unit tests (no real network needed)
+          - Realistic integration tests (real sockets + simulated conditions)
+
+          The simulator should be injectable via interface (ISocket), allowing MockSocket for unit tests and RealSocket+Simulator for integration tests.
+
+  - id: Q007
+    status: answered
+    author: systems-architect
+    target: qa-engineer
+    timestamp: "2026-01-25"
+    question: |
+      How do we test multiplayer without multiple machines? Multiple client instances on same machine? Headless test harness?
+    answers:
+      - author: "qa-engineer"
+        timestamp: "2026-01-26"
+        answer: |
+          We should use a **multi-layered approach** with different strategies for different test types:
+
+          **1. Unit Tests: Mock everything (no network)**
+          - Use `MockSocket` that stores messages in memory
+          - Synchronous message passing for deterministic tests
+          - No actual network stack involved
+          - Fast, reliable, runs anywhere
+
+          **2. Integration Tests: Localhost multi-instance**
+          - Server + multiple clients in the same process using separate threads
+          - Each client gets its own `TestClient` wrapper with its own socket to localhost
+          - Advantages: Easy state inspection, single debugger, fast
+          - Consider using named pipes or loopback for Windows compatibility
+
+          **3. End-to-End Tests: Separate processes on localhost**
+          - Spawn server as subprocess, spawn client processes
+          - More realistic but slower
+          - Use for final validation before release
+
+          **Recommended Test Harness Architecture:**
+          ```
+          TestHarness
+            |-- start_server() -> TestServer (in-process or subprocess)
+            |-- create_client(id) -> TestClient (scriptable)
+            |-- wait_for_sync() -> blocks until all clients synced
+            |-- assert_state_match() -> compares server and all client states
+          ```
+
+          **Headless Mode: Yes, essential.**
+          - Both server and client should run without graphics (no SDL window)
+          - Client in headless mode skips rendering but processes all state
+          - Enables CI testing without display server
+          - Add `--headless` flag or build configuration
+
+          **Practical Notes:**
+          - Windows limitation: Same process can bind multiple localhost ports
+          - Consider process isolation for crash recovery tests
+          - Use port 0 to let OS assign available ports (avoids conflicts)
+
+  - id: Q008
+    status: answered
+    author: systems-architect
+    target: qa-engineer
+    timestamp: "2026-01-25"
+    question: |
+      What are the failure modes we need to validate? Server crash recovery, client crash recovery, mid-action disconnect, malformed messages?
+    answers:
+      - author: "qa-engineer"
+        timestamp: "2026-01-26"
+        answer: |
+          Here is the comprehensive failure mode matrix, organized by priority:
+
+          **P0 - Must Test (blocks release):**
+
+          | Failure Mode | Test Approach | Expected Behavior |
+          |--------------|---------------|-------------------|
+          | Server crash mid-game | Kill server process, restart, clients reconnect | Clients detect timeout, reconnect, receive snapshot, resume play |
+          | Client crash mid-game | Kill client process, restart, rejoin | Server continues, client gets snapshot on rejoin |
+          | Mid-action disconnect | Disconnect during build placement | Action cancelled per Q010 answer, no partial state |
+          | Malformed message (truncated) | Send partial message bytes | Server drops message, logs warning, connection survives |
+          | Malformed message (garbage) | Send random bytes | Server drops message, logs warning, connection survives |
+          | Invalid message type | Send unknown message type ID | Server ignores, logs warning, connection survives |
+          | Message too large | Send message exceeding buffer | Rejected before parsing, connection survives |
+
+          **P1 - Should Test (important edge cases):**
+
+          | Failure Mode | Test Approach | Expected Behavior |
+          |--------------|---------------|-------------------|
+          | Disconnect during snapshot receive | Kill connection mid-snapshot | Client detects incomplete transfer, retries full snapshot |
+          | Disconnect during delta apply | Kill connection mid-delta | Client state may be partial, next sync corrects |
+          | Server full (max players) | 5th player tries to join 4-player game | Clean rejection message, no server impact |
+          | Client sends action for wrong player | Forge PlayerID in message | Server rejects, logs security warning |
+          | Client sends action for tile they don't own | Build on another player's tile | Server rejects per ownership rules |
+          | Duplicate connection (same player ID) | Same player joins twice | First connection kicked or second rejected |
+          | Rapid connect/disconnect cycles | Connect/disconnect 10 times in 5 seconds | Server handles gracefully, no resource leaks |
+
+          **P2 - Nice to Test (robustness):**
+
+          | Failure Mode | Test Approach | Expected Behavior |
+          |--------------|---------------|-------------------|
+          | Out-of-order messages | Reorder message sequence | Either handled (sequence numbers) or detected and corrected |
+          | Replay attack | Resend old valid message | Idempotent handling or sequence rejection |
+          | Very slow client | Client processes at 1/10th speed | Server continues, client catches up or times out |
+          | Memory pressure | Low memory conditions | Graceful degradation, no corruption |
+          | Network partition | Firewall blocks traffic temporarily | Timeout detection, reconnection when restored |
+
+          **Security-Related Failure Modes:**
+          - Fuzz testing on all deserialization code paths
+          - Integer overflow in message size fields
+          - Buffer overflow in string fields
+          - Negative values where unsigned expected
+
+          **Resource Leak Tests:**
+          - Connect/disconnect 1000 times, verify memory stable
+          - Create/destroy entities rapidly, verify no handle leaks
+          - Verify socket cleanup on abnormal disconnect
+
+  - id: Q009
+    status: answered
+    author: systems-architect
+    target: qa-engineer
+    timestamp: "2026-01-25"
+    question: |
+      Should we have automated integration tests for the sync protocol? E.g., spin up server + clients, perform actions, verify state consistency?
+    answers:
+      - author: "qa-engineer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Yes, absolutely.** Automated integration tests for the sync protocol are essential. This is one of the highest-risk areas in the codebase.
+
+          **Recommended Test Categories:**
+
+          **1. Smoke Tests (run on every commit, under 30 seconds)**
+          - Server starts and accepts connection
+          - Client connects and receives initial state
+          - Two clients connect and see each other
+          - Client sends action, server processes, both clients see result
+          - Client disconnects gracefully
+
+          **2. Scenario Tests (run on PR merge, under 5 minutes)**
+          - Full 4-player session lifecycle
+          - Late join: Player joins mid-game, receives correct snapshot
+          - Reconnection: Player disconnects and rejoins
+          - Concurrent actions: All 4 players act simultaneously
+          - Entity lifecycle: Create building, modify, destroy - all clients sync
+
+          **3. State Consistency Tests (run nightly, under 30 minutes)**
+          - Long-running session (1000 ticks) with random actions
+          - After each tick batch, assert: `server_state == client1_state == client2_state == ...`
+          - Use deterministic RNG seeding for reproducibility
+          - If desync detected, dump full state diff for debugging
+
+          **4. Chaos Tests (run weekly, under 2 hours)**
+          - Random network conditions (latency/loss profiles)
+          - Random disconnects/reconnects during test
+          - Random message delays and reordering
+          - Goal: No crashes, no hangs, eventual consistency
+
+          **Implementation Requirements:**
+
+          **State Comparison Utilities:**
+          ```cpp
+          class StateDiffer {
+              // Returns list of differences between two ECS states
+              std::vector<Difference> diff(const Registry& a, const Registry& b);
+
+              // Human-readable diff output
+              std::string format_diff(const std::vector<Difference>& diffs);
+          };
+          ```
+
+          **Test Assertions:**
+          ```cpp
+          // Assert all participants have identical game state
+          ASSERT_STATES_EQUAL(server, client1, client2, client3, client4);
+
+          // Assert specific entity has expected components
+          ASSERT_ENTITY_HAS(entity_id, PositionComponent{10, 20, 0}, OwnershipComponent{player_1});
+          ```
+
+          **CI Configuration:**
+          - Smoke tests: Every commit, required to pass
+          - Scenario tests: Every PR, required to pass
+          - Consistency tests: Nightly, alerts on failure
+          - Chaos tests: Weekly, informational (tracks stability trends)
+
+          **Determinism Requirements:**
+          - Seeded RNG for reproducible tests
+          - Configurable tick rate (faster for tests)
+          - Ability to replay test from seed on failure
+
+  # Questions from systems-architect to game-designer
+  - id: Q010
+    status: answered
+    author: systems-architect
+    target: game-designer
+    timestamp: "2026-01-25"
+    question: |
+      When a player disconnects mid-action (e.g., placing a building), what happens? Cancel the action, or complete it? Server-authoritative means server decides, but what's the UX intent?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Cancel the action.** The UX intent should favor predictability and player agency over convenience.
+
+          **Rationale:**
+          - In an endless sandbox with social/casual vibe, players should never feel like the game "did something" they didn't explicitly confirm
+          - Building placement is a commitment of credits - completing an action the player didn't see confirmed feels like losing money unexpectedly
+          - If connection is unstable, completing actions could lead to "I didn't place that there!" frustration
+
+          **Implementation guidance:**
+          - Server should require a complete round-trip: Client sends intent -> Server validates -> Server confirms -> Client shows result
+          - If disconnect happens before confirmation reaches client, the server should roll back
+          - Use a brief window (e.g., 500ms) where pending actions are held before commit, allowing disconnect detection
+
+          **Player feedback:**
+          - On reconnect, if an action was cancelled, show a subtle notification: "Connection lost during placement - action cancelled"
+          - This teaches players to wait for confirmation on important actions without being punitive
+
+          **Alien theme note:**
+          - Message could be: "Neural link disrupted during materialization - construction order voided"
+
+  - id: Q011
+    status: answered
+    author: systems-architect
+    target: game-designer
+    timestamp: "2026-01-25"
+    question: |
+      For late join, how much history should a new player see? Just current state, or a brief "catch-up" log of recent significant events (buildings constructed, disasters, etc.)?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Current state + brief summary, not a detailed log.** New players should feel welcomed, not overwhelmed.
+
+          **What to show:**
+          1. **World summary panel** (one-time on join):
+             - "The world has been active for X cycles"
+             - "Y overseers are currently building"
+             - List of active players with colony population counts
+             - Optional: "Most prosperous colony: [Name] with X beings"
+
+          2. **Recent significant events** (last ~10 cycles worth, max 5 items):
+             - Major catastrophes that affected multiple colonies
+             - Milestone achievements (first player to reach X population)
+             - NOT individual building placements or routine events
+
+          3. **Visual storytelling over text:**
+             - Ghost towns and ruins tell their own story visually
+             - Prosperous colonies are self-evident
+             - Let the world state speak rather than explaining it
+
+          **What NOT to show:**
+          - Detailed construction history (too granular, not interesting)
+          - Every chat message (see Q013 for chat handling)
+          - Price histories or market movements (cognitive load)
+
+          **Alien theme note:**
+          - Summary could be framed as: "Hive Mind Historical Archive - Recent Cycles"
+          - This reinforces the collective/connected nature of the alien civilization
+
+          **Rationale:**
+          - New players want to jump in and play, not read history
+          - Social dynamics: seeing other players' progress creates healthy aspiration
+          - Keeps focus on "what can I do now?" not "what did I miss?"
+
+  - id: Q012
+    status: answered
+    author: systems-architect
+    target: game-designer
+    timestamp: "2026-01-25"
+    question: |
+      The ghost town process is triggered by "prolonged inactivity" - what's the threshold? 24 real-world hours? 100 simulation cycles? Should it be configurable by server operator?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Use real-world time as primary measure, with server-configurable defaults.** Simulation cycles vary based on game speed settings, making them unreliable for absence detection.
+
+          **Recommended defaults:**
+
+          | Stage | Duration | Rationale |
+          |-------|----------|-----------|
+          | Active -> Abandoned | 7 real-world days of inactivity | Life happens - vacation, busy week. A week is forgiving. |
+          | Abandoned -> Ghost Town | 14 real-world days | Visual decay period, player might return |
+          | Ghost Town -> Cleared | 7 real-world days | Gives time for the "haunted" aesthetic before reset |
+
+          **Total cycle: ~28 days from last activity to tile available**
+
+          **Why real-world time:**
+          - Players think in real-world time ("I was gone for a week")
+          - Simulation cycles depend on game speed and server uptime
+          - Fair across all players regardless of play schedule
+
+          **Server configurability: YES, essential.**
+          - Private friend groups might want shorter (more dynamic, tiles recycle faster)
+          - Public servers might want longer (more forgiving for casual players)
+          - Suggested config options:
+            - `inactivity_threshold_hours: 168` (7 days default)
+            - `abandoned_duration_hours: 336` (14 days default)
+            - `ghost_town_duration_hours: 168` (7 days default)
+
+          **"Activity" definition:**
+          - Any player action (building, zoning, purchasing) resets the timer
+          - Simply being connected but AFK should NOT count (prevents "leave client running" exploits)
+          - Could add optional "check-in" ping for players who want to preserve colonies while observing
+
+          **Alien theme note:**
+          - The UI could show: "Last neural link activity: X rotations ago"
+          - Warning at 5 days: "Colony entering dormant state in 2 rotations - reconnect to maintain control"
+
+  - id: Q013
+    status: answered
+    author: systems-architect
+    target: game-designer
+    timestamp: "2026-01-25"
+    question: |
+      Chat messages - should they be persistent (stored in DB) or ephemeral (lost on disconnect)? How many messages to show to late-joining players?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Hybrid approach: Session-persistent, not forever-persistent.**
+
+          **Storage model:**
+          - Store chat in DB, but with automatic cleanup
+          - Keep messages for the current "session" (defined as continuous server uptime)
+          - On server restart, clear chat history (fresh start)
+          - Optional: Keep last 24 real-world hours worth regardless of restarts
+
+          **For late-joining players:**
+          - Show last **20-30 messages** or **last 1 hour of chat**, whichever is less
+          - Visual separator: "--- You joined the hive mind ---" marker
+          - Messages before join are slightly faded/dimmed to indicate they're historical
+
+          **Why not fully ephemeral:**
+          - Reconnecting players lose context of conversations they were just in
+          - Late joiners can see the social "vibe" of the server
+          - Helps with onboarding ("oh, these players seem friendly")
+
+          **Why not forever-persistent:**
+          - Chat history becomes overwhelming
+          - Privacy concerns (players might say things they regret)
+          - Storage costs scale linearly forever
+          - Old chat becomes irrelevant noise
+
+          **Social dynamics considerations:**
+          - Chat creates community - some persistence supports this
+          - But chat shouldn't be a permanent record - that changes behavior
+          - Players should feel free to be casual and silly
+
+          **Implementation notes:**
+          - Add timestamp to each message for age-based display decisions
+          - Consider rate limiting (see Q039) to prevent spam from filling history
+          - System messages (player joined/left, milestones) should be styled differently
+
+          **Alien theme note:**
+          - Chat could be framed as "Hive Link" or "Collective Channel"
+          - System messages: "[Hive] New overseer detected in sector 7"
+          - The faded historical messages could use alien color scheme (bioluminescent glow?)
+
+  - id: Q014
+    status: answered
+    author: systems-architect
+    target: game-designer
+    timestamp: "2026-01-25"
+    question: |
+      For the lobby phase before game start, what does a player see/do? Empty map preview? Player list? Ready checkbox? Alien-themed "Awaiting fellow overseers..." messaging?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Important clarification:** Given that this is an endless sandbox with late-join, do we even need a traditional "lobby"?
+
+          **Recommended: Minimal lobby, emphasis on "jump in"**
+
+          **Scenario A: Joining an existing world (most common)**
+          - No lobby needed - player connects directly to active world
+          - Brief loading screen while receiving world state
+          - Loading screen shows: world name, active overseers, world age
+          - Then immediately into gameplay with tutorial/onboarding overlay if first time
+
+          **Scenario B: Creating a new world (host starting fresh)**
+          - Simple setup screen (not a "waiting room"):
+            - World name (default: procedural alien name like "Nexus-7" or "Hive Cluster Omega")
+            - Map size selection
+            - Optional: starting conditions/difficulty
+          - Host clicks "Initiate World" and is immediately in-game
+          - Other players can join whenever - no "ready up" needed
+
+          **If we DO want a pre-game staging area:**
+
+          | Element | Design |
+          |---------|--------|
+          | Map preview | YES - shows terrain, water, resources. Creates anticipation. |
+          | Player list | YES - show connected overseers with faction colors |
+          | Ready checkbox | NO - feels competitive/rushed. Casual vibe means "start when ready" |
+          | Messaging | YES - alien themed and warm |
+
+          **Alien-themed messaging examples:**
+          - Connecting: "Establishing neural link to hive cluster..."
+          - Waiting: "The collective awaits your contribution, Overseer"
+          - Others joining: "[Name] has synchronized with the hive mind"
+          - World ready: "The uncharted sectors call. Claim your domain."
+
+          **Feel goals:**
+          - Welcoming, not competitive
+          - Anticipation, not impatience
+          - Connection to theme immediately (before gameplay even starts)
+
+          **What players should DO in staging:**
+          - Chat with other players
+          - View map to plan where they might settle
+          - Customize their faction color
+          - Read brief "how to play" if new
+
+          **Recommendation:**
+          Skip traditional lobby entirely. Let host create world and immediately play. Others join into the live world. The "social gathering" happens IN the game, not before it. This supports the endless sandbox feel better than a lobby gate.
+
+  - id: Q015
+    status: answered
+    author: systems-architect
+    target: game-designer
+    timestamp: "2026-01-25"
+    question: |
+      When server rejects a player action (e.g., can't afford building), how should the rejection be communicated? Immediate UI feedback? Toast notification? Sound effect?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Multi-layered feedback: Prevention first, then clear rejection.**
+
+          **Prevention Layer (Before action is sent):**
+          - UI should gray out / disable options the player can't afford
+          - Hovering over disabled option shows why: "Requires 500 credits (you have 320)"
+          - Building placement preview shows red/invalid overlay on unbuildable tiles
+          - This catches 90% of cases before server involvement
+
+          **Rejection Layer (Server denies action):**
+          When prevention fails or state changed between UI render and action:
+
+          | Feedback Type | Use When | Implementation |
+          |---------------|----------|----------------|
+          | Visual shake | Building placement rejected | Ghost building "shakes" briefly then fades |
+          | Color flash | Any rejection | Brief red pulse on relevant UI element |
+          | Sound effect | All rejections | Short, non-harsh "denied" sound (think soft buzz, not alarm) |
+          | Toast notification | Always | Explains WHY in text |
+          | Cursor feedback | Placement actions | Cursor briefly shows "X" or error state |
+
+          **Toast notification format:**
+          - Brief and specific: "Insufficient credits: need 500, have 320"
+          - NOT vague: "Action failed" (frustrating, not helpful)
+          - Position: Top-center or near cursor, not corner (should be noticed)
+          - Duration: 3 seconds, dismissable by clicking
+
+          **Sound design guidance:**
+          - Should feel like "that didn't work" not "you failed"
+          - Soft, organic sound fits alien theme (biological click/buzz)
+          - Distinct from success sounds but not jarring
+          - Volume lower than success sounds (rejection shouldn't be punishing)
+
+          **Emotional goal:**
+          - Player should feel informed, not scolded
+          - "Oh, I can't do that" not "WRONG! BAD!"
+          - Casual game = gentle feedback
+
+          **Alien theme note:**
+          - Toast could have subtle alien styling (organic border, bioluminescent text)
+          - Sound could be organic/biological rather than mechanical beep
+          - Message flavor: "Insufficient energy reserves" not "Can't afford"
+
+          **Edge case - latency-caused rejection:**
+          - If player had enough credits when they clicked but another action spent them first
+          - Message should acknowledge this: "Credits depleted during transmission"
+          - Helps players understand it's not their mistake
+
+  # Questions from engine-developer to systems-architect
+  - id: Q016
+    status: answered
+    author: engine-developer
+    target: systems-architect
+    timestamp: "2026-01-25"
+    question: |
+      For the server executable, should we use the same single-executable approach from Epic 0 (--server flag) or create a dedicated server project in CMake? The single executable is simpler but the server will eventually need different dependencies (database driver, no SDL video).
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-26"
+        answer: |
+          **Recommendation: Single executable with --server flag for MVP.**
+
+          Rationale:
+          1. **Epic 0 already established this pattern** - Ticket 0-006 defines --server flag behavior. Changing now adds unnecessary complexity.
+          2. **Conditional SDL initialization** - Server mode skips SDL_INIT_VIDEO while using SDL_INIT_TIMER and SDL_INIT_EVENTS. Already planned per Epic 0.
+          3. **Database driver is a runtime dependency** - SQLite links in both modes but only activates in server mode. Code size penalty is negligible.
+          4. **Simpler deployment** - One executable, operators choose mode at runtime.
+
+          **Implementation:**
+          ```cpp
+          if (is_server_mode) {
+              SDL_Init(SDL_INIT_TIMER | SDL_INIT_EVENTS);
+          } else {
+              SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_EVENTS);
+          }
+          ```
+
+          **Future consideration:** If binary size becomes problematic (unlikely given 2-4 player scope), split into two CMake targets sharing common libraries. YAGNI applies here.
+
+  - id: Q017
+    status: answered
+    author: engine-developer
+    target: systems-architect
+    timestamp: "2026-01-25"
+    question: |
+      What's the expected message frequency for StateUpdateMessage? One per tick (20/sec) or batched? Canon says "sync happens after each simulation tick" which implies one per tick.
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-26"
+        answer: |
+          **One StateUpdateMessage per tick (20/sec), but with delta compression.**
+
+          Per canon patterns.yaml: "Server sends delta state updates to clients" after each tick. This means:
+
+          1. **Frequency:** 20 messages/second maximum (one per 50ms tick)
+          2. **Content:** Only changed components since last tick, not full state
+          3. **Empty ticks:** If nothing changed, send a minimal "tick N, no changes" message (or skip entirely with sequence number gap handling)
+
+          **Bandwidth estimation for 2-4 player city builder:**
+          - Typical tick: 0-50 component changes
+          - Average component size: ~20 bytes
+          - Per-tick payload: ~1KB average, spikes to 5-10KB during active building
+          - 20 ticks/sec = ~20-200 KB/sec per client (well within broadband)
+
+          **Batching consideration:**
+          For MVP, one message per tick is simpler and adequate. If bandwidth becomes problematic:
+          - Batch multiple ticks into one message during high-activity periods
+          - Use compression (LZ4 is fast, ~50% reduction typical)
+          - Prioritize visible region updates
+
+          **Implementation note:** Include tick number in each message for ordering. Clients can detect missed messages and request resync if gap exceeds threshold.
+
+  - id: Q018
+    status: answered
+    author: engine-developer
+    target: systems-architect
+    timestamp: "2026-01-25"
+    question: |
+      For entity ID synchronization, should clients maintain a bidirectional map (server ID <-> local EnTT handle) or can we require EnTT to use server-assigned IDs directly?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-26"
+        answer: |
+          **Recommendation: Use server-assigned IDs directly in EnTT.**
+
+          EnTT supports external entity ID management through `entt::registry::create(hint)` which allows specifying the entity ID. This is the simpler approach.
+
+          **Why direct IDs:**
+          1. **No mapping overhead** - No bidirectional map to maintain, no lookup costs
+          2. **Simpler debugging** - Entity 42 is entity 42 everywhere
+          3. **Simpler serialization** - No translation needed in network messages
+          4. **EnTT supports it** - `registry.create(entt::entity{server_id})` works
+
+          **Implementation:**
+          ```cpp
+          // Server creates entity with ID 42
+          auto entity = registry.create(entt::entity{42});
+
+          // Client receives "create entity 42" message
+          auto entity = registry.create(entt::entity{42});
+
+          // Both now reference the same logical entity
+          ```
+
+          **Caveats:**
+          1. **Server must manage ID allocation** - Use monotonic counter, never reuse IDs during session
+          2. **Client must not create entities locally** - All entities come from server
+          3. **Entity recycling** - EnTT recycles destroyed entity IDs by default; disable or manage carefully
+
+          **Alternative (bidirectional map) drawbacks:**
+          - Extra memory per entity
+          - Lookup cost on every network operation
+          - Complexity in maintaining consistency
+          - No significant benefit for our use case
+
+  - id: Q019
+    status: answered
+    author: engine-developer
+    target: systems-architect
+    timestamp: "2026-01-25"
+    question: |
+      How should we handle the scenario where a client is receiving a large snapshot during reconnection but other players are still playing? Queue up delta updates during snapshot transfer?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-26"
+        answer: |
+          **Yes, queue delta updates during snapshot transfer, then apply in order.**
+
+          **Recommended flow:**
+
+          1. **Server side:**
+             - Mark snapshot start tick (e.g., tick 1000)
+             - Begin streaming snapshot to reconnecting client
+             - Continue simulation normally for other clients
+             - Queue delta updates for reconnecting client (ticks 1001, 1002, ...)
+             - After snapshot sent, send queued deltas
+             - Resume normal delta streaming
+
+          2. **Client side:**
+             - Enter "Reconnecting" state
+             - Receive snapshot (may take multiple messages if large)
+             - Buffer any delta messages received during snapshot transfer
+             - Apply snapshot (clears local state, rebuilds from snapshot)
+             - Apply buffered deltas in tick order
+             - Enter "Playing" state, resume normal delta application
+
+          **Message protocol:**
+          ```
+          Server -> Client: SnapshotStart { tick: 1000, total_chunks: 5 }
+          Server -> Client: SnapshotChunk { index: 0, data: [...] }
+          Server -> Client: DeltaUpdate { tick: 1001, changes: [...] }  // client buffers
+          Server -> Client: SnapshotChunk { index: 1, data: [...] }
+          ...
+          Server -> Client: SnapshotEnd { tick: 1000 }
+          // Client applies snapshot, then buffered deltas 1001, 1002, etc.
+          ```
+
+          **Bounded queue:** Set max queued deltas (e.g., 100 ticks = 5 seconds). If exceeded, client requests fresh snapshot instead.
+
+  - id: Q020
+    status: answered
+    author: engine-developer
+    target: systems-architect
+    timestamp: "2026-01-25"
+    question: |
+      The canon mentions database-backed persistence. Should NetworkManager have an interface for persistence operations (saveState, loadState) even if the actual database is Epic 16?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-26"
+        answer: |
+          **Yes, define the interface now but implement with in-memory storage for Epic 1.**
+
+          **Rationale:**
+          1. **Interface stability** - Defining IPersistenceProvider now prevents Epic 16 from requiring NetworkManager changes
+          2. **Testability** - In-memory implementation enables testing save/load flows without SQLite
+          3. **Dependency inversion** - NetworkManager depends on abstraction, not concrete database
+
+          **Proposed interface:**
+          ```cpp
+          class IPersistenceProvider {
+          public:
+              virtual ~IPersistenceProvider() = default;
+
+              // Save current game state at given tick
+              virtual void saveCheckpoint(uint64_t tick, const GameState& state) = 0;
+
+              // Load most recent checkpoint
+              virtual std::optional<GameState> loadLatestCheckpoint() = 0;
+
+              // Append action to write-ahead log
+              virtual void logAction(uint64_t tick, const PlayerAction& action) = 0;
+
+              // Get actions since checkpoint for replay
+              virtual std::vector<PlayerAction> getActionsSince(uint64_t tick) = 0;
+          };
+          ```
+
+          **Epic 1 implementation: InMemoryPersistenceProvider**
+          - Stores checkpoints in `std::map<tick, GameState>`
+          - Stores action log in `std::vector<PlayerAction>`
+          - Data lost on server shutdown (acceptable for MVP testing)
+
+          **Epic 16 implementation: SQLitePersistenceProvider**
+          - Same interface, writes to database
+          - Server restart recovers state
+
+          This follows the Dependency Inversion Principle and allows Epic 16 to swap implementations without touching Epic 1 code.
+
+  # Questions from engine-developer to qa-engineer
+  - id: Q021
+    status: answered
+    author: engine-developer
+    target: qa-engineer
+    timestamp: "2026-01-25"
+    question: |
+      What network conditions should we test? Suggestions: packet loss, high latency (200ms+), jitter, bandwidth throttling, disconnect/reconnect cycles?
+    answers:
+      - author: "qa-engineer"
+        timestamp: "2026-01-26"
+        answer: |
+          Yes, all of those conditions should be tested. See Q006 for the full network condition profile list.
+
+          **Summary of conditions (cross-reference with Q006 for details):**
+
+          | Condition | Test Values | Priority |
+          |-----------|-------------|----------|
+          | Packet loss | 0%, 0.1%, 2%, 5%, 20% | P0 |
+          | High latency | 50ms, 100ms, 200ms, 500ms | P0 |
+          | Jitter | +/- 10ms, +/- 50ms, +/- 100ms | P1 |
+          | Bandwidth throttling | Unlimited, 1Mbps, 256Kbps | P2 |
+          | Disconnect/reconnect | Graceful, abrupt, rapid cycles | P0 |
+          | Out-of-order (UDP only) | 5%, 10% reorder rate | P1 |
+          | Burst loss | 3-5 consecutive packets | P1 |
+
+          **Implementation approach:**
+          Use a `NetworkSimulator` injectable component that can apply these conditions deterministically. This allows:
+          - Reproducible test failures (same seed = same behavior)
+          - Fast test execution (no real network delays in unit tests)
+          - CI-friendly testing (no external dependencies)
+
+          **Recommended test matrix for integration tests:**
+          - Must pass: PERFECT, LAN, GOOD_WIFI profiles
+          - Should pass: POOR_WIFI profile (with graceful degradation)
+          - Informational: MOBILE_3G, HOSTILE profiles (track trends)
+
+          **Per game-designer answers (Q036):**
+          - Under 200ms latency should feel smooth
+          - 200-300ms acceptable but noticeable
+          - Over 500ms should show connection indicator
+
+  - id: Q022
+    status: answered
+    author: engine-developer
+    target: qa-engineer
+    timestamp: "2026-01-25"
+    question: |
+      How do we test multiplayer without spinning up multiple machines? Should we build a localhost multi-instance test framework?
+    answers:
+      - author: "qa-engineer"
+        timestamp: "2026-01-26"
+        answer: |
+          Yes, we should build a localhost multi-instance test framework. See Q007 for the full approach.
+
+          **Summary (cross-reference Q007 for details):**
+
+          **Three-tier testing strategy:**
+
+          | Tier | Approach | Speed | Realism | Use Case |
+          |------|----------|-------|---------|----------|
+          | Unit | MockSocket, in-memory | Very fast | Low | Serialization, state machine |
+          | Integration | Same-process, real localhost | Fast | Medium | Multi-client sync, scenarios |
+          | E2E | Separate processes | Slow | High | Final validation, crash recovery |
+
+          **Key infrastructure to build:**
+          1. `MockSocket` - In-memory message passing for unit tests
+          2. `TestServer` - Lightweight server wrapper with state inspection
+          3. `TestClient` - Scriptable client with assertion helpers
+          4. `TestHarness` - Orchestrator for multi-client scenarios
+          5. `StateDiffer` - Compare ECS state across server/clients
+
+          **Headless mode is essential** for CI:
+          - `--headless` flag or compile-time configuration
+          - Client processes all state but skips rendering
+          - No SDL window creation, no display server required
+
+          **Windows-specific notes:**
+          - Use loopback (127.0.0.1) for localhost sockets
+          - Port 0 for automatic port assignment
+          - Named pipes as alternative for same-process communication
+
+  - id: Q023
+    status: answered
+    author: engine-developer
+    target: qa-engineer
+    timestamp: "2026-01-25"
+    question: |
+      What are the acceptance criteria for "smooth" synchronization? Max allowed latency between server state change and client visual update?
+    answers:
+      - author: "qa-engineer"
+        timestamp: "2026-01-26"
+        answer: |
+          Based on game-designer answers (Q036, Q037) and QA analysis, here are the acceptance criteria:
+
+          **Quantitative Acceptance Criteria:**
+
+          | Metric | Threshold | Test Method |
+          |--------|-----------|-------------|
+          | State update latency (LAN) | < 50ms | Timestamp comparison |
+          | State update latency (Internet) | < 200ms | Timestamp comparison |
+          | Tick completion time | < 50ms (for 20 ticks/sec) | Server profiling |
+          | Snapshot generation | < 2 seconds | Large world test |
+          | Snapshot transfer | < 5 seconds (1Mbps connection) | Bandwidth simulation |
+          | Delta update size (typical) | < 1KB per tick | Message size tracking |
+          | Memory growth per connection | < 10KB | Leak detection |
+
+          **Qualitative Acceptance Criteria:**
+
+          | Scenario | Expected Behavior |
+          |----------|-------------------|
+          | 4 players, LAN | No perceptible delay between players |
+          | 4 players, 100ms latency | Actions visible within ~200ms total |
+          | 4 players, 200ms latency | Actions visible within ~400ms total |
+          | Building placement | Ghost appears instantly, solidifies on confirm |
+          | Player B sees Player A's action | Within 2 ticks (100ms) of server processing |
+          | Late join during active play | New player operational within 5 seconds |
+          | Reconnection | Resume within 10 seconds (state-dependent) |
+
+          **"Smooth" Definition:**
+          - No visible jitter or stuttering in other players' actions
+          - No "rubber-banding" (entities jumping positions)
+          - Consistent ordering of events across all clients
+          - Updates arrive in predictable intervals (not bursty)
+
+          **Test Methodology:**
+
+          1. **Latency measurement:**
+             - Server timestamps each state change
+             - Client timestamps when change is rendered
+             - Compare across network simulation profiles
+
+          2. **Consistency verification:**
+             - Hash ECS state on server and all clients each tick
+             - Alert if hashes diverge (desync detection)
+             - Track time-to-consistency after any divergence
+
+          3. **Visual smoothness:**
+             - Automated screenshot comparison (optional)
+             - Manual playtesting at various latency levels
+             - Player surveys during beta testing
+
+          **Pass/Fail Criteria:**
+          - P0: All quantitative thresholds met under LAN conditions
+          - P1: All quantitative thresholds met under GOOD_WIFI (50ms latency)
+          - P2: Graceful degradation under POOR_WIFI (200ms latency)
+
+  # Questions from qa-engineer to systems-architect
+  - id: Q024
+    status: answered
+    author: qa-engineer
+    target: systems-architect
+    timestamp: "2026-01-25"
+    question: |
+      What networking library should we use (raw sockets, asio, ENet, etc.)? This affects our mock strategy.
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-26"
+        answer: |
+          **Recommendation: ENet for MVP.**
+
+          ENet provides reliable UDP with the features we need without excessive complexity.
+
+          **Why ENet:**
+          1. **Reliable UDP built-in** - Handles packet ordering, acknowledgments, retransmission
+          2. **Cross-platform** - Windows, Linux, macOS support
+          3. **Small footprint** - Single header, ~2k lines of C code
+          4. **Battle-tested** - Used by many indie games
+          5. **vcpkg available** - Easy integration with our build system
+          6. **No external dependencies** - Just Winsock/BSD sockets underneath
+
+          **Alternatives considered:**
+
+          | Library | Pros | Cons | Verdict |
+          |---------|------|------|---------|
+          | Raw BSD sockets | Full control | Must implement reliability, ordering | Too much work for MVP |
+          | SDL_net | SDL ecosystem | TCP only, limited features | Insufficient for game networking |
+          | boost::asio | Powerful, async | Heavy dependency, overkill for 2-4 players | Too complex |
+          | GameNetworkingSockets | Steam integration | Large, complex, overkill | Future consideration if going Steam |
+
+          **Mock strategy implications:**
+          - Abstract ENet behind `ISocket` interface
+          - Mock implementation stores messages in queues
+          - Real implementation wraps ENet host/peer
+
+          **Interface sketch:**
+          ```cpp
+          class ISocket {
+          public:
+              virtual void send(PeerId peer, const Message& msg) = 0;
+              virtual std::optional<Message> receive() = 0;
+              virtual void disconnect(PeerId peer) = 0;
+          };
+          ```
+
+          **vcpkg integration:**
+          ```json
+          { "name": "enet" }
+          ```
+
+          This keeps networking testable while giving us reliable UDP out of the box.
+
+  - id: Q025
+    status: answered
+    author: qa-engineer
+    target: systems-architect
+    timestamp: "2026-01-25"
+    question: |
+      Should we use TCP, UDP, or a reliable UDP protocol? Reliability guarantees affect test scenarios.
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-26"
+        answer: |
+          **Recommendation: Reliable UDP via ENet.**
+
+          **Why reliable UDP over TCP:**
+          1. **No head-of-line blocking** - TCP stalls entire connection on packet loss; UDP lets us handle per-message
+          2. **Better latency** - No Nagle's algorithm concerns
+          3. **Selective reliability** - We can choose which messages need guaranteed delivery vs fire-and-forget
+          4. **Game industry standard** - Most multiplayer games use reliable UDP
+
+          **Why not raw UDP:**
+          - We need ordering for state deltas (tick 1001 must apply before 1002)
+          - We need acknowledgment for player actions (server must confirm building placed)
+          - Implementing reliable UDP correctly is non-trivial and error-prone
+
+          **ENet provides:**
+          - Reliable ordered (like TCP, for state updates)
+          - Reliable unordered (for actions that don't need strict ordering)
+          - Unreliable (for anything disposable, like cursor positions in spectator mode)
+
+          **Test scenario implications:**
+
+          | Scenario | Expected Behavior |
+          |----------|-------------------|
+          | Packet loss | ENet retransmits automatically, may see latency spike |
+          | Out-of-order | ENet reorders before delivery to application |
+          | Duplicate packets | ENet deduplicates |
+          | Connection timeout | ENet fires disconnect event after threshold |
+
+          **What we DON'T need to test (ENet handles it):**
+          - Packet fragmentation/reassembly
+          - Sequence number wraparound
+          - Retransmission timing algorithms
+
+          **What we DO need to test:**
+          - Application behavior under latency spikes
+          - Graceful handling of ENet disconnect events
+          - Reconnection logic when ENet reports connection loss
+
+  - id: Q026
+    status: answered
+    author: qa-engineer
+    target: systems-architect
+    timestamp: "2026-01-25"
+    question: |
+      What is the expected maximum message size for full state snapshots? Need this for buffer sizing tests.
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-26"
+        answer: |
+          **Estimation: ~1-5 MB for a mature world, chunked into ~64KB messages.**
+
+          **World size estimation:**
+
+          | Component | Count (max) | Size (bytes) | Total |
+          |-----------|-------------|--------------|-------|
+          | Terrain tiles | 10,000 (100x100) | 8 (type, height) | 80 KB |
+          | Buildings | 2,000 | 32 (type, pos, owner, state) | 64 KB |
+          | Roads/infrastructure | 5,000 | 16 (type, pos, connections) | 80 KB |
+          | Zones | 10,000 | 4 (type per tile) | 40 KB |
+          | Players | 4 | 256 (credits, stats, settings) | 1 KB |
+          | Simulation state | 1 | 1 KB (tick, time, global vars) | 1 KB |
+          | **Subtotal** | | | **~270 KB** |
+          | Overhead (headers, padding) | | 20% | ~54 KB |
+          | **Uncompressed total** | | | **~325 KB** |
+
+          **With mature world (more entities):**
+          - Double building count: +64 KB
+          - Double road count: +80 KB
+          - Historical data (ghost towns): +200 KB
+          - **Pessimistic estimate: ~1 MB uncompressed**
+
+          **With compression (LZ4):**
+          - Expected 50-70% reduction for structured data
+          - **Typical compressed size: 300-500 KB**
+
+          **Chunking strategy:**
+          - ENet MTU is ~1400 bytes; reliable packets reassemble automatically
+          - But for progress indication and interleaving with deltas, chunk at ~64 KB
+          - **Max chunk size: 64 KB (configurable)**
+          - A 1 MB snapshot = ~16 chunks
+
+          **Buffer sizing recommendations:**
+          - Receive buffer: 128 KB minimum (2 chunks in flight)
+          - Send buffer: 256 KB (4 chunks queued)
+          - Total snapshot buffer: 5 MB (allow growth headroom)
+
+          **Test scenarios:**
+          - Small world: 100 KB snapshot
+          - Medium world: 500 KB snapshot
+          - Large world: 2 MB snapshot (stress test)
+          - Extreme: 5 MB snapshot (boundary test)
+
+  - id: Q027
+    status: answered
+    author: qa-engineer
+    target: systems-architect
+    timestamp: "2026-01-25"
+    question: |
+      How do we handle clock drift between server and clients? Do we need NTP or a simpler approach?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-26"
+        answer: |
+          **Simpler approach: Server tick is the only clock that matters.**
+
+          We don't need wall-clock synchronization. Per canon, the server is authoritative. All timing is expressed in tick numbers, not timestamps.
+
+          **Why NTP is unnecessary:**
+          1. **Simulation runs on ticks, not wall-clock** - "Tick 1000" is unambiguous
+          2. **No client-side prediction** - Clients don't need to guess server time
+          3. **Turn-based-ish gameplay** - City builder has no frame-perfect timing needs
+          4. **Server broadcasts tick number** - Clients just apply state for "tick N"
+
+          **How timing works:**
+          - Server: "This is state at tick 1000"
+          - Client: "Got it, rendering tick 1000"
+          - No need to know *when* tick 1000 happened in real time
+
+          **Where wall-clock DOES matter:**
+          1. **Inactivity detection** - "Player last active 7 days ago" (see Q012)
+             - Store `std::chrono::system_clock` timestamp per player
+             - Server's clock is authoritative
+             - Minor drift (seconds) irrelevant for 7-day thresholds
+
+          2. **Chat message timestamps** - "Message sent 5 minutes ago"
+             - Server timestamps messages on receipt
+             - Displayed as relative time ("5m ago"), not absolute
+             - Drift doesn't affect UX
+
+          3. **Heartbeat/timeout** - "No response in 5 seconds"
+             - Uses `std::chrono::steady_clock` (monotonic)
+             - No drift issue - measures elapsed time on each machine
+
+          **Implementation:**
+          - All network messages use tick numbers, not timestamps
+          - Server includes current tick in every StateUpdate
+          - Clients track "server is at tick N" for display purposes
+          - Real-time features use server's clock exclusively
+
+          **Testing implications:**
+          - No clock sync tests needed
+          - Test that clients handle tick gaps gracefully
+          - Test that server tick advances at configured rate
+
+  - id: Q028
+    status: answered
+    author: qa-engineer
+    target: systems-architect
+    timestamp: "2026-01-25"
+    question: |
+      What is the heartbeat/timeout interval for detecting disconnections?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-26"
+        answer: |
+          **Recommended intervals:**
+
+          | Parameter | Value | Rationale |
+          |-----------|-------|-----------|
+          | Heartbeat interval | 1 second | Frequent enough for quick detection |
+          | Missed heartbeat threshold | 5 | ~5 seconds without response |
+          | Hard timeout | 10 seconds | Absolute disconnect declaration |
+          | Reconnection grace period | 30 seconds | Per Q038, extended disconnect UI |
+
+          **How it works:**
+
+          **Server side:**
+          - Sends heartbeat (ping) every 1 second to each client
+          - Tracks last response time per client
+          - 5 missed responses (5 seconds): marks client as "potentially disconnected"
+          - 10 seconds total silence: fires disconnect event, cleans up session
+          - Pending actions for that client are rolled back (per Q010)
+
+          **Client side:**
+          - Responds to server heartbeat immediately (pong)
+          - Tracks last received message from server
+          - 2 seconds silence: show subtle connection indicator (per Q038)
+          - 5 seconds silence: show "Reconnecting..." banner
+          - 15 seconds silence: show full reconnection UI
+
+          **ENet built-in handling:**
+          - ENet has its own timeout mechanism (configurable)
+          - Set `ENET_PEER_TIMEOUT_MINIMUM` = 5000ms
+          - Set `ENET_PEER_TIMEOUT_MAXIMUM` = 10000ms
+          - Our heartbeat complements ENet's detection
+
+          **Why these values:**
+          - 5 seconds catches most temporary network hiccups
+          - 10 seconds is long enough to survive brief outages
+          - 30 seconds grace period matches Q038's UX tiers
+          - Casual game = more forgiving than competitive FPS
+
+          **Test scenarios:**
+          - Heartbeat response time under various latencies
+          - Timeout fires correctly after silence
+          - Reconnection within grace period restores session
+          - Reconnection after grace period creates new session
+
+          **Configurability:**
+          Make these server-side config options for operators who want tighter/looser thresholds.
+
+  - id: Q029
+    status: answered
+    author: qa-engineer
+    target: systems-architect
+    timestamp: "2026-01-25"
+    question: |
+      Should messages be encrypted? If so, what crypto library, and do we need key exchange tests?
+    answers:
+      - author: "systems-architect"
+        timestamp: "2026-01-26"
+        answer: |
+          **Recommendation: No encryption for Epic 1 MVP. Add in a later epic if needed.**
+
+          **Rationale for deferring:**
+          1. **Scope** - 2-4 friends playing together, likely on LAN or trusted network
+          2. **Data sensitivity** - City builder state has no personal/financial data
+          3. **Complexity** - Encryption adds key exchange, certificate management, debugging difficulty
+          4. **Performance** - Encryption has CPU cost (minimal but non-zero)
+          5. **MVP focus** - Core gameplay and sync are higher priority
+
+          **Threat model for our game:**
+          - **Cheating via packet inspection?** - Server-authoritative mitigates this. Clients can see state they'll receive anyway.
+          - **Cheating via packet injection?** - Server validates all actions. Forged packets are rejected.
+          - **Privacy?** - Game state isn't sensitive. Chat might be, but session-only storage limits exposure.
+          - **Impersonation?** - Session tokens (not encrypted, but signed/validated) prevent this.
+
+          **When we WOULD add encryption:**
+          - If we add account system with passwords (Epic 16 territory)
+          - If we go public with untrusted players
+          - If we add in-app purchases
+          - If platform requirements mandate it (Steam, etc.)
+
+          **Future implementation path (if needed):**
+          - Library: **libsodium** (modern, well-audited, vcpkg available)
+          - Protocol: TLS-like handshake at connection, then symmetric encryption
+          - Alternative: DTLS (TLS over UDP) via existing libraries
+
+          **For Epic 1:**
+          - Session tokens: Random 128-bit value, stored server-side
+          - Token in each message header (not encrypted, but validated)
+          - Token mismatch = drop message and log warning
+
+          **Test implications:**
+          - No key exchange tests needed for MVP
+          - Test that session token validation works
+          - Test that invalid tokens are rejected gracefully
+
+  # Questions from qa-engineer to engine-developer
+  - id: Q030
+    status: answered
+    author: qa-engineer
+    target: engine-developer
+    timestamp: "2026-01-25"
+    question: |
+      How will the ECS registry support efficient delta detection? Does SyncSystem need special hooks?
+    answers:
+      - author: "engine-developer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Delta detection approach: Dirty flag pattern with EnTT signals**
+
+          EnTT provides built-in signals for component changes that we can leverage:
+
+          **EnTT Signal Hooks:**
+          ```cpp
+          // Subscribe to component modification signals
+          registry.on_construct<PositionComponent>().connect<&SyncSystem::on_component_added>();
+          registry.on_update<PositionComponent>().connect<&SyncSystem::on_component_changed>();
+          registry.on_destroy<PositionComponent>().connect<&SyncSystem::on_component_removed>();
+          ```
+
+          **SyncSystem Architecture:**
+          ```cpp
+          class SyncSystem {
+              // Track changes since last sync
+              std::unordered_set<entt::entity> dirty_entities;
+              std::vector<EntityDelta> pending_deltas;
+
+              void on_component_changed(entt::registry& reg, entt::entity e) {
+                  dirty_entities.insert(e);
+              }
+
+              // Called at end of tick to generate delta message
+              StateUpdateMessage flush_deltas() {
+                  StateUpdateMessage msg;
+                  for (auto entity : dirty_entities) {
+                      msg.add_entity_delta(serialize_entity(entity));
+                  }
+                  dirty_entities.clear();
+                  return msg;
+              }
+          };
+          ```
+
+          **Why this approach:**
+          1. **Efficient**: Only entities that changed are tracked, no full registry scan
+          2. **Automatic**: EnTT signals fire whenever components are modified via `registry.patch()` or `registry.emplace_or_replace()`
+          3. **Consistent with Epic 0**: Uses existing EnTT patterns
+
+          **Important caveat:**
+          The `on_update` signal only fires when using `registry.patch()` or `registry.replace()`. Direct member access (e.g., `registry.get<Position>(e).x = 5`) does NOT trigger signals.
+
+          **Enforcement approach:**
+          - All component modifications must go through helper functions that call `registry.patch()`
+          - Alternatively, use `registry.ctx().emplace<DirtySet>()` for explicit dirty tracking
+
+          **Testing implications:**
+          - Verify signals fire correctly for all modification patterns
+          - Verify no entity is missed in delta after modification
+          - Verify destroyed entities are properly tracked (removal delta)
+
+  - id: Q031
+    status: answered
+    author: qa-engineer
+    target: engine-developer
+    timestamp: "2026-01-25"
+    question: |
+      What serialization format for components - binary, protobuf, flatbuffers? Affects test complexity.
+    answers:
+      - author: "engine-developer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Binary format with manual serialization** (see Q004 for detailed rationale).
+
+          **Summary for QA:**
+
+          **Format:**
+          - Fixed-size binary fields, little-endian byte order
+          - No schema files, no code generation
+          - Each component type has `serialize()` and `deserialize()` methods
+
+          **Test complexity implications:**
+
+          **Advantages:**
+          - Simple byte-level inspection in tests
+          - No third-party library behavior to understand
+          - Easy to construct test payloads manually
+          - Deterministic output (same input = same bytes)
+
+          **Testing approach:**
+          ```cpp
+          TEST(Serialization, PositionComponent) {
+              PositionComponent original{10, 20, 5};
+              NetworkBuffer buf;
+              original.serialize(buf);
+
+              // Verify exact byte layout
+              EXPECT_EQ(buf.size(), 12);  // 3 * int32
+              EXPECT_EQ(buf.data()[0], 10);  // Little-endian first byte
+
+              // Round-trip test
+              buf.reset_read();
+              PositionComponent restored;
+              restored.deserialize(buf);
+              EXPECT_EQ(original, restored);
+          }
+          ```
+
+          **Edge cases to test:**
+          - Empty components (zero bytes)
+          - Maximum values (INT32_MAX, etc.)
+          - Negative values (signed integers)
+          - String components (length prefix + data)
+          - Nested components (if any)
+
+          **Fuzz testing:**
+          - Feed random bytes to deserialize()
+          - Verify no crashes, buffer overruns
+          - Verify graceful failure on invalid data
+
+  - id: Q032
+    status: answered
+    author: qa-engineer
+    target: engine-developer
+    timestamp: "2026-01-25"
+    question: |
+      How do we handle component versioning if component structure changes after release?
+    answers:
+      - author: "engine-developer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Versioning strategy: Message envelope version + component version bytes**
+
+          **Message envelope:**
+          ```
+          [1 byte: protocol version]
+          [2 bytes: message type]
+          [2 bytes: payload length]
+          [N bytes: payload]
+          ```
+
+          **Protocol version:**
+          - Incremented on breaking changes to message structure
+          - Server rejects connections with incompatible protocol version
+          - Client shows "Update required" message
+
+          **Component-level versioning (for backward-compatible changes):**
+          ```cpp
+          void PositionComponent::serialize(NetworkBuffer& buf) const {
+              buf.write_u8(POSITION_COMPONENT_VERSION);  // Currently 1
+              buf.write_i32(grid_x);
+              buf.write_i32(grid_y);
+              buf.write_i32(elevation);
+              // Version 2+ would add new fields here
+          }
+
+          void PositionComponent::deserialize(NetworkBuffer& buf) {
+              uint8_t version = buf.read_u8();
+              grid_x = buf.read_i32();
+              grid_y = buf.read_i32();
+              elevation = buf.read_i32();
+              if (version >= 2) {
+                  // Read new fields added in version 2
+                  // new_field = buf.read_i32();
+              } else {
+                  // Default value for old data
+                  // new_field = default_value;
+              }
+          }
+          ```
+
+          **Versioning rules:**
+          1. **Adding fields**: Append to end, increment version, provide defaults for old versions
+          2. **Removing fields**: Deprecated, still read but ignored
+          3. **Changing field types**: Breaking change, requires protocol version bump
+          4. **Reordering fields**: Breaking change, requires protocol version bump
+
+          **Testing implications:**
+          - Test deserialization of all supported versions
+          - Test that new client can read old server data
+          - Test that old client gracefully rejects incompatible versions
+          - Keep test fixtures for each version
+
+          **Pragmatic note for MVP:**
+          We are pre-release. Version 1 is sufficient. Add versioning infrastructure now, but don't worry about backward compatibility until we have real users.
+
+  - id: Q033
+    status: answered
+    author: qa-engineer
+    target: engine-developer
+    timestamp: "2026-01-25"
+    question: |
+      Will there be a "dirty flag" on components or does SyncSystem need to diff previous state?
+    answers:
+      - author: "engine-developer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Dirty flag approach via EnTT signals** (see Q030 for full implementation).
+
+          **Summary:**
+          - Use EnTT's built-in `on_update` signal to track dirty entities
+          - SyncSystem maintains a `std::unordered_set<entt::entity> dirty_entities`
+          - At end of tick, serialize only dirty entities for delta message
+          - Clear dirty set after sending
+
+          **Why NOT full state diffing:**
+          1. **Performance**: Comparing all component values every tick is O(N*C) where N=entities, C=components. With 10k+ entities, this adds significant overhead.
+          2. **Complexity**: Need to maintain previous state snapshot for comparison.
+          3. **Memory**: Doubling memory for component storage to keep "previous" copy.
+
+          **Why dirty flags work better:**
+          1. **O(1) per change**: Adding to dirty set is constant time
+          2. **Automatic**: EnTT signals handle tracking for us
+          3. **Memory efficient**: No duplicate state storage
+          4. **Consistent with game loop**: Changes happen through well-defined paths
+
+          **Enforcement requirement:**
+          All component modifications MUST use `registry.patch()` or `registry.replace()`:
+          ```cpp
+          // CORRECT - triggers signal
+          registry.patch<Position>(entity, [&](auto& pos) {
+              pos.x = new_x;
+          });
+
+          // WRONG - no signal fired
+          registry.get<Position>(entity).x = new_x;
+          ```
+
+          **Testing implications:**
+          - Verify dirty flag set correctly on component modification
+          - Verify dirty flag cleared after sync flush
+          - Verify no "lost" modifications due to direct member access
+          - Integration test: modify entity, verify it appears in delta
+
+  - id: Q034
+    status: answered
+    author: qa-engineer
+    target: engine-developer
+    timestamp: "2026-01-25"
+    question: |
+      What threading model - single-threaded tick, or network on separate thread?
+    answers:
+      - author: "engine-developer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Network I/O on separate thread, simulation single-threaded**
+
+          **Architecture:**
+          ```
+          Network Thread              Main Thread (Simulation)
+          --------------              ------------------------
+          [Poll ENet for packets]
+          [Deserialize messages]
+          [Queue to main thread] ---> [Dequeue incoming messages]
+                                      [Process player actions]
+                                      [Run simulation tick]
+                                      [Generate state delta]
+          [Queue from main] <-------- [Queue outgoing messages]
+          [Serialize messages]
+          [Send via ENet]
+          ```
+
+          **Why separate network thread:**
+          1. **Non-blocking I/O**: ENet polling doesn't block simulation
+          2. **Consistent tick timing**: Simulation runs at fixed rate regardless of network conditions
+          3. **Scalability**: Future optimization path if needed
+
+          **Thread communication:**
+          - **Lock-free SPSC queues** (single producer, single consumer)
+          - Main -> Network: outgoing message queue
+          - Network -> Main: incoming message queue
+          - No shared mutable state beyond queues
+
+          **Why simulation stays single-threaded:**
+          1. **Determinism**: Single-threaded simulation is easier to reason about and debug
+          2. **ECS compatibility**: EnTT is not thread-safe by default
+          3. **Sufficient performance**: City builder at 20 ticks/sec doesn't need parallel simulation
+          4. **Simplicity**: Multi-threaded simulation adds significant complexity
+
+          **Implementation:**
+          ```cpp
+          // Network thread loop
+          while (running) {
+              enet_host_service(host, &event, 1);  // 1ms timeout
+              if (event.type == ENET_EVENT_TYPE_RECEIVE) {
+                  auto msg = deserialize(event.packet);
+                  incoming_queue.push(msg);  // Lock-free push
+              }
+              while (auto msg = outgoing_queue.pop()) {
+                  send_to_peer(msg);
+              }
+          }
+          ```
+
+          **Testing implications:**
+          - Unit tests can use synchronous mock (no threads)
+          - Integration tests verify thread communication works
+          - Stress test: high message volume, verify no dropped messages
+          - Verify clean shutdown (threads join properly)
+
+  - id: Q035
+    status: answered
+    author: qa-engineer
+    target: engine-developer
+    timestamp: "2026-01-25"
+    question: |
+      How are entity IDs generated to ensure uniqueness across reconnections?
+    answers:
+      - author: "engine-developer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Server-side monotonic counter, never reused during session**
+
+          **ID generation scheme:**
+          ```cpp
+          class EntityIdGenerator {
+              uint64_t next_id = 1;  // Start at 1 (0 = null/invalid)
+
+          public:
+              uint64_t generate() {
+                  return next_id++;  // Monotonically increasing
+              }
+
+              // For persistence: restore counter after loading from DB
+              void set_next_id(uint64_t id) {
+                  next_id = id;
+              }
+          };
+          ```
+
+          **Uniqueness guarantees:**
+          1. **Server is sole generator**: Clients never create entity IDs
+          2. **Monotonic**: IDs only increase, never reused in session
+          3. **Persisted**: `next_id` saved to DB, restored on server restart
+          4. **64-bit**: 2^64 entities before wraparound (effectively infinite)
+
+          **Why NOT reuse destroyed entity IDs:**
+          - Avoids ABA problem (entity 42 destroyed, new entity 42 created, client confuses them)
+          - Simplifies client state management (ID is always unique)
+          - EnTT version bits handle internal recycling, but we use our own IDs on wire
+
+          **EnTT integration:**
+          ```cpp
+          // Server creates entity with our ID
+          uint64_t id = id_generator.generate();
+          auto entity = registry.create(entt::entity{id});
+
+          // Client receives ID from server
+          auto entity = registry.create(entt::entity{server_assigned_id});
+          ```
+
+          **Reconnection scenario:**
+          1. Player disconnects
+          2. Entities owned by player remain with same IDs
+          3. Player reconnects, receives full snapshot
+          4. All IDs match server state exactly
+          5. No ID conflicts possible
+
+          **Edge case - very long sessions:**
+          - At 1000 entities/second, 64-bit counter lasts ~584 million years
+          - Not a practical concern
+
+          **Testing implications:**
+          - Verify IDs are unique across create/destroy cycles
+          - Verify reconnecting client uses same IDs as before disconnect
+          - Verify server restart preserves ID counter
+          - Verify client rejects messages with unknown entity IDs
+
+  # Questions from qa-engineer to game-designer
+  - id: Q036
+    status: answered
+    author: qa-engineer
+    target: game-designer
+    timestamp: "2026-01-25"
+    question: |
+      What is the maximum acceptable latency before player actions feel sluggish?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Target thresholds for different action types:**
+
+          | Action Type | Acceptable Latency | Notes |
+          |-------------|-------------------|-------|
+          | Camera/UI navigation | 0ms (local only) | Never network-dependent |
+          | Menu interactions | 0ms (local only) | Local UI state |
+          | Building placement preview | 0ms (local) | Ghost shows instantly |
+          | Building placement confirm | <200ms | Noticeable but acceptable |
+          | Zoning changes | <300ms | Batch operation, more forgiving |
+          | Demolition | <200ms | Feels "impactful", needs quick feedback |
+          | Purchasing tiles | <500ms | Infrequent, can tolerate delay |
+          | Chat messages | <300ms | Conversational feel |
+
+          **General principles:**
+
+          **Under 100ms:** Feels instant. Gold standard.
+          **100-200ms:** Noticeable but acceptable for most actions. Target this.
+          **200-300ms:** Sluggish but tolerable for infrequent actions.
+          **300-500ms:** Only acceptable for major, infrequent decisions.
+          **Over 500ms:** Feels broken. Should show loading indicator.
+
+          **Why we can be more forgiving than action games:**
+          - City builder = strategic, not twitch-based
+          - Players are thinking, not reacting
+          - Actions have weight - small delay reinforces "this matters"
+          - No competitive advantage from faster inputs
+
+          **Mitigation strategies for high latency:**
+          - Immediate local visual feedback (ghost building appears, zoning preview shows)
+          - Optimistic UI updates with rollback if server rejects
+          - Progress indicators for longer operations
+
+          **Testing guidance for QA:**
+          - Test at 50ms, 100ms, 200ms, 300ms, 500ms simulated latency
+          - Note when each action type starts feeling sluggish
+          - Pay attention to repeated rapid actions (placing multiple buildings)
+          - The "feel" test: does the player wait for feedback or just keep clicking?
+
+          **Warning threshold:**
+          - If round-trip exceeds 400ms consistently, show subtle connection indicator
+          - Don't alarm players, but let them know network is slow
+          - "Weak hive link detected" as alien-themed status
+
+  - id: Q037
+    status: answered
+    author: qa-engineer
+    target: game-designer
+    timestamp: "2026-01-25"
+    question: |
+      Should there be any client-side prediction for responsiveness, or pure server-authoritative?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Canon says no client-side prediction, and I agree - but with nuanced implementation.**
+
+          Per patterns.yaml: "No client-side prediction (simplicity over responsiveness)"
+
+          **Why this is correct for our game:**
+          - City builders don't need frame-perfect responsiveness
+          - Prediction adds complexity and desync risk
+          - Simpler mental model for players (what you see = truth)
+          - Rollbacks can be jarring ("my building disappeared!")
+
+          **However: Distinguish "prediction" from "immediate local feedback"**
+
+          | Category | Allowed? | Example |
+          |----------|----------|---------|
+          | Client-side prediction | NO | Building counts toward population before server confirms |
+          | Optimistic UI hints | YES | Ghost building appears instantly while awaiting confirmation |
+          | Local-only state | YES | Camera position, UI panels, hover states |
+          | Visual feedback | YES | Click ripple, button press animation |
+
+          **What should feel instant (no server round-trip):**
+          - All camera controls
+          - All UI/menu navigation
+          - Tool selection
+          - Building/zone placement PREVIEW (the ghost/outline)
+          - Hover effects and tooltips
+          - Sound effects for user input
+
+          **What waits for server:**
+          - Building actually appearing in world
+          - Credits actually deducting
+          - Zones actually changing
+          - Any change to simulation state
+
+          **UX pattern for the gap:**
+          1. Player clicks to place building
+          2. IMMEDIATELY: Ghost building appears, subtle "processing" indicator
+          3. AFTER SERVER CONFIRMS: Ghost solidifies into real building, success sound
+          4. IF SERVER REJECTS: Ghost fades out with rejection feedback (see Q015)
+
+          **This gives the FEEL of responsiveness without actual prediction.**
+
+          **Testing note:**
+          The difference between good and bad here is subtle. At 100ms latency, it should feel snappy. At 300ms, it should feel like "the game is thinking" not "the game is broken."
+
+  - id: Q038
+    status: answered
+    author: qa-engineer
+    target: game-designer
+    timestamp: "2026-01-25"
+    question: |
+      What visual feedback should clients show during reconnection (loading screen, desync indicator)?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Progressive feedback based on disconnection duration. Don't panic the player.**
+
+          **Tiered response system:**
+
+          | Duration | Visual Feedback | Player Can Still... |
+          |----------|-----------------|---------------------|
+          | 0-2 sec | Subtle connection icon (pulsing) | View map, move camera, browse UI |
+          | 2-5 sec | "Reconnecting..." banner at top | Same as above |
+          | 5-15 sec | Semi-transparent overlay, progress indicator | View frozen game state |
+          | 15+ sec | Full reconnection screen | Nothing - focus on reconnection |
+
+          **Detailed breakdown:**
+
+          **Phase 1: Brief hiccup (0-2 seconds)**
+          - Small icon in corner starts pulsing (like WiFi symbol with waves)
+          - NO text, NO alarm - might resolve instantly
+          - Game world stays visible and camera-navigable
+          - Pending actions show "waiting" state
+
+          **Phase 2: Noticeable disconnect (2-5 seconds)**
+          - Banner appears: "Reestablishing hive link..."
+          - World still visible but clearly "frozen" (subtle visual effect - slight desaturation?)
+          - Camera still works - let player look around
+          - Show reconnection attempt counter: "Attempt 1 of 5"
+
+          **Phase 3: Extended disconnect (5-15 seconds)**
+          - Overlay dims the game world (40% opacity black)
+          - Centered message: "Neural link disrupted"
+          - Spinner/progress animation (alien-themed - pulsing organic shape?)
+          - "Synchronizing with hive cluster..."
+          - Cancel option: "Return to Colony Selection"
+
+          **Phase 4: Connection failed (15+ seconds or explicit failure)**
+          - Full-screen reconnection UI
+          - Options: "Retry Connection" / "Return to Menu"
+          - Show error context if available: "Server unreachable" vs "Connection timed out"
+          - Reassurance: "Your colony persists in the hive memory" (data is saved)
+
+          **On successful reconnection:**
+          - If brief (under 5 sec): Just remove indicators, maybe subtle "connected" flash
+          - If extended: Brief "Link restored" message that fades, then resume
+          - If state changed significantly: "World has advanced X cycles during reconnection" (see Q011)
+
+          **Emotional goals:**
+          - Never make player feel punished for connection issues
+          - Never create anxiety about lost progress (emphasize persistence)
+          - Keep them engaged/entertained during longer waits
+          - Make reconnection feel like rejoining, not restarting
+
+          **Alien theme opportunities:**
+          - Connection could be visualized as neural tendrils reconnecting
+          - Pulsing bioluminescent effects during sync
+          - "Hive link" terminology throughout
+
+  - id: Q039
+    status: answered
+    author: qa-engineer
+    target: game-designer
+    timestamp: "2026-01-25"
+    question: |
+      How should rate limiting work for player actions (prevent spam-clicking)?
+    answers:
+      - author: "game-designer"
+        timestamp: "2026-01-26"
+        answer: |
+          **Balance: Prevent abuse without hindering legitimate rapid play.**
+
+          **Different limits for different action types:**
+
+          | Action Type | Rate Limit | Rationale |
+          |-------------|------------|-----------|
+          | Building placement | 10/second | Fast builders, drag-to-place patterns |
+          | Demolition | 10/second | Clearing areas quickly is valid |
+          | Zoning | 20/second | Drag-painting zones should be fluid |
+          | Tile purchase | 2/second | Intentional, expensive action |
+          | Chat messages | 1/second | Standard anti-spam |
+          | Menu/UI clicks | No limit | Local only, no server impact |
+          | Camera movement | No limit | Local only |
+
+          **Implementation approach:**
+
+          **Client-side (immediate feedback):**
+          - Track action rate locally
+          - When approaching limit, slow down visual feedback slightly
+          - At limit, gray out action briefly with subtle cooldown indicator
+          - This gives player feedback BEFORE server rejection
+
+          **Server-side (authoritative):**
+          - Maintain per-player action buckets
+          - Token bucket algorithm: refills over time, allows bursts
+          - Exceeding limit: silently drop actions (no error spam to player)
+          - Egregious abuse (100+ actions/sec): log for potential bot detection
+
+          **Why not stricter limits?**
+          - Legitimate drag-to-zone can generate many actions quickly
+          - Players get frustrated when game "ignores" their clicks
+          - City builders often involve rapid sequential placement
+          - We're casual/social, not competitive - less concern about exploits
+
+          **Why have limits at all?**
+          - Prevent accidental double-actions (double-click habit)
+          - Server bandwidth protection
+          - Fair play in multiplayer (macro tools)
+          - Prevent UI bugs from flooding server
+
+          **Visual feedback at limit:**
+          - NOT a hard "stop" message (feels punitive)
+          - Brief cursor cooldown animation (small spinner or fade)
+          - Action queue indicator: "Processing..." if actions are backing up
+          - Sound: subtle "wait" tone, not error sound
+
+          **Alien theme note:**
+          - If showing cooldown: "Neural bandwidth saturated - stabilizing..."
+          - This frames it as a world mechanic, not a punishment
+
+          **Testing guidance:**
+          - Test with mouse macro tools at various speeds
+          - Verify drag-to-zone feels smooth even at high speeds
+          - Ensure no "lost" actions during normal rapid play
+          - Check that rate limit doesn't affect different players' actions (only your own)

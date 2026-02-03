@@ -1,0 +1,887 @@
+# ============================================================================
+# ZERGCITY CANONICAL SYSTEM BOUNDARIES
+# ============================================================================
+# What each system owns and doesn't own. Defines clear boundaries
+# to prevent overlap and ensure proper separation of concerns.
+#
+# Version: 0.13.0
+# Last Updated: 2026-01-29
+# ============================================================================
+
+version: "0.17.0"
+
+# ============================================================================
+# PHASE 1: CORE FOUNDATION
+# ============================================================================
+
+phase_1:
+  epic_0_foundation:
+    name: "Project Foundation"
+    systems:
+      Application:
+        type: core  # Not an ECS system
+        owns:
+          - SDL3 initialization and shutdown
+          - Window management
+          - Main game loop
+          - Frame timing and delta time
+          - State management (menu, playing, paused)
+        does_not_own:
+          - Rendering (RenderingSystem owns)
+          - Input processing (InputSystem owns)
+          - Game logic (ECS systems own)
+        provides:
+          - Window handle for rendering
+          - Delta time for systems
+          - Application state
+        depends_on: []
+
+      AssetManager:
+        type: core
+        owns:
+          - Loading 3D models, textures, audio
+          - Asset caching
+          - Async loading queue
+          - Asset lifetime management
+        does_not_own:
+          - Rendering assets (just loads them)
+          - Playing audio (AudioSystem owns)
+        provides:
+          - Asset handles
+          - Loading status
+        depends_on: []
+
+      InputSystem:
+        type: core
+        owns:
+          - SDL event polling
+          - Keyboard state
+          - Mouse state
+          - Input mapping (key -> action)
+        does_not_own:
+          - What actions do (other systems handle)
+          - UI input (UISystem owns)
+        provides:
+          - Input state queries
+          - Input events
+        depends_on:
+          - Application (for window focus)
+
+  epic_1_multiplayer:
+    name: "Multiplayer Networking"
+    systems:
+      NetworkManager:
+        type: core
+        owns:
+          - Socket connections
+          - Message serialization/deserialization
+          - Client/server state
+          - Lobby management
+          - Player connections
+        does_not_own:
+          - Game state (ECS owns)
+          - What messages mean (systems interpret)
+        provides:
+          - Send/receive message API
+          - Connection status
+          - Player list
+        depends_on:
+          - Application
+
+      SyncSystem:
+        type: ecs_system
+        owns:
+          - Determining what changed since last tick
+          - Building delta updates
+          - Applying remote updates to local state
+          - Snapshot creation for reconnection
+        does_not_own:
+          - Network transport (NetworkManager owns)
+          - Component definitions (individual systems own)
+        provides:
+          - State delta for network
+          - Full snapshot on demand
+        depends_on:
+          - NetworkManager
+          - All synced components
+
+  epic_2_rendering:
+    name: "Core Rendering Engine"
+    systems:
+      RenderingSystem:
+        type: ecs_system
+        owns:
+          - SDL_GPU / 3D renderer management
+          - 3D model rendering
+          - Toon/cell shader pipeline
+          - Depth buffer management
+          - Render layers (terrain, buildings, overlays)
+          - Model asset binding
+          - Vegetation visual instance generation (per-tile position, rotation, scale from coordinate hash)
+          - Terrain mesh generation (chunked heightmap, 32x32 tiles per chunk)
+          - Water mesh generation (separate semi-transparent mesh)
+        does_not_own:
+          - Camera position/angle (CameraSystem owns)
+          - UI rendering (UISystem owns)
+          - What to render (queries components)
+          - Terrain tile data (TerrainSystem owns)
+          - Vegetation tile designation (TerrainSystem owns — which tiles have vegetation)
+        provides:
+          - Screen-to-world coordinate conversion (via ray casting)
+          - World-to-screen coordinate conversion (via projection)
+          - 3D model draw calls
+          - Shader uniform updates
+        depends_on:
+          - Application (window, GPU device)
+          - AssetManager (3D models, textures)
+          - CameraSystem (view/projection matrices)
+          - TerrainSystem (ITerrainRenderData for mesh generation)
+
+      CameraSystem:
+        type: ecs_system
+        owns:
+          - 3D camera position in world space
+          - Camera mode management (free camera vs isometric presets)
+          - "Free camera: full orbit, pan, zoom, tilt"
+          - "Isometric presets: 4 cardinal snap angles (N/E/S/W at 45° increments, ~35.264° pitch)"
+          - Zoom level (camera distance from focus point)
+          - Pan controls (camera target movement)
+          - View and projection matrix calculation
+          - Viewport bounds in world space
+        does_not_own:
+          - Actual rendering (RenderingSystem owns)
+          - Input handling (InputSystem provides)
+        provides:
+          - View matrix
+          - Projection matrix
+          - Current viewport in world coordinates
+          - Visible grid cell range
+          - Camera frustum for culling
+          - Current camera mode (free or preset)
+        depends_on:
+          - InputSystem (for orbit/pan/zoom/tilt controls)
+        notes:
+          - "Default mode: Isometric preset (familiar city builder feel)"
+          - "Free camera: orbit (middle mouse/Q/E), pan (WASD/edge scroll/right mouse), zoom (scroll wheel), tilt (vertical angle)"
+          - "Isometric presets: quick-rotate hotkeys snap between N/E/S/W views"
+          - "Players can toggle between free and preset modes"
+
+  epic_3_terrain:
+    name: "Terrain System"
+    systems:
+      TerrainSystem:
+        type: ecs_system
+        owns:
+          - Tile data (terrain type, elevation, moisture, flags)
+          - Terrain generation (procedural, scales to map size)
+          - Water body placement (body IDs, flow direction for rivers)
+          - Vegetation tile designation (which tiles have vegetation type)
+          - Terrain modification (purge, grade, terraform)
+          - Sea level
+        does_not_own:
+          - Terrain rendering (RenderingSystem owns)
+          - Vegetation visual instance generation (RenderingSystem owns — deterministic from tile coordinate hash)
+          - What can be built where (ZoneSystem validates)
+        provides:
+          - "ITerrainQueryable: terrain queries (type, elevation, moisture at position)"
+          - "ITerrainRenderData: chunk-based terrain data for mesh generation"
+          - "ITerrainModifier: terrain modification requests"
+          - Buildability checks
+          - Water proximity checks
+          - Terrain gameplay effects (value bonus, contamination, etc.)
+        depends_on: []
+        notes:
+          - "Uses dense 2D grid storage (TerrainGrid) — canonical exception to ECS-per-entity pattern"
+          - "TerrainTileData is 4 bytes per tile: terrain_type(u8), elevation(u8), moisture(u8), flags(u8)"
+          - "Grid coordinates serve as implicit entity IDs — no ECS registry entries per tile"
+          - "See patterns.yaml dense_grid_exception for rationale"
+          - "Emits TerrainModifiedEvent on tile changes for consumers"
+
+        terrain_types:
+          classic:
+            - flat_ground    # Standard buildable terrain
+            - hills          # Elevated terrain (32 elevation levels)
+            - water_ocean    # Map-edge deep water, not buildable
+            - water_river    # Flowing water channels
+            - water_lake     # Inland water bodies
+            - forest         # Alien vegetation, clearable
+          alien:
+            - crystal_fields   # Bonus sector value, clearable for credits
+            - spore_plains     # Boosts harmony for nearby habitation
+            - toxic_marshes    # Generates contamination, not buildable
+            - volcanic_rock    # Increased build cost, geothermal energy bonus
+
+        components:
+          - TerrainComponent
+
+# ============================================================================
+# PHASE 2: CORE GAMEPLAY
+# ============================================================================
+
+phase_2:
+  epic_4_zoning:
+    name: "Zoning & Building System"
+    systems:
+      ZoneSystem:
+        type: ecs_system
+        owns:
+          - Zone designation (habitation, exchange, fabrication)
+          - Zone density levels
+          - Zone demand calculation (basic)
+        does_not_own:
+          - Buildings in zones (BuildingSystem owns)
+          - Zone rendering (RenderingSystem owns)
+        provides:
+          - Zone queries (type at position)
+          - Zone demand values
+        depends_on:
+          - TerrainSystem (valid placement)
+
+        components:
+          - ZoneComponent
+
+      BuildingSystem:
+        type: ecs_system
+        owns:
+          - Building spawning based on zone conditions
+          - Building states (constructing, active, abandoned)
+          - Building variety/selection
+          - Building upgrades/downgrades
+          - Demolition
+        does_not_own:
+          - Zone designation (ZoneSystem owns)
+          - Power state (EnergySystem owns)
+          - Water state (FluidSystem owns)
+          - Building rendering (RenderingSystem owns)
+        provides:
+          - Building queries (type, state at position)
+          - Building events (constructed, demolished)
+        depends_on:
+          - ZoneSystem (triggers spawning)
+          - EnergySystem (affects building state)
+          - FluidSystem (affects building state)
+          - TransportSystem (road proximity rule)
+
+        components:
+          - BuildingComponent
+          - ConstructionComponent
+
+  epic_5_power:
+    name: "Power Infrastructure"
+    systems:
+      EnergySystem:
+        type: ecs_system
+        tick_priority: 10  # Runs before zones (30) and buildings (40)
+        owns:
+          - Energy nexus (power plant) simulation
+          - Energy pool calculation (per player)
+          - Energy coverage zone calculation
+          - Energy distribution to buildings in coverage
+          - Brownout/blackout detection (pool deficit)
+          - Plant efficiency and aging
+        does_not_own:
+          - Building energy consumption amounts (buildings define)
+          - Energy UI (UISystem owns)
+          - Energy costs (EconomySystem owns)
+        provides:
+          - Energy pool state per player (generated, consumed, surplus)
+          - Coverage zone queries
+          - Building power state
+        depends_on:
+          - BuildingSystem (consumers and producers)
+          - TerrainSystem (placement validation)
+        multiplayer:
+          authority: server
+          per_player: true  # Each player has own energy pool
+        notes:
+          - "Uses POOL model, not physical flow simulation"
+          - "Energy conduits define coverage zone, not transport routes"
+          - "Building is powered if: in coverage zone AND player has surplus"
+
+        components:
+          - EnergyComponent
+          - EnergyProducerComponent
+          - EnergyConduitComponent
+
+  epic_7_transportation:
+    name: "Transportation Network"
+    systems:
+      TransportSystem:
+        type: ecs_system
+        tick_priority: 45  # After BuildingSystem (40), before RailSystem (47)
+        owns:
+          - Road/pathway placement and connectivity
+          - Traffic simulation
+          - Congestion calculation
+          - Road decay
+          - PathwayGrid dense spatial data (4 bytes/tile EntityID)
+          - ProximityCache for 3-tile rule (1 byte/tile distance)
+        does_not_own:
+          - Rail (RailSystem owns)
+          - Road rendering (RenderingSystem owns)
+          - Road costs (EconomySystem owns)
+        provides:
+          - "ITransportProvider: transport state queries"
+          - Connectivity queries
+          - Traffic density queries
+          - Path finding
+        depends_on:
+          - TerrainSystem (valid placement)
+          - BuildingSystem (traffic generation sources)
+        multiplayer:
+          authority: server
+          per_player: false  # Network is shared across all players
+        notes:
+          - "Uses NETWORK model, not pool model (unlike energy/fluid)"
+          - "Pathways connect across ownership boundaries"
+          - "Uses PathwayGrid + ProximityCache for spatial queries"
+
+        components:
+          - RoadComponent
+          - TrafficComponent
+
+      RailSystem:
+        type: ecs_system
+        tick_priority: 47  # After TransportSystem (45), before PopulationSystem (50)
+        owns:
+          - Rail track placement
+          - Rail terminals
+          - Subterra (subway) network
+          - Rail capacity
+        does_not_own:
+          - Roads (TransportSystem owns)
+        provides:
+          - Rail connectivity
+          - Transit coverage
+        depends_on:
+          - TerrainSystem
+          - EnergySystem (rails need power)
+          - TransportSystem (terminals need pathway access)
+        multiplayer:
+          authority: server
+          per_player: true  # Each player owns their rail infrastructure
+        notes:
+          - "Rail supplements pathways, does not replace"
+          - "Terminals reduce traffic on nearby pathways"
+
+        components:
+          - RailComponent
+          - TerminalComponent
+          - SubterraComponent
+
+  epic_6_water:
+    name: "Water Infrastructure"
+    note: "Moved to Phase 2 - buildings require water to develop"
+    systems:
+      FluidSystem:
+        type: ecs_system
+        tick_priority: 20  # Runs after EnergySystem (10), before ZoneSystem (30)
+        owns:
+          - Fluid extractor (pump) simulation
+          - Fluid reservoir (tower) storage
+          - Fluid pool calculation (per player)
+          - Fluid coverage zone calculation
+          - Fluid distribution to buildings
+        does_not_own:
+          - Building water consumption amounts (buildings define)
+          - Water UI (UISystem owns)
+        provides:
+          - Fluid pool state per player (generated, consumed, surplus)
+          - Coverage zone queries
+          - Building fluid state
+        depends_on:
+          - TerrainSystem (water proximity for pumps)
+          - EnergySystem (pumps need power)
+        multiplayer:
+          authority: server
+          per_player: true  # Each player has own fluid pool
+
+        components:
+          - FluidComponent
+          - FluidProducerComponent
+          - FluidConduitComponent
+
+  epic_10_simulation:
+    name: "Simulation Core"
+    note: "Contains ALL simulation including crime/pollution. EPIC 9 provides service buildings that feed into this."
+    systems:
+      SimulationCore:
+        type: core
+        owns:
+          - Tick scheduling
+          - System execution order
+          - Simulation speed control
+          - Time progression (cycles, phases)
+        does_not_own:
+          - Individual simulations (domain systems own)
+        provides:
+          - Current simulation time
+          - Tick events
+        depends_on:
+          - All ISimulatable systems
+
+      PopulationSystem:
+        type: ecs_system
+        owns:
+          - Population count per player
+          - Birth/death rates
+          - Migration in/out
+          - Life expectancy calculation
+          - Employment tracking
+          - Population capacity per building
+        does_not_own:
+          - Building placement (BuildingSystem owns)
+          - Visual representation (RenderingSystem owns)
+        provides:
+          - Total population per player
+          - Population breakdown (employed, unemployed)
+          - Population growth rate
+          - Life expectancy stats
+        depends_on:
+          - BuildingSystem (habitation buildings)
+          - EnergySystem (affects habitability)
+          - FluidSystem (affects habitability)
+          - DisorderSystem (affects migration)
+          - ContaminationSystem (affects health)
+
+        components:
+          - PopulationComponent
+          - EmploymentComponent
+
+      DemandSystem:
+        type: ecs_system
+        tick_priority: 52  # After PopulationSystem (50), before EconomySystem (60)
+        owns:
+          - RCI (zone pressure) calculation
+          - Demand factors aggregation
+          - Demand cap calculation
+        does_not_own:
+          - Zone placement (ZoneSystem owns)
+          - Building spawning (BuildingSystem owns)
+        provides:
+          - Current demand values (R, C, I)
+          - Demand factors breakdown
+        depends_on:
+          - PopulationSystem
+          - EconomySystem (tax effects)
+          - TransportSystem (accessibility)
+
+      LandValueSystem:
+        type: ecs_system
+        tick_priority: 85  # After DisorderSystem (70), ContaminationSystem (80)
+        owns:
+          - Sector value calculation
+          - Value factor aggregation
+        does_not_own:
+          - What affects value (other systems provide)
+        provides:
+          - Land value per tile
+          - Value overlay data
+        depends_on:
+          - TerrainSystem (water proximity)
+          - ContaminationSystem (pollution penalty)
+          - DisorderSystem (crime penalty)
+          - TransportSystem (accessibility)
+        notes:
+          - "Uses PREVIOUS tick's disorder/contamination to avoid circular dependency"
+
+      DisorderSystem:
+        type: ecs_system
+        owns:
+          - Disorder (crime) generation per tile
+          - Disorder spread calculation
+          - Enforcer effectiveness calculation
+        does_not_own:
+          - Enforcer placement (ServicesSystem via BuildingSystem)
+        provides:
+          - Disorder rate per tile
+          - Disorder overlay data
+          - Total disorder stats
+        depends_on:
+          - BuildingSystem (buildings generate disorder)
+          - PopulationSystem (population density affects disorder)
+        notes:
+          - "Reads previous tick's land value to avoid circular dependency"
+
+        components:
+          - DisorderComponent
+
+      ContaminationSystem:
+        type: ecs_system
+        owns:
+          - Contamination (pollution) generation
+          - Contamination spread
+          - Contamination decay over time
+        does_not_own:
+          - What produces contamination (other systems report via interface)
+        provides:
+          - Contamination level per tile
+          - Contamination overlay data
+          - Total contamination stats
+        depends_on:
+          - BuildingSystem (fabrication buildings pollute)
+          - TransportSystem (traffic pollution)
+          - EnergySystem (some plants pollute)
+
+        components:
+          - ContaminationComponent
+
+# ============================================================================
+# PHASE 3: SERVICES & UI
+# ============================================================================
+# Note: EPIC 6 (Water) moved to Phase 2 - buildings require water to develop
+
+phase_3:
+  epic_9_services:
+    name: "City Services"
+    note: "Places service buildings that feed data into EPIC 10's simulation systems"
+    systems:
+      ServicesSystem:
+        type: ecs_system
+        tick_priority: 55  # After DemandSystem (52), before EconomySystem (60)
+        note: "Replaces Epic 10 IServiceQueryable stub with real implementation"
+        owns:
+          - Service building placement rules
+          - Coverage radius calculations
+          - Service quality based on funding
+          - Service building types (enforcer posts, hazard response, medical, education)
+        does_not_own:
+          - Disorder simulation (DisorderSystem in EPIC 10 owns)
+          - Contamination simulation (ContaminationSystem in EPIC 10 owns)
+          - Service funding (EconomySystem owns)
+        provides:
+          - Coverage queries (enforcer, hazard response, medical, education)
+          - Service effectiveness per area
+          - Service building data to simulation systems
+        depends_on:
+          - BuildingSystem (service buildings are buildings)
+          - EconomySystem (funding levels)
+
+        components:
+          - ServiceProviderComponent
+          - ServiceCoverageComponent
+
+  epic_11_financial:
+    name: "Financial System"
+    systems:
+      EconomySystem:
+        type: ecs_system
+        tick_priority: 60  # After ServicesSystem (55), before LandValueSystem (85)
+        note: "Replaces Epic 10 IEconomyQueryable stub with real implementation"
+        owns:
+          - Colony treasury
+          - Tribute (tax) collection
+          - Expense calculation
+          - Budget allocation
+          - Credit advances (bonds)
+          - Ordinances
+        does_not_own:
+          - Individual building costs (defined per building)
+          - What generates income (other systems report)
+        provides:
+          - Current treasury balance
+          - Income/expense breakdown
+          - Budget window data
+        depends_on:
+          - BuildingSystem (taxable buildings)
+          - PopulationSystem (population for taxes)
+          - ServicesSystem (service costs)
+
+        components:
+          - TaxableComponent
+          - MaintenanceCostComponent
+
+  epic_12_ui:
+    name: "Information & UI Systems"
+    systems:
+      UISystem:
+        type: ecs_system
+        owns:
+          - All UI rendering
+          - UI state management
+          - Toolbars, panels, dialogs
+          - Query tool display
+          - Overlays (crime, pollution, power, etc.)
+          - Mini-map
+        does_not_own:
+          - Game state (queries from other systems)
+          - Input handling (InputSystem provides events)
+        provides:
+          - UI events (button clicked, tool selected)
+          - Current tool state
+        depends_on:
+          - All systems (for display data)
+          - InputSystem (for UI interaction)
+
+# ============================================================================
+# PHASE 4: ADVANCED FEATURES
+# ============================================================================
+
+phase_4:
+  epic_8_ports:
+    name: "Ports & External Connections"
+    systems:
+      PortSystem:
+        type: ecs_system
+        owns:
+          - Aero port (airport) zones
+          - Aqua port (seaport) zones
+          - External connection points
+          - Trade with neighbors
+        does_not_own:
+          - Zone mechanics (ZoneSystem owns)
+        provides:
+          - Port capacity
+          - Trade income
+          - Demand bonuses
+        depends_on:
+          - ZoneSystem
+          - TerrainSystem (water for seaports)
+          - TransportSystem (connections)
+
+  epic_13_disasters:
+    name: "Disasters"
+    systems:
+      DisasterSystem:
+        type: ecs_system
+        tick_priority: 75  # After DisorderSystem (70), before ContaminationSystem (80)
+        owns:
+          - Disaster triggering (random or manual)
+          - Disaster progression
+          - Damage calculation
+          - Emergency response dispatch
+          - Recovery tracking
+          - ConflagrationGrid (fire spread simulation)
+        does_not_own:
+          - Building destruction (BuildingSystem handles via DamageEvent)
+          - Fire spread visualization (RenderingSystem owns)
+        provides:
+          - "IDisasterProvider: disaster state queries for other systems"
+          - Active disaster info
+          - Damage reports
+          - Fire intensity queries (via ConflagrationGrid)
+        depends_on:
+          - BuildingSystem (damage targets)
+          - ServicesSystem (IEmergencyResponseProvider for emergency response)
+          - TerrainSystem (ITerrainQueryable for flammability)
+        multiplayer:
+          authority: server
+          per_player: false  # Disasters affect all players
+        notes:
+          - "Uses ConflagrationGrid dense grid for fire spread simulation"
+          - "Queries IEmergencyResponseProvider (ServicesSystem) for responder dispatch"
+          - "Emits DamageEvent for BuildingSystem to process building destruction"
+
+        components:
+          - DisasterComponent
+          - DamageableComponent
+          - OnFireComponent
+          - RecoveryZoneComponent
+          - DebrisComponent
+          - EmergencyResponseStateComponent
+
+  epic_14_progression:
+    name: "Progression & Rewards"
+    systems:
+      ProgressionSystem:
+        type: ecs_system
+        tick_priority: 90  # After LandValueSystem (85)
+        owns:
+          - Milestone tracking per player
+          - Reward building unlock state
+          - Arcology system
+          - Edict state management
+          - Transcendence state tracking (celebratory achievement, NOT victory)
+        does_not_own:
+          - Reward building placement (BuildingSystem owns)
+          - Population count (PopulationSystem owns)
+        provides:
+          - "IProgressionProvider: progression state queries"
+          - "IUnlockPrerequisite: building prerequisite checks"
+          - Milestone event emission
+        depends_on:
+          - PopulationSystem (population queries)
+          - BuildingSystem (arcology count queries)
+        multiplayer:
+          authority: server
+          per_player: true  # Each player has own progression
+        notes:
+          - "NO year-based unlocks - population thresholds only"
+          - "NO win conditions - Transcendence Monument is celebratory, not victory"
+          - "Edicts are optional passive bonuses"
+          - "Milestones are permanent once achieved (population drops don't revoke)"
+
+        components:
+          - MilestoneComponent
+          - RewardBuildingComponent
+          - ArcologyComponent
+          - EdictComponent
+          - TranscendenceAuraComponent
+
+# ============================================================================
+# PHASE 5: POLISH
+# ============================================================================
+
+phase_5:
+  epic_15_audio:
+    name: "Audio System"
+    systems:
+      AudioSystem:
+        type: core  # Client-only, not ECS simulation system
+        owns:
+          - Music playback (streaming, playlist, crossfade)
+          - Sound effect playback (positional, priority-based)
+          - Ambient audio (layered, population-scaled)
+          - Volume mixing (per-channel, ducking)
+          - Audio asset loading coordination
+        does_not_own:
+          - When to play sounds (other systems trigger via events)
+          - Audio file loading (AssetManager owns)
+        provides:
+          - "IAudioProvider: sound and music playback API"
+          - Play sound/music API
+          - Volume controls
+        depends_on:
+          - AssetManager (audio files)
+          - EventBus (game events for sound triggers)
+          - CameraSystem (listener position for positional audio)
+        multiplayer:
+          authority: client  # Audio is purely client-side
+          per_player: true
+        notes:
+          - "Does NOT implement ISimulatable - runs in main loop, not tick()"
+          - "Event-driven: subscribes to EventBus for automatic sound triggering"
+          - "Streams music files, preloads SFX for instant response"
+
+  epic_16_persistence:
+    name: "Save/Load System"
+    systems:
+      PersistenceSystem:
+        type: core
+        owns:
+          - Save file format specification
+          - World state serialization to files
+          - World state deserialization from files
+          - Save slot management (list, create, delete, rename)
+          - Checkpoint scheduling and execution
+          - Save file metadata (name, timestamp, preview, version)
+          - Component version registry and migration
+          - World Template export (terrain + structures only)
+          - Immortalize feature (monument save files)
+          - Gallery index management
+        does_not_own:
+          - Component serialization format (components define via ISerializable)
+          - Continuous database persistence (Epic 1 owns)
+          - Client settings persistence (SettingsManager owns)
+          - When to trigger saves (host/admin decides)
+        provides:
+          - "IPersistenceProvider: save/load API for world state"
+          - Save file enumeration with metadata
+          - Import/export world API
+          - Version compatibility checks
+          - Checkpoint management
+          - Monument Gallery index
+        depends_on:
+          - All systems implementing ISerializable (for their components)
+          - Epic 1 NetworkManager (for database access)
+          - Epic 1 SyncSystem (for full state snapshots)
+          - AssetManager (for save file I/O)
+          - RenderingSystem (for thumbnail generation)
+        multiplayer:
+          authority: server  # Only host can save/load game state
+          per_player: false  # One world state, not per-player
+        notes:
+          - "Complements Epic 1 database persistence, does not replace"
+          - "Save files are portable exports; database is operational"
+          - "Checkpoints every 10 cycles, keep last 3"
+          - "Event triggers: first structure, 10K population, arcology, player join/leave"
+          - "World Template Export strips player data for sharing"
+          - "Immortalize creates read-only monument snapshots"
+
+      SettingsManager:
+        type: core
+        owns:
+          - Client settings persistence
+          - Settings file format (JSON)
+          - Platform-specific settings paths
+          - Settings validation and defaults
+        does_not_own:
+          - Game state persistence (PersistenceSystem owns)
+          - Audio playback (AudioSystem owns)
+          - Video rendering (RenderingSystem owns)
+        provides:
+          - "ISettingsProvider: settings read/write API"
+          - Settings enumeration
+          - Default settings
+        depends_on: []
+        multiplayer:
+          authority: client  # Settings are client-local
+          per_player: true
+        notes:
+          - "JSON format for human readability"
+          - "Platform paths: Windows %APPDATA%, macOS ~/Library, Linux ~/.config"
+          - "Never synced to server"
+
+  epic_17_polish:
+    name: "Polish & Alien Theming"
+    notes: |
+      This epic doesn't add new systems. It polishes existing ones:
+      - Apply alien terminology throughout UI
+      - Performance optimization
+      - Bug fixes
+      - Balance tuning
+      - Network optimization
+
+# ============================================================================
+# CROSS-CUTTING CONCERNS
+# ============================================================================
+
+cross_cutting:
+  ownership:
+    description: "Player ownership of entities"
+    affects:
+      - All building systems
+      - All infrastructure systems
+      - UI (show ownership)
+      - Economy (per-player budgets)
+    component: OwnershipComponent
+    rules:
+      - "Every placed entity has an owner"
+      - "NEUTRAL (0) for shared/terrain"
+      - "Players can only modify what they own"
+
+  position:
+    description: "Grid-based positioning"
+    affects:
+      - All spatial systems
+    component: PositionComponent
+    rules:
+      - "All placed entities have a position"
+      - "Positions are grid coordinates, not pixels"
+
+  transform:
+    description: "3D render transform (derived from PositionComponent)"
+    affects:
+      - RenderingSystem (reads for model matrices)
+    component: TransformComponent
+    owned_by: RenderingSystem
+    rules:
+      - "TransformComponent is CLIENT-SIDE ONLY - never synced"
+      - "Derived from PositionComponent by RenderingSystem"
+      - "Contains float world position, rotation (quat), scale (vec3)"
+      - "Cached model matrix updated when dirty"
+      - "Interpolated between ticks for smooth 60fps rendering"
+    relationship_to_position:
+      - "PositionComponent: grid coords (int32), game logic, server-authoritative"
+      - "TransformComponent: world coords (float), rendering only, client-side"
+      - "Mapping: grid_x -> world X, grid_y -> world Z, elevation -> world Y"
+
+  network_sync:
+    description: "What syncs over network"
+    affects:
+      - All gameplay systems
+    rules:
+      - "All components with gameplay impact must sync"
+      - "UI-only state does not sync"
+      - "TransformComponent does NOT sync (derived client-side)"
+      - "Sync happens after each simulation tick"

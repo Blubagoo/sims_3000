@@ -1,0 +1,20 @@
+# Discussion Template - Copy this file and rename to {topic-slug}.discussion.yaml
+# Delete this comment block after copying
+
+topic: ""                           # Brief topic title
+created: ""                         # YYYY-MM-DD
+status: active                      # active | resolved
+participants:                       # List all agents involved
+  -
+  -
+
+threads: []
+# Thread format:
+#   - id: Q001
+#     status: open                  # open | answered | resolved
+#     author: ""                    # Agent asking
+#     target: ""                    # Agent who should answer
+#     timestamp: ""                 # YYYY-MM-DD HH:MM
+#     question: |
+#       Your question here.
+#     answers: []

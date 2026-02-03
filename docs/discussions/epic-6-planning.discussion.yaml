@@ -1,0 +1,627 @@
+# Epic 6 Planning Discussion
+# Water Infrastructure (FluidSystem)
+
+topic: "Epic 6 Planning: Water Infrastructure (FluidSystem)"
+created: "2026-01-28"
+status: resolved
+canon_version: "0.7.0"
+participants:
+  - systems-architect
+  - game-designer
+  - services-engineer
+
+# =============================================================================
+# CROSS-AGENT QUESTIONS - RESOLVED
+# =============================================================================
+
+threads:
+
+  # ---------------------------------------------------------------------------
+  # Systems Architect -> Game Designer Questions
+  # ---------------------------------------------------------------------------
+
+  - id: Q001
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Fluid Requirements per Building Type: What fluid_required values for each zone
+      type and density? Should mirror energy pattern? (Suggested: identical or
+      proportional to energy requirements)
+    resolution: |
+      RESOLUTION: Fluid requirements MATCH energy requirements exactly.
+      - Low-density habitation: 5 units
+      - High-density habitation: 20 units
+      - Low-density exchange: 10 units
+      - High-density exchange: 40 units
+      - Low-density fabrication: 15 units
+      - High-density fabrication: 60 units
+
+      Rationale: Simplicity for MVP. Both resources equally important for development.
+      "A building needs X energy AND X fluid to develop" is intuitive.
+
+  - id: Q002
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Reservoir Storage Capacity: What capacity values for fluid reservoir tiers?
+      How many ticks of buffer should a full reservoir provide?
+    resolution: |
+      RESOLUTION: MVP has ONE reservoir tier.
+      - Capacity: 1000 fluid units
+      - Fill rate: 50 units/tick
+      - Drain rate: 100 units/tick (drains faster than fills - emergency response)
+
+      Buffer time calculation: At 20 low-density habitations (100 units/tick consumption),
+      one full reservoir provides ~10 ticks (0.5 seconds) of buffer. For meaningful
+      protection, players should build multiple reservoirs.
+
+      Asymmetric drain/fill creates tension: reservoirs empty quickly in crisis,
+      recover slowly afterward.
+
+  - id: Q003
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Extraction Efficiency Curve: What efficiency multiplier at each water distance tier?
+    resolution: |
+      RESOLUTION: Linear efficiency falloff with clear tiers.
+      - 0 tiles (adjacent): 100% efficiency
+      - 1-2 tiles: 90% efficiency
+      - 3-4 tiles: 70% efficiency
+      - 5-6 tiles: 50% efficiency
+      - 7-8 tiles: 30% efficiency (can place, but weak)
+      - 9+ tiles: Cannot place extractor
+
+      MAX_PLACEMENT_DISTANCE = 8 tiles
+      OPTIMAL_DISTANCE = 0-2 tiles
+
+      Rationale: Clear waterfront premium. Players rewarded for securing water access.
+
+  - id: Q004
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Priority Mapping: Should fluid priority map exactly to energy priority, or does
+      fluid have different critical consumers?
+    resolution: |
+      RESOLUTION: NO priority system for fluid.
+
+      Unlike energy (4 priority levels), fluid uses all-or-nothing distribution:
+      - If pool has surplus: ALL consumers in coverage are hydrated
+      - If pool has deficit: ALL consumers in coverage are dehydrated
+
+      Rationale (from Game Designer): "Fluid affects habitability uniformly. You can't
+      say 'these beings get water and these don't.'" Collective suffering creates
+      different emotional arc than selective protection.
+
+      Exception: Fluid extractors themselves need energy priority (they consume power).
+      Extractors should be ENERGY_PRIORITY_IMPORTANT (level 2) so they stay powered
+      during energy deficit, maintaining water supply.
+
+  - id: Q005
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Grace Period: Should buildings have the same 100-tick grace period before
+      "dehydrated" state as they do for "unpowered"?
+    resolution: |
+      RESOLUTION: NO grace period for fluid. Reservoir buffer serves this purpose.
+
+      - Energy: 100-tick grace period before building state change
+      - Fluid: No grace period, BUT reservoir buffer provides time-based protection
+
+      Rationale: Reservoirs ARE the grace period. If player has reservoirs, they get
+      buffer time. If they don't have reservoirs, that's a choice with consequences.
+      Distinct from energy where grace period is built-in.
+
+  - id: Q006
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Reservoir Strategic Intent: Are reservoirs intended as emergency buffer,
+      demand spike absorption, strategic stockpiling, or all of the above?
+    resolution: |
+      RESOLUTION: All of the above, with primary purpose being EMERGENCY BUFFER.
+
+      Priority order:
+      1. Emergency buffer (survive extractor loss or power outage)
+      2. Demand spike absorption (prevent flicker during growth spurts)
+      3. Strategic stockpiling (build ahead of expansion)
+
+      Game Designer note: "Reservoirs should feel like insurance. Visible level
+      indicator creates satisfaction when full, gentle urgency when draining."
+
+  # ---------------------------------------------------------------------------
+  # Systems Architect -> Services Engineer Questions
+  # ---------------------------------------------------------------------------
+
+  - id: Q007
+    status: resolved
+    author: "systems-architect"
+    target: "services-engineer"
+    question: |
+      Epic 4 IFluidProvider Stub: Does Epic 4 have a stub similar to IEnergyProvider
+      (ticket 4-019)? If not, should we create one during Epic 4 or define it in Epic 6?
+    resolution: |
+      RESOLUTION: Epic 4 DOES include IFluidProvider stub.
+
+      Reference ticket 4-020 (parallel to 4-019 IEnergyProvider stub):
+      - StubFluidProvider returns has_fluid = true for all queries
+      - Allows building development in Epic 4 before Epic 6 is implemented
+      - Epic 6 provides real implementation via setter injection
+
+      Pattern: Both IEnergyProvider and IFluidProvider use forward dependency stub
+      pattern from canon patterns.yaml.
+
+  - id: Q008
+    status: resolved
+    author: "systems-architect"
+    target: "services-engineer"
+    question: |
+      Network Message Optimization: Can FluidPoolSyncMessage share encoding with
+      EnergyPoolSyncMessage, or should they be distinct message types?
+    resolution: |
+      RESOLUTION: Distinct message types with similar structure.
+
+      - EnergyPoolSyncMessage (Epic 5): ~16 bytes
+      - FluidPoolSyncMessage (Epic 6): ~20 bytes (includes reservoir data)
+
+      Rationale: Separate message types for:
+      1. Clear message routing
+      2. Different payload sizes (fluid has reservoir fields)
+      3. Independent versioning if pool model evolves differently
+      4. Debugging clarity (which system is syncing?)
+
+  - id: Q009
+    status: resolved
+    author: "systems-architect"
+    target: "services-engineer"
+    question: |
+      Coverage Grid Memory: Should FluidCoverageGrid be a separate allocation or
+      could we pack energy and fluid coverage into a single 2-byte-per-cell grid?
+    resolution: |
+      RESOLUTION: SEPARATE grids (1 byte each).
+
+      - EnergyCoverageGrid: 1 byte/cell (64 KB for 256x256)
+      - FluidCoverageGrid: 1 byte/cell (64 KB for 256x256)
+      - Total: 128 KB for 256x256
+
+      Rationale:
+      1. Simpler implementation (copy Epic 5 pattern)
+      2. Independent dirty flag tracking per resource
+      3. Cache locality: Coverage queries for one resource don't pollute cache for other
+      4. Memory cost is acceptable (128 KB is nothing on modern systems)
+
+      Future optimization: If needed, pack to 4 bits each (2 bits owner + 2 bits unused)
+      for 50% memory savings. Premature optimization for MVP.
+
+  - id: Q010
+    status: resolved
+    author: "systems-architect"
+    target: "services-engineer"
+    question: |
+      Reservoir Drain Order: When multiple reservoirs exist, what drain order?
+      FIFO (oldest first), proportional, or configurable?
+    resolution: |
+      RESOLUTION: PROPORTIONAL drain across all reservoirs.
+
+      Algorithm: Each reservoir drains proportionally to its fill percentage.
+      - Reservoir A at 80%: drains 80 units of 100 unit deficit
+      - Reservoir B at 20%: drains 20 units of 100 unit deficit
+
+      Rationale:
+      1. Distributes wear across reservoirs (fairness)
+      2. Visual feedback: all reservoirs drop together during crisis
+      3. No "empty reservoir while others full" anomaly
+      4. Deterministic for multiplayer (no order-dependent differences)
+
+  - id: Q011
+    status: resolved
+    author: "systems-architect"
+    target: "services-engineer"
+    question: |
+      Performance Validation: Epic 5 targets <10ms coverage recalc, <1ms pool calc,
+      <2ms full tick. Should Epic 6 have identical targets?
+    resolution: |
+      RESOLUTION: Identical targets with acknowledgment of additional complexity.
+
+      - Coverage recalc: <10ms for 512x512 with 5,000 conduits
+      - Pool calculation: <1ms for 10,000 consumers
+      - Full tick: <2ms for 256x256 map
+
+      Note: FluidSystem has additional overhead from:
+      1. IEnergyProvider queries for each extractor
+      2. Reservoir fill/drain calculations
+
+      Mitigation: Extractor power state can be cached at tick start (single batch query).
+      Reservoir math is O(reservoir_count) which is << consumer_count.
+
+  # ---------------------------------------------------------------------------
+  # Game Designer -> Systems Architect Questions
+  # ---------------------------------------------------------------------------
+
+  - id: Q012
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      Reservoir Buffering Mechanics: How many ticks of buffer should a full reservoir
+      provide? Is fluid stored per-reservoir or pooled like energy?
+    resolution: |
+      RESOLUTION: Per-reservoir storage with pool-level aggregation for surplus calc.
+
+      - Each reservoir has its own capacity and current_level
+      - Pool calculation sums all reservoir_levels for available_fluid
+      - Drain/fill happens per-reservoir (proportional distribution)
+
+      Rationale (from Game Designer): "Visual satisfaction of seeing levels rise/fall"
+      requires per-reservoir tracking. Aggregate pool math uses sum.
+
+      Buffer time: Depends on consumption vs capacity. See Q002 for specific numbers.
+
+  - id: Q013
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      Extractor-Water Proximity: What is the maximum distance from water for
+      extractor placement? Can extractors be placed ON water tiles?
+    resolution: |
+      RESOLUTION: Extractors placed ADJACENT to water, not ON water.
+
+      - Placement distance: 0-8 tiles from water
+      - Cannot place ON water tiles (water is not buildable per terrain)
+      - Distance 0 means tile is 4-directionally adjacent to water
+
+      Per canon terrain types: water_ocean, water_river, water_lake are not buildable.
+      Extractors extract FROM adjacent water, not from submerged position.
+
+  - id: Q014
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      Fluid-Energy Interdependence: Should unpowered extractors still consume from
+      reservoir buffer? When power returns, does extraction resume immediately?
+    resolution: |
+      RESOLUTION: Clear cascade behavior.
+
+      1. Unpowered extractors: produce NOTHING (current_output = 0)
+      2. Reservoirs: drain to cover demand during power outage
+      3. Power returns: extraction resumes IMMEDIATELY (no startup delay)
+
+      Cascade: Power loss -> extractors offline -> reservoir drain -> if reservoirs
+      empty, fluid deficit -> buildings dehydrated.
+
+      No "consume from buffer" - unpowered extractors simply don't produce. The pool
+      deficit (if any) causes reservoir drain to cover consumer needs.
+
+  - id: Q015
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      Coverage Model Differences: Does fluid use identical pool model to energy?
+      Any reason for fluid conduit coverage to work differently?
+    resolution: |
+      RESOLUTION: IDENTICAL coverage model with one difference.
+
+      Same as Energy:
+      - BFS flood-fill from producers through conduits
+      - Per-overseer coverage zones
+      - Ownership boundary enforcement
+      - Dirty flag tracking
+      - O(1) coverage queries via dense grid
+
+      One Difference:
+      - Energy: Seeds from ALL nexuses
+      - Fluid: Seeds from operational extractors (powered + water proximity) AND all reservoirs
+
+      Reservoirs always seed coverage (passive storage doesn't need power).
+      Extractors only seed coverage when operational.
+
+  # ---------------------------------------------------------------------------
+  # Game Designer -> Services Engineer Questions
+  # ---------------------------------------------------------------------------
+
+  - id: Q016
+    status: resolved
+    author: "game-designer"
+    target: "services-engineer"
+    question: |
+      Reservoir fill rate vs drain rate -- symmetric or asymmetric?
+    resolution: |
+      RESOLUTION: Asymmetric - drain faster than fill.
+
+      - Fill rate: 50 units/tick (gradual recovery)
+      - Drain rate: 100 units/tick (emergency response)
+
+      Rationale (Game Designer): "Reservoirs empty quickly in crisis, recover slowly
+      afterward." This creates tension - you can survive a crisis but recovery takes
+      time. Prevents whiplash from rapid fill/drain cycles.
+
+  - id: Q017
+    status: resolved
+    author: "game-designer"
+    target: "services-engineer"
+    question: |
+      Multiple reservoirs in same coverage zone -- how do they interact?
+      Can reservoirs transfer fluid to each other?
+    resolution: |
+      RESOLUTION: Reservoirs share pool but don't transfer directly.
+
+      - All reservoirs contribute to total_reservoir_stored in pool
+      - Drain is proportional across all reservoirs (Q010)
+      - Fill is proportional to remaining capacity
+      - NO direct reservoir-to-reservoir transfer
+
+      Gameplay: Building multiple reservoirs increases total buffer capacity.
+      Distribution happens at pool level, not via transfer between reservoirs.
+
+  - id: Q018
+    status: resolved
+    author: "game-designer"
+    target: "services-engineer"
+    question: |
+      Does Epic 3 TerrainSystem provide water_body_id and water_distance?
+      What interface do we need for extractor placement validation?
+    resolution: |
+      RESOLUTION: Yes, ITerrainQueryable provides both.
+
+      From interfaces.yaml:
+      - get_water_distance(x, y) -> uint8_t: Manhattan distance to nearest water (cap 255)
+      - get_water_body_id(x, y) -> uint8_t: Water body identifier (0 = not water)
+
+      For extractor placement:
+      1. get_water_distance() for proximity check
+      2. Efficiency curve based on distance (Q003)
+
+      water_body_id is for future use (drought mechanics, water body capacity).
+
+  # ---------------------------------------------------------------------------
+  # Services Engineer -> Systems Architect Questions
+  # ---------------------------------------------------------------------------
+
+  - id: Q019
+    status: resolved
+    author: "services-engineer"
+    target: "systems-architect"
+    question: |
+      IFluidProvider Interface: Should we define an IFluidProvider interface
+      (like IEnergyProvider) for other systems to query fluid state?
+    resolution: |
+      RESOLUTION: YES, define IFluidProvider interface.
+
+      Interface (mirrors IEnergyProvider):
+      ```cpp
+      class IFluidProvider {
+      public:
+          virtual bool has_fluid(EntityID entity) const = 0;
+          virtual bool has_fluid_at(int32_t x, int32_t y, PlayerID owner) const = 0;
+          virtual FluidPoolState get_pool_state(PlayerID owner) const = 0;
+          virtual const PerPlayerFluidPool& get_pool(PlayerID owner) const = 0;
+      };
+      ```
+
+      Implementer: FluidSystem (Epic 6)
+      Consumers: BuildingSystem (Epic 4), PopulationSystem (Epic 10)
+
+      CANON UPDATE REQUIRED: Add IFluidProvider to interfaces.yaml.
+
+  - id: Q020
+    status: resolved
+    author: "services-engineer"
+    target: "systems-architect"
+    question: |
+      Tick Priority Confirmation: FluidSystem at priority 20 (after Energy at 10) --
+      is this the right ordering?
+    resolution: |
+      RESOLUTION: Confirmed. FluidSystem tick_priority = 20.
+
+      Order:
+      - TerrainSystem: 5 (terrain queries)
+      - EnergySystem: 10 (power state settled)
+      - FluidSystem: 20 (can query is_powered for extractors)
+      - ZoneSystem: 30 (zone designation)
+      - BuildingSystem: 40 (can query both is_powered and has_fluid)
+
+      Critical dependency: FluidSystem MUST run after EnergySystem so extractor
+      power state is current when fluid calculations happen.
+
+      CANON UPDATE REQUIRED: Add tick_priority: 20 to FluidSystem in systems.yaml.
+
+  - id: Q021
+    status: resolved
+    author: "services-engineer"
+    target: "systems-architect"
+    question: |
+      Coverage Grid Canon Update: Need to add FluidCoverageGrid to
+      dense_grid_exception.applies_to in patterns.yaml.
+    resolution: |
+      RESOLUTION: Confirmed. Add to canon.
+
+      Update patterns.yaml dense_grid_exception.applies_to:
+      - "TerrainGrid (Epic 3): 4 bytes/tile..."
+      - "BuildingGrid (Epic 4): 4 bytes/tile..."
+      - "CoverageGrid (Epic 5): 1 byte/tile..."
+      - "FluidCoverageGrid (Epic 6): 1 byte/tile dense 2D array for fluid coverage zone tracking"
+
+      CANON UPDATE REQUIRED: Add FluidCoverageGrid to patterns.yaml.
+
+  # ---------------------------------------------------------------------------
+  # Services Engineer -> Game Designer Questions
+  # ---------------------------------------------------------------------------
+
+  - id: Q022
+    status: resolved
+    author: "services-engineer"
+    target: "game-designer"
+    question: |
+      No Rationing Decision: Confirm that fluid has no priority rationing
+      (unlike energy). During deficit, ALL buildings lose water equally?
+    resolution: |
+      RESOLUTION: Confirmed. NO priority rationing for fluid.
+
+      - Energy deficit: Priority 1 stays powered, Priority 4 goes dark
+      - Fluid deficit: ALL consumers in coverage lose fluid equally
+
+      Rationale (Game Designer): Fluid affects habitability uniformly. Collective
+      suffering creates different emotional arc. "You can't say these beings get
+      water and these don't."
+
+      Implementation: When pool.surplus < 0, ALL consumers get has_fluid = false.
+      No sorting, no rationing, no selective cutoff.
+
+  - id: Q023
+    status: resolved
+    author: "services-engineer"
+    target: "game-designer"
+    question: |
+      Power Loss Cascade: Is it intentional that power loss -> extractor offline ->
+      potential water crisis? This creates interesting cascade scenarios but might
+      be frustrating.
+    resolution: |
+      RESOLUTION: YES, intentional cascade. Core gameplay tension.
+
+      Game Designer: "This layered dependency creates interesting crisis cascades."
+
+      Mitigation for frustration:
+      1. Reservoirs provide buffer time during power outage
+      2. Clear visual feedback: extractor shows "unpowered" state
+      3. Pool status shows "generation: 0" when all extractors offline
+      4. Player can prioritize extractors for energy (ENERGY_PRIORITY_IMPORTANT)
+
+      Strategic depth: Players must consider both energy AND fluid when planning
+      infrastructure. Energy crisis can cascade to water crisis to habitability crisis.
+
+  - id: Q024
+    status: resolved
+    author: "services-engineer"
+    target: "game-designer"
+    question: |
+      Extractor Types: MVP has one extractor type. Should we reserve space for
+      future types (deep well, desalination, etc.)?
+    resolution: |
+      RESOLUTION: Reserve enum space, implement ONE type for MVP.
+
+      FluidProducerComponent.producer_type: uint8_t
+      - 0: Standard fluid extractor (MVP)
+      - 1-255: Reserved for future types
+
+      Potential future types (deferred):
+      - Deep well (higher output, anywhere placement)
+      - Desalination (ocean water, higher cost)
+      - Moisture collector (no water proximity, low output)
+
+      MVP scope: Single extractor type with water proximity requirement.
+
+# =============================================================================
+# CROSS-CUTTING RESOLUTIONS
+# =============================================================================
+
+cross_cutting_resolutions:
+
+  - id: CCR-001
+    topic: "Pool Model Confirmation"
+    resolution: |
+      FluidSystem uses identical pool model to EnergySystem per canon patterns.yaml.
+      Per-overseer fluid pools. Conduits define coverage zones, not transport routes.
+      Key difference: Reservoirs provide storage buffer (energy has none).
+
+  - id: CCR-002
+    topic: "No Priority Rationing for Fluid"
+    resolution: |
+      Unlike energy (4 priority levels), fluid uses all-or-nothing distribution.
+      During deficit, ALL consumers lose fluid. Collective suffering creates
+      different emotional arc than selective protection. Confirmed by Game Designer.
+
+  - id: CCR-003
+    topic: "Water Proximity Model"
+    resolution: |
+      Extractors require water proximity for placement (0-8 tiles) and efficiency
+      (linear falloff). Adjacent = 100%, 8 tiles = 30%. Cannot place at 9+ tiles.
+      Placement on water tiles not allowed (water is not buildable terrain).
+
+  - id: CCR-004
+    topic: "Power Dependency"
+    resolution: |
+      Fluid extractors require power to operate. FluidSystem queries IEnergyProvider.
+      Tick priority 20 (after EnergySystem at 10) ensures power state is current.
+      Cascade: power loss -> extractor offline -> reservoir drain -> fluid deficit.
+
+  - id: CCR-005
+    topic: "Reservoir Mechanics"
+    resolution: |
+      MVP: One reservoir type, 1000 capacity, 50 fill rate, 100 drain rate.
+      Asymmetric rates create tension. Proportional drain across all reservoirs.
+      Per-reservoir storage with pool-level aggregation. No direct transfer.
+
+  - id: CCR-006
+    topic: "No Grace Period (Reservoir Serves This Purpose)"
+    resolution: |
+      Unlike energy (100-tick grace period), fluid has no built-in grace period.
+      Reservoirs ARE the grace period. Players without reservoirs experience
+      immediate deficit when generation drops below consumption.
+
+  - id: CCR-007
+    topic: "Fluid Requirements Match Energy"
+    resolution: |
+      Fluid requirements per structure MATCH energy requirements exactly.
+      "A building needs X energy AND X fluid" is intuitive for MVP.
+      Both resources equally important for development.
+
+  - id: CCR-008
+    topic: "Extractor Energy Priority"
+    resolution: |
+      Fluid extractors consume energy and should have ENERGY_PRIORITY_IMPORTANT (2).
+      During energy deficit, extractors stay powered before habitation structures,
+      maintaining water supply during energy crisis.
+
+  - id: CCR-009
+    topic: "Separate Coverage Grids"
+    resolution: |
+      EnergyCoverageGrid and FluidCoverageGrid are separate allocations (1 byte each).
+      Simpler implementation, independent dirty tracking, acceptable memory cost.
+      Combined: 128 KB for 256x256 map.
+
+  - id: CCR-010
+    topic: "Coverage Delta Preview"
+    resolution: |
+      Both energy and fluid conduit placement show coverage delta preview.
+      Same pattern as Epic 5 CCR-010. UI shows new tiles that would gain coverage.
+
+# =============================================================================
+# CANON UPDATE FLAGS
+# =============================================================================
+
+canon_updates:
+
+  - file: "interfaces.yaml"
+    change: "Add IFluidProvider interface"
+    rationale: "Mirror IEnergyProvider pattern for fluid state queries"
+
+  - file: "systems.yaml"
+    change: "Add FluidSystem tick_priority: 20"
+    rationale: "Document tick ordering (after EnergySystem at 10)"
+
+  - file: "patterns.yaml"
+    change: "Add FluidCoverageGrid to dense_grid_exception applies_to"
+    rationale: "Follows same pattern as CoverageGrid"
+
+# =============================================================================
+# DOCUMENT STATUS
+# =============================================================================
+
+status_summary:
+  total_questions: 24
+  resolved: 24
+  open: 0
+  cross_cutting_resolutions: 10
+  canon_updates_flagged: 3
+  ready_for_ticket_synthesis: true

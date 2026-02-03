@@ -1,0 +1,311 @@
+topic: "Epic 3 Planning: Terrain System"
+created: "2026-01-28"
+status: resolved
+participants:
+  - systems-architect
+  - graphics-engineer
+  - game-designer
+
+threads:
+  # === Systems Architect → Graphics Engineer ===
+
+  - id: Q001
+    status: resolved
+    author: "systems-architect"
+    target: "graphics-engineer"
+    question: |
+      What chunk size should terrain rendering use? I recommend 32x32 to reduce draw call count while keeping instance buffer updates fast. Does this align with your GPU instancing strategy?
+    answers:
+      - author: "graphics-engineer"
+        answer: |
+          32x32 is correct. It aligns naturally with Epic 2's spatial partitioning cell size (ticket 2-050). Each chunk becomes a single mesh with ~1,089 vertices (33x33 shared corners). At 512x512: 256 chunks, ~15-40 visible at typical zoom. One draw call per visible chunk is well within budget.
+    resolution: "32x32 tile chunks. Aligned with Epic 2 spatial partitioning."
+
+  - id: Q002
+    status: resolved
+    author: "systems-architect"
+    target: "graphics-engineer"
+    question: |
+      Should terrain tiles be rendered as individual instanced quads/models, or as a continuous terrain mesh (heightmap mesh) per chunk? Instanced quads support per-tile variation easily. Heightmap mesh is more efficient but harder for per-tile type coloring.
+    answers:
+      - author: "graphics-engineer"
+        answer: |
+          Chunked heightmap mesh, not individual instanced quads. Each chunk is a single mesh with per-vertex terrain_type attribute. The fragment shader selects base color and emissive from a 10-entry uniform buffer palette. Hard color boundaries at type edges fit the toon aesthetic. This gives us one draw call per chunk regardless of terrain type mix. Vegetation/crystals are rendered separately as instanced models ON TOP of the terrain mesh.
+    resolution: "Chunked heightmap mesh with per-vertex terrain type. Vegetation as separate instanced models."
+
+  - id: Q003
+    status: resolved
+    author: "systems-architect"
+    target: "graphics-engineer"
+    question: |
+      For water rendering, should water tiles be part of the terrain mesh (with a water material), or a separate translucent water plane? Separate enables animation and effects but adds complexity.
+    answers:
+      - author: "graphics-engineer"
+        answer: |
+          Separate semi-transparent water mesh at sea level elevation. Alpha 0.7-0.8, depth test ON, depth write OFF. Enables: scrolling UV animation for rivers, per-vertex shoreline glow factor, and sine-wave normal perturbation. Estimated 5-15 draw calls for all water. Terrain mesh BELOW water still renders (visible through transparency as dark depth).
+    resolution: "Separate water mesh. Semi-transparent, animated, with per-vertex shoreline glow."
+
+  - id: Q004
+    status: resolved
+    author: "systems-architect"
+    target: "graphics-engineer"
+    question: |
+      How does the bloom post-process (ticket 2-038) interact with terrain emissive values? Should PrismaFields at 0.60 intensity cause excessive bloom bleed?
+    answers:
+      - author: "graphics-engineer"
+        answer: |
+          The intensity hierarchy is: player structures (0.5-1.0) > terrain features (0.05-0.60) > background. PrismaFields at 0.60 will produce noticeable bloom but not overwhelming — the bloom pass uses a fixed conservative threshold (ticket 2-038). At 0.60, crystal_fields will have visible glow bleed (~1-2 pixel radius), which is intentional and desirable for the "bright crystal" feel. Substrate at 0.05 will produce zero visible bloom. The hierarchy ensures buildings always pop on top of terrain glow.
+    resolution: "Intensity hierarchy maintained. PrismaFields 0.60 produces intentional bloom. Substrate 0.05 produces none."
+
+  # === Systems Architect → Game Designer ===
+
+  - id: Q005
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      What percentage of the map should be buildable vs unbuildable? For 256x256 (65K tiles), if 40% is water/toxic/ocean, is ~39K buildable tiles enough for 2-3 players?
+    answers:
+      - author: "game-designer"
+        answer: |
+          Target distribution: substrate ~35-45%, ridges ~10-15% (buildable but costly), water types ~15-20%, biolume groves ~10% (clearable), prisma/spore/ember ~5-10% (various buildability). Total immediately buildable: ~50-55%. Total buildable after clearing: ~60-70%. For 256x256 with 3 players: ~38K immediately buildable tiles / 3 = ~12.7K per player, which is more than enough. For 128x128 with 2 players: ~9K immediately / 2 = ~4.5K, tight but viable for the intended "cramped" feel.
+    resolution: "50-55% immediately buildable, 60-70% after clearing. Validated for all map sizes."
+
+  - id: Q006
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Is terrain modification a separate pre-game editor mode, or available during gameplay? When can players modify terrain?
+    answers:
+      - author: "game-designer"
+        answer: |
+          During gameplay, NOT a separate mode. Modifications are phased by cost and game progression: purge terrain = available immediately (cheap, early game); grade terrain = available anytime but expensive (mid game when credits allow); terraform = very expensive late-game operation. No pre-game terrain editing — the procedurally generated map IS the starting condition.
+    resolution: "During gameplay. Phased by cost: purge (early), grade (mid), terraform (late). No pre-game editor."
+
+  - id: Q007
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Should generation favor some terrain types over others? PrismaFields/SporeFlats are positive — should they be rare? BlightMires are negative — should they be common enough to matter?
+    answers:
+      - author: "game-designer"
+        answer: |
+          Yes, rarity creates strategic value. Proposed distribution: substrate (35-45%), ridges (10-15%), water types (15-20%), biolume groves (8-12%), spore flats (3-5%), prisma fields (2-4% — rare, clustered), blight mires (3-5% — enough to be real obstacles), ember crust (3-6% — moderate, geologically plausible clusters). Prisma fields should be the rarest special terrain. Blight mires should be common enough that every map has at least one patch affecting expansion.
+    resolution: "Variable rarity. Prisma rarest (2-4%), substrate most common (35-45%). Every map has at least one blight patch."
+
+  - id: Q008
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Should the map seed be visible to players? Seed sharing enables map replayability. Is that desirable?
+    answers:
+      - author: "game-designer"
+        answer: |
+          Yes, expose the seed in the post-game summary and optionally during lobby. Replayable maps are good — players can share favorite seeds, create tournament maps, and practice on known terrain. The seed should NOT be visible during initial site selection (to preserve discovery). Show it after the first minute of gameplay or in the pause menu.
+    resolution: "Seed visible after game start (pause menu, post-game). Not during initial site selection."
+
+  - id: Q009
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      Can players change sea level during gameplay? Should this be a disaster event, game-master tool, or not adjustable?
+    answers:
+      - author: "game-designer"
+        answer: |
+          Sea level is NOT player-adjustable. Water is permanent geography — "bigger than you." Sea level changes could be a disaster event (flooding) in Epic 13 (Disasters), but NOT a player tool. TerrainSystem stores sea_level for disaster system use, but players cannot modify it.
+    resolution: "Not player-adjustable. Reserved for disaster events (Epic 13). Water is permanent."
+
+  - id: Q010
+    status: resolved
+    author: "systems-architect"
+    target: "game-designer"
+    question: |
+      How should terrain transitions look? Sharp per-tile boundaries or gradual blending between types?
+    answers:
+      - author: "game-designer"
+        answer: |
+          Hard boundaries. This fits the toon aesthetic — clean edges, no blending. The edge detection post-process (ticket 2-006) will draw outlines at type boundaries where normals or colors change, reinforcing the visual separation. Each terrain type should be immediately identifiable as a distinct tile, supporting the "2-second identification rule."
+      - author: "graphics-engineer"
+        answer: |
+          Agree with hard boundaries. Per-vertex terrain_type in the heightmap mesh creates natural hard edges. The toon shader bands reinforce this. Blending would require texture splatting or more complex shader logic, which conflicts with the flat-color toon approach.
+    resolution: "Hard per-tile boundaries. Fits toon aesthetic. Edge detection reinforces type borders."
+
+  # === Graphics Engineer → Systems Architect ===
+
+  - id: Q011
+    status: resolved
+    author: "graphics-engineer"
+    target: "systems-architect"
+    question: |
+      What is the exact data structure TerrainSystem provides to RenderingSystem? What flags are needed per tile?
+    answers:
+      - author: "systems-architect"
+        answer: |
+          TerrainComponent: 4 bytes per tile. terrain_type (uint8, 10 types), elevation (uint8, 0-31), moisture (uint8, 0-255), flags (uint8). Flag bits: is_cleared (bit 0), is_underwater (bit 1), is_coastal (bit 2), is_slope (bit 3), bits 4-7 reserved. Rendering reads terrain_type and elevation for mesh generation, emissive lookup from static TerrainTypeInfo table. Cleared state affects vegetation rendering (no trees on cleared forest tile).
+    resolution: "TerrainComponent = 4 bytes: type, elevation, moisture, flags. Static TerrainTypeInfo for emissive."
+
+  - id: Q012
+    status: resolved
+    author: "graphics-engineer"
+    target: "systems-architect"
+    question: |
+      How does TerrainSystem notify RenderingSystem of chunk rebuilds? Event-based or dirty flag polling?
+    answers:
+      - author: "systems-architect"
+        answer: |
+          Event-based: TerrainModifiedEvent with GridRect of affected tiles and modification type. RenderingSystem listens and marks affected chunks dirty. Rebuild happens on next render frame (at most 1 chunk per frame to avoid stalls). ITerrainRenderData interface exposes is_chunk_dirty() for fallback polling.
+    resolution: "Event-based via TerrainModifiedEvent. Dirty flag polling as fallback."
+
+  - id: Q013
+    status: resolved
+    author: "graphics-engineer"
+    target: "systems-architect"
+    question: |
+      Does TerrainSystem provide exact vegetation instance positions, or just tile type? I recommend RenderingSystem generates placement deterministically from tile coordinate hash to avoid syncing per-tree positions.
+    answers:
+      - author: "systems-architect"
+        answer: |
+          TerrainSystem provides only tile type and cleared state. RenderingSystem generates vegetation placement deterministically using seeded PRNG (seed = hash(tile_x, tile_y, map_seed)). This ensures all clients produce identical vegetation without syncing per-instance data. Each forest tile gets 2-4 vegetation instances, crystal tiles get 1-3 crystal instances, deterministically placed.
+    resolution: "TerrainSystem provides tile type only. Rendering generates placement from tile coordinate hash."
+
+  - id: Q014
+    status: resolved
+    author: "graphics-engineer"
+    target: "systems-architect"
+    question: |
+      Does TerrainSystem identify discrete water bodies (lake_1, river_segment_3) or just tile types? I need contiguous water body info for single-mesh generation and river flow direction per tile.
+    answers:
+      - author: "systems-architect"
+        answer: |
+          TerrainSystem tracks water body IDs computed during generation. Each contiguous water region gets a unique ID. River tiles additionally store flow direction (2D vector or 8-direction enum). The ITerrainRenderData interface exposes: get_water_body_id(x, y) and get_flow_direction(x, y). This enables single-mesh-per-body water rendering and directional UV scrolling.
+    resolution: "Water body IDs assigned during generation. Flow direction per river tile. Exposed via query API."
+
+  - id: Q015
+    status: resolved
+    author: "graphics-engineer"
+    target: "systems-architect"
+    question: |
+      For 512x512, should the terrain array be row-major or chunk-major in memory? Chunk-major is better for rendering locality.
+    answers:
+      - author: "systems-architect"
+        answer: |
+          Row-major for TerrainGrid (game logic, generation, queries). Row-major is simpler, supports O(1) coordinate-to-index mapping, and is cache-friendly for row-by-row generation and simulation. RenderingSystem builds chunk-local data structures as needed from the row-major source. The 32x32 chunk data for mesh generation can be copied to a local buffer (~4KB) during rebuild — trivial cost.
+    resolution: "Row-major for game logic. Rendering copies chunk-local data as needed during rebuild."
+
+  # === Graphics Engineer → Game Designer ===
+
+  - id: Q016
+    status: resolved
+    author: "graphics-engineer"
+    target: "game-designer"
+    question: |
+      Should water be transparent enough to see terrain beneath (dark depth), or opaque with surface-only glow? I recommend semi-transparent (alpha 0.7-0.8).
+    answers:
+      - author: "game-designer"
+        answer: |
+          Semi-transparent, alpha 0.7-0.8. The dark depth beneath the glowing surface makes the bioluminescent effect more dramatic. Players should see darkness below, with the surface glow floating on top. This reinforces the "deep void" theme — the water hides something vast and dark below.
+    resolution: "Semi-transparent, alpha 0.7-0.8. Dark depth visible beneath surface glow."
+
+  - id: Q017
+    status: resolved
+    author: "graphics-engineer"
+    target: "game-designer"
+    question: |
+      How dense are crystal formations? 1-3 large spires per tile, or 5-10 small ones? This significantly affects triangle budget.
+    answers:
+      - author: "game-designer"
+        answer: |
+          1-3 large crystal spires per tile. Fewer, larger crystals have more visual impact and are easier to read at distance. The pulsing magenta/cyan glow should be visible from far zoom — big crystals achieve this better than many small ones. At LOD 1+, crystals disappear and terrain emissive takes over, so close-range impact matters most.
+    resolution: "1-3 large crystal spires per tile. Visual impact over density."
+
+  - id: Q018
+    status: resolved
+    author: "graphics-engineer"
+    target: "game-designer"
+    question: |
+      Should there be a visible glowing shoreline where water meets land?
+    answers:
+      - author: "game-designer"
+        answer: |
+          Yes, absolutely. The emissive shoreline is one of the strongest bioluminescent opportunities. A bright fringe where water meets land — the "tide glow" — makes coastlines visible from any camera angle and any zoom level. It is both beautiful and functional (helps players identify water boundaries). The shore glow color should match the water type (blue-white for deep void, teal for flow channels).
+    resolution: "Yes. Per-vertex shore_factor driving emissive boost at water-land boundary."
+
+  - id: Q019
+    status: resolved
+    author: "graphics-engineer"
+    target: "game-designer"
+    question: |
+      Toxic marsh visual: volumetric fog is expensive. Terrain-level glow + transparent fog billboards as later polish?
+    answers:
+      - author: "game-designer"
+        answer: |
+          Terrain-level glow is sufficient for Epic 3. The sickly yellow-green glow with irregular pulsing behavior communicates "toxic" effectively. Fog billboards or volumetric effects can be added in a polish epic. The bubbling effect can be approximated by irregular emissive pulsing in the shader, not requiring particle systems.
+    resolution: "Terrain-level glow with irregular pulse for Epic 3. Fog effects deferred to polish."
+
+  # === Game Designer → Systems Architect ===
+
+  - id: Q020
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      Is terrain stored as one entity per sector, or as a dense 2D array? Dense is more efficient for 512x512 but less ECS-idiomatic.
+    answers:
+      - author: "systems-architect"
+        answer: |
+          Dense 2D grid array (TerrainGrid), NOT per-entity. Rationale: terrain covers every tile with no gaps, requires O(1) spatial access, and at 512x512 (262K tiles) per-entity ECS overhead is wasteful. TerrainSystem itself is registered as an ECS system but manages its own data structure. This is appropriate for global spatial data that doesn't benefit from entity archetype queries.
+    resolution: "Dense 2D array. TerrainSystem manages internally. Not per-entity ECS."
+
+  - id: Q021
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      Should terrain modifications (grading, purging, terraforming) be multi-tick operations with progress, or instant operations gated only by cost?
+    answers:
+      - author: "systems-architect"
+        answer: |
+          Hybrid approach. Purge terrain = instant (one tick) with visual transition (0.5s glow fade-out). Grade terrain = multi-tick operation with progress (larger elevation changes take more ticks). Terraform = multi-tick, very long duration. Multi-tick operations use a TerrainModificationComponent on a temporary entity tracking progress, validated server-side each tick. This aligns with the game designer's pacing vision: purge is quick (early game action), grading is an investment (mid game), terraform is a project (late game).
+    resolution: "Purge = instant. Grade = multi-tick (progress). Terraform = multi-tick (long). Server-validated."
+
+  - id: Q022
+    status: resolved
+    author: "game-designer"
+    target: "systems-architect"
+    question: |
+      How does terrain state sync in multiplayer? Full snapshot + deltas?
+    answers:
+      - author: "systems-architect"
+        answer: |
+          Optimized join: server sends map seed + list of modifications since generation. Client generates terrain locally from seed, then applies modifications. This works because generation is deterministic. During gameplay: server broadcasts TerrainModifiedEvent on each modification. Full snapshot fallback if deterministic generation fails verification.
+    resolution: "Seed + modification list on join. Delta updates during gameplay. Full snapshot as fallback."
+
+  # === Game Designer → Graphics Engineer ===
+
+  - id: Q023
+    status: resolved
+    author: "game-designer"
+    target: "graphics-engineer"
+    question: |
+      Can the toon shader support per-terrain-type emissive glow with the specified 10-color palette? Any performance concerns?
+    answers:
+      - author: "graphics-engineer"
+        answer: |
+          Yes, fully supported. A 10-entry uniform buffer (base_colors[10] + emissive_colors[10]) is trivial GPU cost. The terrain fragment shader reads terrain_type per-vertex and indexes into the palette. No per-tile textures needed. Animated glow behaviors (pulse, shimmer, flow) are implemented via time uniform + simple math in the shader. Zero performance concern — this is less expensive than a single texture sample.
+    resolution: "Fully supported via uniform buffer palette. Zero performance concern."
+
+  - id: Q024
+    status: resolved
+    author: "game-designer"
+    target: "graphics-engineer"
+    question: |
+      What does the purge terrain visual transition look like? It should feel impactful, not just a texture swap.
+    answers:
+      - author: "graphics-engineer"
+        answer: |
+          On purge: emissive intensity interpolates from current value to 0.0 over 0.5s (glow fade-out). The vegetation instances for that tile are removed (trees/crystals disappear). The terrain base color transitions to cleared substrate color. For a more impactful feel, we could add a brief emissive "flash" at the moment of purge before the fade-out (intensity spikes to 1.0 then fades to 0.0). Particle effects (floating glow motes rising from cleared terrain) are deferred to polish.
+    resolution: "0.5s emissive fade-out with optional initial flash. Vegetation removed. Particles deferred to polish."

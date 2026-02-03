@@ -1,0 +1,98 @@
+# Epic 16 Planning Discussion
+# Auto-generated during /plan-epic workflow
+
+epic: 16
+title: "Persistence/Save-Load System"
+date: 2026-02-01
+status: complete
+phase: 4_synthesis
+
+participants:
+  - systems-architect
+  - game-designer
+
+# Key design decisions from discussion
+
+decisions:
+  - id: D-1
+    topic: "Continuous vs Interval Persistence"
+    decision: "Continuous database persistence (Epic 1) + periodic checkpoints, no traditional interval auto-save"
+    rationale: "Multiplayer endless sandbox has no natural save points; players should never think about saving"
+
+  - id: D-2
+    topic: "Checkpoint Frequency"
+    decision: "Rolling checkpoints every 10 cycles, keep last 3"
+    rationale: "Balances recovery granularity against storage overhead"
+
+  - id: D-3
+    topic: "Event-Triggered Checkpoints"
+    decision: "Checkpoint on: first structure, population thresholds (10K), arcology complete, player join/leave, major transactions"
+    rationale: "Protect meaningful progress moments automatically"
+
+  - id: D-4
+    topic: "Multiplayer Rollback Authority"
+    decision: "Host authority for <30 min rollbacks; majority vote required for >30 min"
+    rationale: "Prevents griefing while allowing legitimate recovery"
+
+  - id: D-5
+    topic: "World Export Feature"
+    decision: "Export as 'World Template' - terrain + structures, stripped of player data"
+    rationale: "Share creativity, not competition"
+
+  - id: D-6
+    topic: "Immortalized World Storage"
+    decision: "Separate save files with special metadata + gallery index JSON"
+    rationale: "Keep Monument Gallery decoupled from active gameplay"
+
+  - id: D-7
+    topic: "Save File Size (Estimated)"
+    decision: "128x128: ~150KB, 256x256: ~400KB, 512x512: ~1MB (LZ4 compressed)"
+    rationale: "Dense grids compress 10:1, components 2-4x"
+
+  - id: D-8
+    topic: "State Hash for Corruption"
+    decision: "File CRC32 + lightweight runtime hash (entity count, population, treasury)"
+    rationale: "Quick sanity check, full resync on mismatch"
+
+# Questions answered
+
+questions:
+  - id: SA-1
+    status: answered
+    answer: "Continuous DB + checkpoints every 10 cycles. Not player-configurable. Manual snapshots (5 slots) for experimentation."
+
+  - id: SA-2
+    status: answered
+    answer: "Trigger on: first structure, population thresholds (10K), arcology complete, player join/leave, major transactions (>50K credits), idle detection."
+
+  - id: SA-3
+    status: answered
+    answer: "Primary: name, thumbnail, map size, population, active players, last activity. Secondary: player colonies, milestones. Omit play time and others' treasury."
+
+  - id: SA-4
+    status: answered
+    answer: "Auto-generate as '[World Name] - Cycle [Number]', easy to edit. Immortalize prompts for custom monument name."
+
+  - id: SA-5
+    status: answered
+    answer: "Host authority for <30 min rollback; majority vote for >30 min; unanimous for >24 hours. 2-minute response timeout."
+
+  - id: SA-6
+    status: answered
+    answer: "Yes, as 'World Template Export' - terrain + structures, stripped of player identity/treasury/progression. Single .zcworld file."
+
+  - id: GD-1
+    status: answered
+    answer: "SQLite with WAL mode. Batch all tick changes into single transaction. WAL provides crash recovery. Save files are intentional snapshots, separate from continuous DB."
+
+  - id: GD-2
+    status: answered
+    answer: "128x128: ~150KB, 256x256: ~400KB, 512x512: ~1MB with LZ4. Stored locally on server. No cloud sync in MVP."
+
+  - id: GD-3
+    status: answered
+    answer: "Separate save files with gallery_index.json metadata. ~150KB-1MB per immortalized world + 50KB thumbnail."
+
+  - id: GD-4
+    status: answered
+    answer: "Server broadcasts reload, clients show loading screen, full state sync, resume. CRC32 file checksum + runtime state hash for quick corruption detection."

@@ -1,0 +1,559 @@
+# Epic 7 Planning Discussion
+# Transportation Network (TransportSystem + RailSystem)
+
+topic: "Epic 7 Planning: Transportation Network"
+created: "2026-01-29"
+status: complete
+canon_version: "0.9.0"
+output_artifacts:
+  tickets: "docs/epics/epic-7/tickets.md"
+  canon_verification: "docs/epics/epic-7/canon-verification.md"
+  canon_updates_applied: true
+participants:
+  - systems-architect
+  - game-designer
+  - infrastructure-engineer
+
+# ==============================================================================
+# RESOLVED QUESTIONS
+# ==============================================================================
+
+threads:
+
+  # ---------------------------------------------------------------------------
+  # SYSTEMS ARCHITECT QUESTIONS
+  # ---------------------------------------------------------------------------
+
+  - id: Q001
+    status: resolved
+    author: systems-architect
+    target: game-designer
+    question: |
+      Traffic spillover policy: When Player A's traffic uses Player B's roads,
+      should there be any cost compensation, or is this just part of competitive
+      multiplayer dynamics? Should players be able to "toll" roads on their tiles?
+    resolution: |
+      No toll system for MVP. Cross-ownership traffic is part of shared fate
+      multiplayer dynamics per canon (roads connects_across_ownership: true).
+      Traffic spillover creates interesting social dynamics - cooperation and
+      friction are both acceptable outcomes. Tolls add complexity without
+      clear gameplay benefit for sandbox mode.
+    resolved_by: game-designer
+
+  - id: Q002
+    status: resolved
+    author: systems-architect
+    target: game-designer
+    question: |
+      Transit corridor land value effect: Should properties adjacent to
+      transit_corridors (highways) have reduced value (noise) or increased
+      value (access)? Or zone-dependent?
+    resolution: |
+      Zone-dependent effect:
+      - Habitation adjacent to transit_corridor: -5% sector_value (noise)
+      - Exchange adjacent to transit_corridor: +5% sector_value (access)
+      - Fabrication adjacent to transit_corridor: +10% sector_value (shipping)
+      This creates zoning strategy around transit corridor placement.
+    resolved_by: game-designer
+
+  - id: Q003
+    status: resolved
+    author: systems-architect
+    target: game-designer
+    question: |
+      Road decay rate: How aggressively should roads decay from traffic and
+      underfunding? Should high-traffic roads decay faster than low-traffic roads?
+    resolution: |
+      Yes, traffic-based decay. Decay formula:
+      - Base decay: 0.1 health/5 seconds (pristine lasts ~21 minutes idle)
+      - Traffic multiplier: 1.0 + 2.0 * (flow/capacity) = up to 3x faster decay
+      High-traffic transit_corridors decay faster but have higher base health.
+      This creates maintenance pressure on busy routes.
+    resolved_by: game-designer
+
+  - id: Q004
+    status: resolved
+    author: systems-architect
+    target: game-designer
+    question: |
+      Bus system inclusion: The epic plan mentions bus depots with 50% traffic
+      reduction. Should this be in Epic 7 or deferred?
+    resolution: |
+      DEFER transport_pods (buses) to Epic 17 (Polish) or future expansion.
+      50% traffic reduction is very powerful and overlaps with rail functionality.
+      For MVP, pathway network + rail system is sufficient complexity.
+      Transport pods can be added later as a mid-tier option between pathways and rail.
+    resolved_by: systems-architect
+
+  - id: Q005
+    status: resolved
+    author: systems-architect
+    target: game-designer
+    question: |
+      Traffic visualization: Should we show cosmetic vehicles immediately in
+      Epic 7, or defer to Epic 17 (Polish)?
+    resolution: |
+      Include cosmetic entities in Epic 7 as P1 (important, not P0).
+      Cosmetic beings/vehicles are critical for the "flow as heartbeat" experience.
+      Without them, pathways feel dead. Implement:
+      - Basic pathway glow (P0)
+      - Cosmetic beings/vehicles scaled to flow (P1)
+      - Advanced flow particle effects (P2/defer)
+    resolved_by: game-designer
+
+  - id: Q006
+    status: resolved
+    author: systems-architect
+    target: game-designer
+    question: |
+      Congestion threshold for effects: At what congestion level should
+      negative effects kick in?
+    resolution: |
+      Congestion thresholds (0-255 scale):
+      - 0-50: Free flow (no effects)
+      - 51-100: Light traffic (minor visual only)
+      - 101-150: Moderate traffic (-5% sector_value nearby)
+      - 151-200: Heavy traffic (-10% sector_value, contamination begins)
+      - 201-255: Flow_blockage (-15% sector_value, -10% development speed, contamination)
+      These are tunable balance values.
+    resolved_by: game-designer
+
+  # ---------------------------------------------------------------------------
+  # INFRASTRUCTURE ENGINEER QUESTIONS
+  # ---------------------------------------------------------------------------
+
+  - id: Q007
+    status: resolved
+    author: infrastructure-engineer
+    target: systems-architect
+    question: |
+      Tick Priority for TransportSystem: EnergySystem is 10, FluidSystem is 20,
+      ZoneSystem is 30, BuildingSystem is 40. Where should TransportSystem fit?
+    resolution: |
+      TransportSystem: priority 45 (after BuildingSystem 40)
+      RailSystem: priority 47 (after TransportSystem)
+
+      Rationale: Traffic is aggregated from buildings, so buildings must update
+      first. ContaminationSystem (80) then queries traffic for pollution.
+      This matches the data flow: Buildings -> Traffic -> Contamination.
+    resolved_by: systems-architect
+
+  - id: Q008
+    status: resolved
+    author: infrastructure-engineer
+    target: systems-architect
+    question: |
+      RailSystem as Separate System: Canon defines TransportSystem and RailSystem
+      as separate ECS systems. Should RailSystem be a separate class with its
+      own tick, or a subsystem within TransportSystem?
+    resolution: |
+      Separate classes, separate ticks (45 and 47), but coordinated:
+      - TransportSystem: pathways, traffic simulation, ITransportProvider
+      - RailSystem: rail tracks, terminals, power dependency, coverage model
+
+      RailSystem queries TransportSystem for traffic reduction calculation.
+      Clear interface boundaries prevent tight coupling.
+    resolved_by: systems-architect
+
+  - id: Q009
+    status: resolved
+    author: infrastructure-engineer
+    target: systems-architect
+    question: |
+      Dense Grid Pattern Confirmation: Should PathwayGrid and ProximityCache
+      be formally documented in patterns.yaml dense_grid_exception?
+    resolution: |
+      YES. Add to patterns.yaml dense_grid_exception.applies_to:
+      - "PathwayGrid (Epic 7): 4 bytes/tile EntityID array for pathway spatial queries"
+      - "ProximityCache (Epic 7): 1 byte/tile distance-to-nearest-pathway cache"
+
+      Total: 5 bytes/tile for transport spatial data.
+      This follows the established pattern from TerrainGrid, BuildingGrid, CoverageGrids.
+    resolved_by: systems-architect
+
+  - id: Q010
+    status: resolved
+    author: infrastructure-engineer
+    target: systems-architect
+    question: |
+      IContaminationSource for Traffic: Should TransportSystem implement
+      IContaminationSource directly, or should ContaminationSystem query
+      TrafficComponent?
+    resolution: |
+      ContaminationSystem queries TransportSystem via ITransportProvider:
+      - get_traffic_volume_at(x, y) returns flow for pollution calculation
+      - get_congestion_at(x, y) returns congestion level
+
+      TransportSystem does NOT implement IContaminationSource directly.
+      Pathways don't "generate" contamination - traffic does, and contamination
+      calculation belongs to ContaminationSystem.
+    resolved_by: systems-architect
+
+  - id: Q011
+    status: resolved
+    author: infrastructure-engineer
+    target: game-designer
+    question: |
+      3-Tile Rule Clarification: Is the 3-tile road proximity rule measured
+      by Manhattan distance or Chebyshev (including diagonals)?
+    resolution: |
+      Manhattan distance (4-directional, no diagonals).
+      This matches the existing BFS implementation and is more intuitive for
+      grid-based placement. A building 3 tiles north is accessible; a building
+      3 tiles diagonally (4.24 Manhattan) is not.
+    resolved_by: game-designer
+
+  - id: Q012
+    status: resolved
+    author: infrastructure-engineer
+    target: game-designer
+    question: |
+      Traffic Contribution Values: Are these reasonable starting points?
+      - Habitation: 2 flow/tick per occupant ratio
+      - Exchange: 5 flow/tick per occupant ratio
+      - Fabrication: 3 flow/tick per occupant ratio
+    resolution: |
+      Approved as starting values. Exchange generates most traffic (visitors).
+      Scale by building level: level 2 = 2x, level 3 = 3x.
+      Final values to be tuned during playtesting. Store in config for easy adjustment.
+    resolved_by: game-designer
+
+  - id: Q013
+    status: resolved
+    author: infrastructure-engineer
+    target: game-designer
+    question: |
+      Decay Timeline: Proposed decay: pristine pathway lasts ~20 minutes of
+      game time with average traffic before reaching "Poor" state. Is this right?
+    resolution: |
+      20 minutes is reasonable for mid-game pacing. Adjust by pathway type:
+      - Basic pathway: ~15 minutes to Poor (faster decay, cheaper to build)
+      - Standard pathway: ~20 minutes to Poor (balanced)
+      - Transit corridor: ~30 minutes to Poor (slower decay, expensive)
+
+      Decay creates ongoing maintenance decision without being punishing.
+    resolved_by: game-designer
+
+  - id: Q014
+    status: resolved
+    author: infrastructure-engineer
+    target: game-designer
+    question: |
+      Transit Corridor (Highway) Usage: When should players unlock
+      transit corridors? Population milestone? Technology? Build cost only?
+    resolution: |
+      Available from start but gated by cost (expensive).
+      No unlock requirement - player progression is through economy, not tech tree.
+      Transit corridors are 4x the cost of standard pathways.
+      This matches canon sandbox philosophy: everything available, cost is the gate.
+    resolved_by: game-designer
+
+  - id: Q015
+    status: resolved
+    author: infrastructure-engineer
+    target: game-designer
+    question: |
+      Rail Capacity Model: Rail capacity is in "beings per cycle."
+      What's a cycle in this context?
+    resolution: |
+      1 cycle = 100 ticks = 5 seconds real-time.
+      Rail terminal with capacity 500 can move 500 beings per 5 seconds.
+      This translates to traffic reduction in coverage radius.
+      Capacity scales terminal effectiveness, not direct being simulation.
+    resolved_by: game-designer
+
+  - id: Q016
+    status: resolved
+    author: infrastructure-engineer
+    target: game-designer
+    question: |
+      Subterra Depth Levels: Is multi-depth subterra (deep subway) needed
+      for MVP, or can we ship with single-depth?
+    resolution: |
+      Single-depth for MVP (depth_level always 1).
+      Multi-depth subterra is P2/deferred feature. Adds complexity without
+      clear gameplay benefit for initial release. SubterraComponent includes
+      depth_level field for future expansion.
+    resolved_by: systems-architect
+
+  # ---------------------------------------------------------------------------
+  # GAME DESIGNER QUESTIONS
+  # ---------------------------------------------------------------------------
+
+  - id: Q017
+    status: resolved
+    author: game-designer
+    target: systems-architect
+    question: |
+      Flow Calculation Model: How is flow calculated? Per-pathway segment,
+      per-junction, or per-network?
+    resolution: |
+      Per-pathway segment with diffusion propagation.
+      - Buildings contribute flow to nearest pathway segment
+      - Flow spreads along connected segments (20% per tick)
+      - Congestion calculated per-segment: flow/capacity
+
+      NOT per-network pooling. Physical location matters.
+    resolved_by: systems-architect
+
+  - id: Q018
+    status: resolved
+    author: game-designer
+    target: systems-architect
+    question: |
+      Cross-Ownership Network Mechanics: How do we calculate flow across
+      owner boundaries?
+    resolution: |
+      Single unified pathway network regardless of ownership.
+      - PathwayGrid has no owner check for connectivity
+      - NetworkGraph treats all connected pathways as one network
+      - Flow crosses boundaries without penalty
+      - Each segment tracks owner via OwnershipComponent for maintenance/rendering
+
+      This is the "roads connects_across_ownership: true" canon rule in action.
+    resolved_by: systems-architect
+
+  - id: Q019
+    status: resolved
+    author: game-designer
+    target: systems-architect
+    question: |
+      Rail System Architecture: How do rail_lines interact with the
+      pathway network?
+    resolution: |
+      Rail is INDEPENDENT of pathway network:
+      - Separate RailComponent, not PathwayComponent
+      - Separate network graph for rail connectivity
+      - Rail does NOT connect across ownership (per-player networks)
+      - Rail terminals require pathway access (ITransportProvider query)
+
+      Rail REDUCES pathway traffic via terminal coverage radius.
+      Buildings in terminal radius have reduced traffic contribution to pathways.
+    resolved_by: systems-architect
+
+  - id: Q020
+    status: resolved
+    author: game-designer
+    target: systems-architect
+    question: |
+      Cosmetic Entity System: How are cosmetic entities (beings on pathways)
+      spawned and managed?
+    resolution: |
+      RenderingSystem responsibility, not TransportSystem.
+      - TransportSystem provides: get_traffic_density_at(x, y)
+      - RenderingSystem spawns cosmetic entities based on density
+      - Entities use simple path-following, not A* per-entity
+      - NOT network synced - each client generates locally
+      - Count scales: more flow = more entities
+
+      This is pure visual feedback, not gameplay simulation.
+    resolved_by: systems-architect
+
+  - id: Q021
+    status: resolved
+    author: game-designer
+    target: infrastructure-engineer
+    question: |
+      Junction Mechanics: Do junctions have separate capacity from
+      pathway segments?
+    resolution: |
+      Junctions are pathway segments with is_junction=true flag.
+      - Junction capacity = base capacity + bonus based on connected_count
+      - 4-way junction: +50% capacity bonus
+      - 3-way junction: +25% capacity bonus
+      - Junction with traffic_control (traffic light): +25% additional bonus
+
+      This rewards thoughtful junction design without separate component.
+    resolved_by: infrastructure-engineer
+
+  - id: Q022
+    status: resolved
+    author: game-designer
+    target: infrastructure-engineer
+    question: |
+      Rail Implementation: Rail capacity model -- fixed routes with
+      schedules, or demand-based?
+    resolution: |
+      Demand-based capacity model (no schedules).
+      - Rail terminals have coverage radius
+      - Buildings in radius contribute reduced traffic to pathways
+      - Traffic reduction = terminal capacity utilization
+      - No explicit rail vehicle routing or timetables
+
+      Cosmetic rail_transport vehicles follow tracks visually but don't
+      affect simulation. Simpler than schedule system, fits aggregate model.
+    resolved_by: infrastructure-engineer
+
+  - id: Q023
+    status: resolved
+    author: game-designer
+    target: infrastructure-engineer
+    question: |
+      Pathway Decay: Do pathways decay over time? Does flow_blockage
+      accelerate decay?
+    resolution: |
+      Yes, decay over time with traffic multiplier:
+      - Base decay rate per pathway type
+      - Usage multiplier: high traffic = faster decay (up to 3x)
+      - Congestion does NOT directly affect decay (congestion = flow/capacity,
+        decay already considers flow)
+
+      Repair via maintenance budget (EconomySystem integration).
+      Visual feedback: health 0-255 maps to 5 visual decay states.
+    resolved_by: infrastructure-engineer
+
+# ==============================================================================
+# CROSS-CUTTING RESOLUTIONS
+# ==============================================================================
+
+cross_cutting_resolutions:
+
+  - id: CCR-001
+    title: "Network Model, Not Pool Model"
+    summary: |
+      Transport uses physical network connectivity, not pool model like energy/fluid.
+      Pathways form a graph where connectivity and congestion are local to segments.
+      This is fundamental architectural difference.
+    affects:
+      - TransportSystem architecture
+      - All traffic calculations
+      - ITransportProvider interface
+    resolved_by: systems-architect
+
+  - id: CCR-002
+    title: "Cross-Ownership Pathway Connectivity"
+    summary: |
+      Pathways connect across ownership boundaries (unique among infrastructure).
+      Single unified network graph regardless of tile owner. Flow crosses freely.
+      Maintenance costs tracked per-owner. Visual boundary indicators for rendering.
+    affects:
+      - NetworkGraph build logic
+      - Flow distribution algorithm
+      - Multiplayer sync
+      - Maintenance cost calculation
+    resolved_by: systems-architect
+
+  - id: CCR-003
+    title: "ITransportProvider Interface"
+    summary: |
+      New interface to replace Epic 4 stub. Methods:
+      - is_road_accessible(entity) / is_road_accessible_at(x, y, max_distance)
+      - get_nearest_road_distance(x, y)
+      - is_connected_to_network(x, y)
+      - are_connected(x1, y1, x2, y2)
+      - get_congestion_at(x, y)
+      - get_traffic_volume_at(x, y)
+      - get_network_id_at(x, y)
+    affects:
+      - interfaces.yaml update required
+      - BuildingSystem integration
+      - ContaminationSystem integration
+      - LandValueSystem integration
+    resolved_by: systems-architect
+
+  - id: CCR-004
+    title: "Tick Priority Ordering"
+    summary: |
+      TransportSystem: priority 45 (after BuildingSystem 40)
+      RailSystem: priority 47 (after TransportSystem 45)
+
+      Data flow: Buildings -> Traffic -> Contamination
+    affects:
+      - ISimulatable implementer list in interfaces.yaml
+      - systems.yaml tick_priority fields
+    resolved_by: systems-architect
+
+  - id: CCR-005
+    title: "Dense Grid Additions"
+    summary: |
+      Add to patterns.yaml dense_grid_exception:
+      - PathwayGrid: 4 bytes/tile EntityID array
+      - ProximityCache: 1 byte/tile distance cache
+
+      Total: 5 bytes/tile for transport spatial data.
+    affects:
+      - patterns.yaml update required
+    resolved_by: systems-architect
+
+  - id: CCR-006
+    title: "Aggregate Flow Model"
+    summary: |
+      Traffic simulation uses aggregate flow, not individual vehicle agents.
+      Buildings contribute flow units. Flow spreads through network via diffusion.
+      Congestion = flow/capacity per segment. Cosmetic vehicles are rendering only.
+    affects:
+      - TrafficComponent design
+      - Traffic simulation algorithm
+      - Performance budget
+    resolved_by: infrastructure-engineer
+
+  - id: CCR-007
+    title: "3-Tile Proximity Rule"
+    summary: |
+      Manhattan distance (4-directional). Buildings beyond 3 tiles from any
+      pathway cannot develop. ProximityCache provides O(1) lookups after
+      multi-source BFS rebuild.
+    affects:
+      - ProximityCache implementation
+      - BuildingSystem spawn logic
+      - Zone placement preview
+    resolved_by: game-designer
+
+  - id: CCR-008
+    title: "Flow_Blockage is Penalty, Not Failure"
+    summary: |
+      Unlike energy (stops function) or fluid (beings leave), flow_blockage
+      causes sector_value reduction and development slowdown, not failure.
+      This matches real traffic experience - frustrating but not catastrophic.
+    affects:
+      - Congestion effect implementation
+      - LandValueSystem integration
+      - BuildingSystem development speed
+    resolved_by: game-designer
+
+  - id: CCR-009
+    title: "Rail is Late-Game Supplement"
+    summary: |
+      Rail supplements pathways, doesn't replace them. Buildings still need
+      pathway access (3-tile rule). Rail terminals reduce traffic contribution
+      in coverage radius. Rail requires power, doesn't cross ownership.
+    affects:
+      - RailSystem design
+      - Traffic reduction calculation
+      - Player progression feel
+    resolved_by: game-designer
+
+  - id: CCR-010
+    title: "Transport Pods Deferred"
+    summary: |
+      Bus system (transport_pods) deferred to Epic 17 or later. Too much
+      overlap with rail for MVP. Pathways + rail is sufficient complexity.
+    affects:
+      - Epic 7 scope
+      - Terminology (transport_pod terms exist but not implemented)
+    resolved_by: systems-architect
+
+# ==============================================================================
+# SUMMARY
+# ==============================================================================
+
+summary:
+  total_questions: 23
+  resolved: 23
+  open: 0
+  cross_cutting_resolutions: 10
+
+  key_decisions:
+    - "Network model for pathways (not pool model)"
+    - "Cross-ownership connectivity for pathways only"
+    - "Tick priority: Transport=45, Rail=47"
+    - "Aggregate flow simulation"
+    - "3-tile Manhattan distance rule"
+    - "Flow_blockage is penalty, not failure"
+    - "Transport pods deferred"
+
+  canon_updates_required:
+    - "interfaces.yaml: Add ITransportProvider"
+    - "interfaces.yaml: Update ISimulatable priorities (Transport=45, Rail=47)"
+    - "patterns.yaml: Add PathwayGrid and ProximityCache to dense_grid_exception"
+    - "systems.yaml: Add tick_priority to TransportSystem and RailSystem"

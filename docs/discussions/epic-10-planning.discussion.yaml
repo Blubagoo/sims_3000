@@ -1,0 +1,691 @@
+epic: 10
+title: "Simulation Core Planning Discussion"
+date: 2026-01-29
+status: resolved
+canon_version: 0.9.0
+agents:
+  - systems-architect
+  - game-designer
+  - population-engineer
+  - economy-engineer
+
+cross_cutting_requirements:
+  CCR-1:
+    topic: "Circular Dependency Resolution Pattern"
+    description: "LandValue <-> Disorder <-> Contamination triangle requires coordinated previous-tick data access"
+    resolution: |
+      All three systems use double-buffered grids with buffer swap at tick start.
+      - DisorderSystem (70) reads LandValueGrid.previous_tick
+      - ContaminationSystem (80) writes ContaminationGrid.current_tick
+      - LandValueSystem (85-proposed) reads DisorderGrid.previous_tick and ContaminationGrid.previous_tick
+
+      One-tick delay acts as dampener, prevents oscillation, ensures deterministic simulation.
+      Convergence occurs over ~5-10 ticks for rapid changes.
+    agreed_by: [systems-architect, economy-engineer]
+
+  CCR-2:
+    topic: "Dense Grid Memory and Canon Update"
+    description: "ContaminationGrid, DisorderGrid, and LandValueGrid need formal addition to dense_grid_exception"
+    resolution: |
+      Add to patterns.yaml dense_grid_exception.applies_to:
+      - "ContaminationGrid (Epic 10): 2 bytes/tile (double-buffered) for contamination level and type"
+      - "DisorderGrid (Epic 10): 1 byte/tile (double-buffered) for disorder level"
+      - "LandValueGrid (Epic 10): 2 bytes/tile for sector value and terrain bonus"
+
+      Total memory budget at 512x512: ~2MB for all Epic 10 grids. Acceptable.
+    agreed_by: [systems-architect, economy-engineer]
+
+  CCR-3:
+    topic: "Missing Tick Priorities"
+    description: "DemandSystem and LandValueSystem lack explicit tick priorities in canon"
+    resolution: |
+      Add to canon:
+      - DemandSystem: tick_priority 52 (after Population 50, before Economy 60)
+      - LandValueSystem: tick_priority 85 (after Disorder 70, Contamination 80)
+
+      DemandSystem uses previous tick's tax rates (acceptable one-tick lag).
+      LandValueSystem reads previous tick's disorder/contamination (required for circular dependency resolution).
+    agreed_by: [systems-architect, population-engineer, economy-engineer]
+
+  CCR-4:
+    topic: "Aggregate Population Model"
+    description: "Population tracking approach: individual entities vs aggregate numbers"
+    resolution: |
+      Use aggregate demographic model, NOT individual being simulation:
+      - PopulationComponent per player (not per-being)
+      - Track counts, rates, and distributions
+      - BuildingOccupancyComponent per building for capacity/occupancy
+      - Cosmetic beings for visuals are separate from simulation (render-only)
+
+      Rationale: 100k+ beings as entities is prohibitive. Aggregate model matches SimCity 2000 authenticity.
+    agreed_by: [systems-architect, game-designer, population-engineer]
+
+  CCR-5:
+    topic: "Per-Player vs Global State"
+    description: "Which simulation data is per-player vs shared globally"
+    resolution: |
+      Per-Player State:
+      - Population count, birth/death rates, migration
+      - Employment stats
+      - RCI Demand values
+
+      Global State (per-tile, shared across all players):
+      - Disorder grid (spreads across ownership boundaries)
+      - Contamination grid (spreads across ownership boundaries)
+      - Land value grid (tile value is same regardless of viewer)
+
+      Cross-ownership spread creates competitive dynamics (intentional game design).
+    agreed_by: [systems-architect, game-designer]
+
+  CCR-6:
+    topic: "Sandbox Philosophy"
+    description: "Simulation systems must not create fail states"
+    resolution: |
+      Core sandbox rules:
+      1. Minimum population floor - colony always has at least some beings
+      2. Migration OUT capped at 5% per cycle - no sudden exodus
+      3. Disorder doesn't destroy buildings or kill beings directly
+      4. Contamination naturally decays - world heals itself
+      5. A neglected colony stagnates but doesn't die
+
+      High disorder/contamination creates interesting challenges, not death spirals.
+    agreed_by: [game-designer]
+
+threads:
+  # Systems Architect Questions
+  SA-Q1:
+    from: systems-architect
+    to: game-designer
+    question: "Population growth rate: What should the base birth/death rates be? SimCity 2000 had relatively slow population changes. Should we match that or make it faster for more dynamic gameplay?"
+    resolution: |
+      Base rates (per 1000 beings per cycle):
+      - Birth rate: 15 (1.5% per cycle)
+      - Death rate: 8 (0.8% per cycle)
+      - Net natural growth: ~0.7% per cycle
+
+      This is slightly faster than SC2000 for more visible feedback while maintaining stability.
+      Growth should feel "earned" but not blocked. A well-run colony grows steadily.
+    resolved_by: game-designer
+
+  SA-Q2:
+    from: systems-architect
+    to: game-designer
+    question: "Disorder threshold for migration: At what disorder level should migration start being negatively affected?"
+    resolution: |
+      Disorder migration thresholds:
+      - 0-50: No migration effect
+      - 51-100: Minor effect (-10% immigration)
+      - 101-150: Significant effect (-30% immigration, +10% emigration)
+      - 151-200: Major effect (-50% immigration, +25% emigration)
+      - 201+: Crisis (-75% immigration, +50% emigration)
+
+      Even at maximum, never cause total exodus. Beings have "inertia."
+    resolved_by: game-designer
+
+  SA-Q3:
+    from: systems-architect
+    to: game-designer
+    question: "Cross-player contamination disputes: When Player A's fabrication zone pollutes Player B's habitation zone, should there be any game mechanic to address this?"
+    resolution: |
+      This is intended competitive multiplayer dynamics:
+      - No fines, treaties, or barriers in Epic 10 scope
+      - Players can build "buffer zones" (parks, open space) to reduce spread
+      - Document as expected behavior
+      - Consider optional "environmental treaty" mode in future epic
+
+      Cross-ownership spread creates meaningful player interaction.
+    resolved_by: game-designer
+
+  SA-Q4:
+    from: systems-architect
+    to: game-designer
+    question: "Demand cap formula: What determines the maximum possible demand?"
+    resolution: |
+      Demand cap scales with colony development:
+      - demand_cap = base_cap * infrastructure_factor
+      - base_cap = 100 (neutral)
+      - infrastructure_factor = energy_coverage * fluid_coverage * transport_factor
+
+      Caps prevent runaway demand without infrastructure to support it.
+      Start simple, add complexity (like SC2000's log scaling) if needed during playtesting.
+    resolved_by: game-designer
+
+  SA-Q5:
+    from: systems-architect
+    to: game-designer
+    question: "Land value range for building upgrades: At what land value thresholds should buildings consider upgrading vs downgrading?"
+    resolution: |
+      Building density progression thresholds:
+      - Low to Medium density: sector_value >= 150
+      - Medium to High density: sector_value >= 200
+      - Downgrade threshold: sector_value drops below upgrade threshold - 30 (hysteresis)
+
+      Hysteresis prevents oscillation at boundary values.
+    resolved_by: game-designer
+
+  SA-Q6:
+    from: systems-architect
+    to: game-designer
+    question: "Life expectancy effects: Should contamination reduce life expectancy directly (beings die faster) or indirectly (beings migrate away)? Or both?"
+    resolution: |
+      Both effects:
+      - Direct: High contamination (>80) reduces life expectancy by 0.1 cycles per point
+      - Indirect: High contamination contributes to "desperation factor" for out-migration
+
+      Direct effect creates gameplay cost for pollution.
+      Indirect effect gives players agency to respond before deaths occur.
+    resolved_by: game-designer
+
+  # Systems Architect Technical Questions
+  SA-Q7:
+    from: systems-architect
+    to: population-engineer
+    question: "Employment matching algorithm: Should we track which specific buildings provide jobs for which beings, or use aggregate matching?"
+    resolution: |
+      Use aggregate matching:
+      - Total jobs vs total labor force
+      - Proportional distribution between exchange/fabrication sectors
+      - Building occupancy distribution happens after aggregate calculation
+
+      No per-being job assignments. Aggregate model aligns with population design.
+    resolved_by: population-engineer
+
+  SA-Q8:
+    from: systems-architect
+    to: population-engineer
+    question: "Migration source: When beings migrate in, where do they come from? Should we model 'external world' as infinite source?"
+    resolution: |
+      External world is effectively infinite source:
+      - Migration rate scales with colony attractiveness
+      - No global supply curve that diminishes
+      - Multiplayer: players compete for share of incoming migrants based on relative attractiveness
+
+      Simpler model, avoids artificial scarcity mechanics.
+    resolved_by: population-engineer
+
+  SA-Q9:
+    from: systems-architect
+    to: population-engineer
+    question: "Commute patterns: Should we model commute distance/time as a factor in employment?"
+    resolution: |
+      Simplified commute model:
+      - avg_commute_satisfaction affects harmony
+      - Based on transport accessibility, not individual pathfinding
+      - Query TransportSystem for average congestion affecting player's zones
+
+      No individual commute simulation (too expensive for aggregate model).
+    resolved_by: population-engineer
+
+  # Game Designer Questions
+  GD-Q1:
+    from: game-designer
+    to: systems-architect
+    question: "Does the one-tick delay in circular dependency create any noticeable gameplay issues? Should players perceive this as 'instant'?"
+    resolution: |
+      One-tick delay (50ms) is imperceptible to players:
+      - At 20 ticks/second, changes appear instantaneous
+      - Smooths out rapid oscillations, actually improves visual feedback
+      - First tick uses initialized grids (disorder=0, contamination=0, value=128)
+
+      No gameplay issues. Design as "instant" from player perspective.
+    resolved_by: systems-architect
+
+  GD-Q2:
+    from: game-designer
+    to: systems-architect
+    question: "Are beings tracked as individual entities or as aggregate numbers? If aggregate, how do we generate cosmetic beings?"
+    resolution: |
+      Aggregate simulation, cosmetic visuals:
+      - PopulationComponent stores aggregate counts per player
+      - RenderingSystem spawns cosmetic being entities based on population density
+      - Cosmetic beings follow basic pathfinding, not tied to simulation
+      - Population count in high-density areas = more cosmetic beings visible
+
+      Clear separation between simulation (fast, aggregate) and visuals (cosmetic entities).
+    resolved_by: systems-architect
+
+  GD-Q3:
+    from: game-designer
+    to: systems-architect
+    question: "Is wind direction a viable mechanic for contamination spread?"
+    resolution: |
+      Wind direction deferred to future epic:
+      - Epic 10 uses uniform spread in 8 directions
+      - Wind mechanic adds complexity, requires UI for wind indicator
+      - Consider for Epic 15+ (polish/expansion)
+
+      Uniform spread is sufficient for MVP.
+    resolved_by: systems-architect
+
+  GD-Q4:
+    from: game-designer
+    to: systems-architect
+    question: "Can we expose demand calculation factors to the UI for player understanding?"
+    resolution: |
+      Yes, DemandComponent includes DemandFactors struct:
+      - population_factor, employment_factor, services_factor, tribute_factor, transport_factor, contamination_factor
+      - Each factor stored per zone type
+      - UI can display breakdown: "Habitation demand +15 (jobs available), -5 (high tribute)"
+
+      Transparency is critical for player understanding.
+    resolved_by: systems-architect
+
+  GD-Q5:
+    from: game-designer
+    to: systems-architect
+    question: "What interface does Epic 10 use to query service coverage from Epic 9?"
+    resolution: |
+      IServiceQueryable interface (stub until Epic 9):
+      - get_coverage(ServiceType, PlayerID) -> float (0-100)
+      - ServiceType: Medical, Education, Enforcer
+      - Stub returns 50 (neutral coverage) until Epic 9 implements
+
+      Epic 10 compiles and runs without Epic 9, uses stub values.
+    resolved_by: systems-architect
+
+  GD-Q6:
+    from: game-designer
+    to: systems-architect
+    question: "Does tick priority order create player-perceivable causality issues? Should disorder/contamination changes affect population THIS tick or NEXT tick?"
+    resolution: |
+      NEXT tick for circular dependencies:
+      - Population (50) uses current tick's building data
+      - Disorder (70) and Contamination (80) changes affect land value NEXT tick
+      - Land value (85) changes affect disorder NEXT tick
+
+      Non-circular dependencies use current tick data for immediate responsiveness.
+      50ms delay (one tick) is imperceptible.
+    resolved_by: systems-architect
+
+  # Population Engineer Questions
+  PE-Q1:
+    from: population-engineer
+    to: systems-architect
+    question: "Tick ordering between PopulationSystem and DemandSystem: Should DemandSystem run immediately after PopulationSystem?"
+    resolution: |
+      DemandSystem at priority 52:
+      - After PopulationSystem (50) for current population data
+      - Before EconomySystem (60) for tax rate queries
+      - Uses previous tick's tax rates (acceptable one-tick lag)
+
+      This ordering ensures demand reflects current population state.
+    resolved_by: systems-architect
+
+  PE-Q2:
+    from: population-engineer
+    to: systems-architect
+    question: "Circular dependency: Population -> Building -> Demand -> Population. How do we handle this?"
+    resolution: |
+      No true circular dependency:
+      - PopulationSystem reads BuildingSystem (current tick)
+      - DemandSystem reads PopulationSystem (current tick)
+      - BuildingSystem reads DemandSystem for SPAWNING decisions (which can use previous tick demand)
+
+      Building spawning is async/gradual, so one-tick demand lag is fine.
+    resolved_by: systems-architect
+
+  PE-Q3:
+    from: population-engineer
+    to: systems-architect
+    question: "Per-player vs shared simulation: Is there any shared population pool?"
+    resolution: |
+      Fully separate per-player populations:
+      - No shared pool
+      - Players compete for external migrants
+      - No "stealing" population from other players
+      - Migration attractiveness determines who gets more of the incoming migrants
+    resolved_by: systems-architect
+
+  PE-Q4:
+    from: population-engineer
+    to: building-engineer
+    question: "When a structure transitions to Abandoned, should PopulationSystem immediately evict occupants?"
+    resolution: |
+      Gradual eviction over several ticks:
+      - Building state: Active -> Abandoned
+      - Occupants don't instantly disappear
+      - Capacity effectively drops to 0 (no new occupants)
+      - Existing occupants redistribute to other buildings over 10-20 ticks
+      - Simulates "moving out" rather than instant eviction
+    resolved_by: systems-architect
+
+  PE-Q5:
+    from: population-engineer
+    to: building-engineer
+    question: "Does BuildingSystem emit events when total capacity changes, or should PopulationSystem query every tick?"
+    resolution: |
+      Event-driven capacity tracking:
+      - BuildingConstructedEvent, BuildingDemolishedEvent include capacity
+      - PopulationSystem maintains cached capacity totals
+      - Events update cache incrementally
+      - Full query only on session start or desync recovery
+    resolved_by: systems-architect
+
+  PE-Q6:
+    from: population-engineer
+    to: building-engineer
+    question: "BuildingOccupancyComponent ownership: Should it be attached by BuildingSystem or PopulationSystem?"
+    resolution: |
+      BuildingSystem attaches component, PopulationSystem updates values:
+      - BuildingSystem creates BuildingOccupancyComponent with capacity when building spawns
+      - PopulationSystem updates current_occupancy and state each tick
+      - Clear ownership: BuildingSystem owns structure, PopulationSystem owns occupancy state
+    resolved_by: systems-architect
+
+  PE-Q7:
+    from: population-engineer
+    to: economy-engineer
+    question: "What interface does PopulationSystem use to query current tribute rates per zone type?"
+    resolution: |
+      IEconomyQueryable interface (stub until Epic 11):
+      - get_tribute_rate(ZoneBuildingType) -> int (0-20%)
+      - get_average_tribute_rate() -> int
+      - Stub returns 7% (default rate) until Epic 11 implements
+    resolved_by: economy-engineer
+
+  PE-Q8:
+    from: population-engineer
+    to: economy-engineer
+    question: "Population-based revenue: Does EconomySystem calculate tribute, or query PopulationSystem?"
+    resolution: |
+      EconomySystem calculates tribute:
+      - Queries PopulationSystem for employed laborers, total population
+      - Queries LandValueSystem for sector value per building
+      - Applies tribute rate to calculate revenue
+
+      Clear ownership: EconomySystem owns revenue calculation.
+    resolved_by: economy-engineer
+
+  PE-Q9:
+    from: population-engineer
+    to: services-engineer
+    question: "What interface provides service coverage values (medical, education, enforcer)?"
+    resolution: |
+      IServiceQueryable interface (stub until Epic 9):
+      - get_coverage(ServiceType, PlayerID) -> float (0-100)
+      - get_coverage_at(ServiceType, GridPosition) -> float (0-100)
+      - Stub returns 50 (neutral) until Epic 9
+    resolved_by: systems-architect
+
+  PE-Q10:
+    from: population-engineer
+    to: services-engineer
+    question: "How does education service coverage translate to education_index?"
+    resolution: |
+      Direct mapping with smoothing:
+      - education_index = lerp(current_index, education_coverage, 0.1) per tick
+      - Smoothing prevents instant swings from service changes
+      - Full convergence over ~10 seconds (200 ticks)
+    resolved_by: systems-architect
+
+  PE-Q11:
+    from: population-engineer
+    to: game-designer
+    question: "Birth/death rate tuning: Proposed base rates are 15 births / 8 deaths per 1000 per cycle. Is this the right pace?"
+    resolution: |
+      Rates approved with adjustment:
+      - Birth rate: 15 per 1000 per cycle (1.5%)
+      - Death rate: 8 per 1000 per cycle (0.8%)
+      - Net natural growth: 0.7% per cycle
+
+      Slightly faster than SC2000 for more visible feedback. Adjust during playtesting.
+    resolved_by: game-designer
+
+  PE-Q12:
+    from: population-engineer
+    to: game-designer
+    question: "Unemployment thresholds: Proposed 10% elevated, 15% high, 25% critical. Do these align with gameplay?"
+    resolution: |
+      Thresholds approved:
+      - 0-5%: Optimal (labor shortage may develop)
+      - 5-10%: Normal (healthy labor market)
+      - 10-15%: Elevated (minor harmony penalty)
+      - 15-25%: High (significant harmony penalty, increased disorder)
+      - 25%+: Critical (major harmony drop, disorder spike, out-migration)
+
+      Generous thresholds - players have room to maneuver before crisis.
+    resolved_by: game-designer
+
+  PE-Q13:
+    from: population-engineer
+    to: game-designer
+    question: "Population milestones: Canon mentions 2000, 10000, 30000, 60000, 90000, 120000. Should PopulationSystem emit events?"
+    resolution: |
+      Yes, emit PopulationMilestoneEvent:
+      - Milestones: 100, 500, 1000, 2000, 5000, 10000, 30000, 60000, 90000, 120000
+      - Event includes milestone value and current population
+      - ProgressionSystem (Epic 14) listens for reward building unlocks
+      - UISystem listens for celebration/notification
+    resolved_by: game-designer
+
+  PE-Q14:
+    from: population-engineer
+    to: game-designer
+    question: "Starting population: Zero or seed population?"
+    resolution: |
+      Seed population of 50 beings:
+      - Provides immediate feedback (not empty colony)
+      - Small enough that growth feels significant
+      - Starting habitation provides capacity for ~200
+      - First milestone (100) achievable quickly
+    resolved_by: game-designer
+
+  PE-Q15:
+    from: population-engineer
+    to: infrastructure-engineer
+    question: "How is avg_commute_satisfaction calculated? Does it use TransportSystem data?"
+    resolution: |
+      Simplified calculation:
+      - Query TransportSystem.get_average_congestion_for_player(owner)
+      - avg_commute_satisfaction = 100 - (congestion * 50)
+      - High congestion = low satisfaction = harmony penalty
+      - No individual commute pathfinding
+    resolved_by: systems-architect
+
+  # Economy Engineer Questions
+  EE-Q1:
+    from: economy-engineer
+    to: systems-architect
+    question: "LandValueSystem Tick Priority: DisorderSystem is 70, ContaminationSystem is 80. Where should LandValueSystem run?"
+    resolution: |
+      LandValueSystem at priority 85:
+      - After Disorder (70) and Contamination (80)
+      - Reads their previous tick data (from tick N, not N-1)
+      - Writes current tick land value
+      - Buffer swap at tick start ensures correct data access
+    resolved_by: systems-architect
+
+  EE-Q2:
+    from: economy-engineer
+    to: systems-architect
+    question: "Double-Buffer Synchronization: Should buffer swap happen at system tick start, or global orchestration?"
+    resolution: |
+      System tick start (decentralized):
+      - Each system swaps its own buffers at tick() entry
+      - SimulationCore doesn't orchestrate swaps
+      - Simpler implementation, no coordination needed
+      - Tick priority order ensures correct read/write sequence
+    resolved_by: systems-architect
+
+  EE-Q3:
+    from: economy-engineer
+    to: systems-architect
+    question: "Dense Grid Pattern Canon Update: Should grids be formally added to patterns.yaml?"
+    resolution: |
+      Yes, add to patterns.yaml dense_grid_exception.applies_to:
+      - "ContaminationGrid (Epic 10): 2 bytes/tile (double-buffered)"
+      - "DisorderGrid (Epic 10): 1 byte/tile (double-buffered)"
+      - "LandValueGrid (Epic 10): 2 bytes/tile"
+
+      Include in Phase 6 canon updates.
+    resolved_by: systems-architect
+
+  EE-Q4:
+    from: economy-engineer
+    to: systems-architect
+    question: "IContaminationSource Ownership: Should the interface be owned by ContaminationSystem or shared?"
+    resolution: |
+      Shared interface in interfaces.yaml:
+      - IContaminationSource defined in canon
+      - Implemented by: BuildingSystem (fabrication), EnergySystem (nexuses), TerrainSystem (blight_mires)
+      - TransportSystem provides traffic contamination via separate method (not component-based)
+      - ContaminationSystem queries all implementers
+    resolved_by: systems-architect
+
+  EE-Q5:
+    from: economy-engineer
+    to: game-designer
+    question: "Disorder Generation Values: Are proposed base values reasonable?"
+    resolution: |
+      Values approved with notes:
+      - Low-density habitation: 2/tick (crowding is low)
+      - High-density habitation: 5/tick (more beings = more friction)
+      - Exchange: 3-6/tick (petty disorder from commerce)
+      - Fabrication: 1-2/tick (workers, not residents)
+
+      These are starting points for tuning. Make them data-driven for easy adjustment.
+    resolved_by: game-designer
+
+  EE-Q6:
+    from: economy-engineer
+    to: game-designer
+    question: "Land Value Factor Weights: Is contamination correctly weighted as worse than disorder?"
+    resolution: |
+      Weights approved:
+      - Water proximity: +30 max
+      - Crystal fields: +25
+      - Disorder penalty: -40 max
+      - Contamination penalty: -50 max
+
+      Contamination is harder to address (no "cleanup service" in Epic 10), so heavier penalty is appropriate.
+    resolved_by: game-designer
+
+  EE-Q7:
+    from: economy-engineer
+    to: game-designer
+    question: "Decay Rates: Is contamination correctly decaying faster than disorder?"
+    resolution: |
+      Swap decay rates:
+      - Disorder: 1/tick base (slower - requires enforcers to address)
+      - Contamination: 2/tick base (faster - natural bioremediation)
+
+      Contamination has natural decay plus terrain bonuses (water, vegetation).
+      Disorder requires active enforcement or sector value improvement.
+    resolved_by: game-designer
+
+  EE-Q8:
+    from: economy-engineer
+    to: game-designer
+    question: "Enforcer Effectiveness: What suppression power should standard enforcer post have?"
+    resolution: |
+      Standard enforcer post:
+      - Suppression power: 80 (0-255 scale)
+      - Radius: 8 tiles
+      - Falloff: Linear (full power at center, 0 at edge)
+
+      One enforcer post can maintain order in a neighborhood. Multiple needed for high-density areas.
+    resolved_by: game-designer
+
+  EE-Q9:
+    from: economy-engineer
+    to: game-designer
+    question: "Contamination Health Effects: Linear penalty or threshold-based?"
+    resolution: |
+      Hybrid approach:
+      - Below 80: No health effect
+      - 80-150: Linear penalty (0.1 cycles life expectancy per point)
+      - Above 150: Steeper penalty (0.2 cycles per point)
+
+      Creates "safe zone" for light industrial, severe penalty for heavy contamination.
+    resolved_by: game-designer
+
+  EE-Q10:
+    from: economy-engineer
+    to: population-engineer
+    question: "How should disorder affect migration? Proposed: High disorder (>150) reduces immigration by 50%, increases emigration by 25%."
+    resolution: |
+      Approved with expanded thresholds (see SA-Q2):
+      - 51-100: -10% immigration
+      - 101-150: -30% immigration, +10% emigration
+      - 151-200: -50% immigration, +25% emigration
+      - 201+: -75% immigration, +50% emigration
+
+      Gradual escalation gives players time to respond.
+    resolved_by: population-engineer
+
+  EE-Q11:
+    from: economy-engineer
+    to: population-engineer
+    question: "How should contamination affect longevity stats?"
+    resolution: |
+      Contamination longevity effect:
+      - 0-80: No effect
+      - 81-150: -0.1 cycles life expectancy per point (up to -7 cycles)
+      - 151-255: -0.2 cycles per point (additional -21 cycles max)
+
+      Maximum penalty: ~28 cycles off base 75 = minimum ~47 cycles life expectancy.
+    resolved_by: population-engineer
+
+  EE-Q12:
+    from: economy-engineer
+    to: services-engineer
+    question: "Enforcer Post Integration: How does DisorderSystem query enforcer posts from ServicesSystem?"
+    resolution: |
+      Query pattern:
+      - ServicesSystem provides get_enforcers_in_region(GridRect) returning list of {position, power, radius}
+      - DisorderSystem iterates returned enforcers and applies suppression
+      - No direct component iteration across system boundaries
+
+      Encapsulation preserved. ServicesSystem owns enforcer data.
+    resolved_by: systems-architect
+
+  EE-Q13:
+    from: economy-engineer
+    to: services-engineer
+    question: "Hazmat Service (Future): Should there be a cleanup service for contamination?"
+    resolution: |
+      Deferred to future epic (15+):
+      - Epic 10: Natural decay only
+      - Future: "Remediation center" service building that accelerates decay in radius
+      - Interface design should allow for this extension
+
+      ContaminationGrid.apply_cleanup(x, y, amount) method already supports this pattern.
+    resolved_by: systems-architect
+
+canon_updates_required:
+  - file: interfaces.yaml
+    changes:
+      - "Add DemandSystem tick_priority: 52"
+      - "Add LandValueSystem tick_priority: 85"
+      - "Add ISimulationTime interface (SimulationCore implements)"
+      - "Add IGridOverlay interface (LandValue, Disorder, Contamination implement)"
+      - "Add IServiceQueryable interface (stub for Epic 9)"
+      - "Add IEconomyQueryable interface (stub for Epic 11)"
+
+  - file: patterns.yaml
+    changes:
+      - "Add ContaminationGrid to dense_grid_exception.applies_to"
+      - "Add DisorderGrid to dense_grid_exception.applies_to"
+      - "Add LandValueGrid to dense_grid_exception.applies_to"
+
+  - file: systems.yaml
+    changes:
+      - "Add DemandSystem tick_priority: 52"
+      - "Add LandValueSystem tick_priority: 85"
+      - "Add ISimulatable priorities for all Epic 10 systems"
+
+summary: |
+  Epic 10 planning discussion resolved all cross-agent questions across 4 agents.
+
+  Key Decisions:
+  1. Circular dependencies resolved via double-buffered grids with one-tick delay
+  2. Aggregate population model (not individual being entities)
+  3. Dense grids for disorder, contamination, land value (~2MB at 512x512)
+  4. Tick priorities: Population(50), Demand(52), Economy(60), LandValue(85), Disorder(70), Contamination(80)
+  5. Per-player population/demand; global disorder/contamination grids
+  6. Sandbox philosophy: no fail states, slow pressure, always recoverable
+  7. Seed population of 50 beings at game start
+
+  Canon updates required for tick priorities and dense grid patterns.
+
+  Ready for Phase 4: Ticket Synthesis.

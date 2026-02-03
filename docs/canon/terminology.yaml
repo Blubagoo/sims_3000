@@ -1,0 +1,377 @@
+# ============================================================================
+# ZERGCITY CANONICAL TERMINOLOGY
+# ============================================================================
+# All plans, designs, and code MUST use these terms.
+# Left column = canonical term (USE THIS)
+# Right column = human equivalent (for reference only)
+#
+# Version: 0.14.0
+# Last Updated: 2026-02-01
+# ============================================================================
+
+version: "0.16.0"
+
+# ============================================================================
+# GAME WORLD TERMS
+# Use these in all UI text, documentation, and player-facing content
+# ============================================================================
+
+world:
+  # Settlement
+  city: colony
+  town: settlement
+  village: outpost
+  downtown: core_sector
+  neighborhood: district
+  suburb: outer_district
+
+  # Population
+  citizen: being
+  citizens: beings
+  population: colony_population
+  people: beings
+  resident: inhabitant
+  residents: inhabitants
+  worker: laborer
+  workers: laborers
+
+  # Leadership
+  mayor: overseer
+  city_hall: command_nexus
+  government: administration
+  council: elder_circle
+
+  # Player Reference
+  player: overseer  # When referring to player in-game
+
+# ============================================================================
+# TERRAIN TERMS
+# ============================================================================
+
+terrain:
+  # Classic Terrain
+  flat_ground: substrate          # Standard buildable terrain
+  hills: ridges                   # Elevated terrain
+  ocean: deep_void                # Map-edge water
+  river: flow_channel             # Flowing water
+  lake: still_basin               # Inland water body
+  forest: biolume_grove           # Alien vegetation cluster
+
+  # Alien Terrain
+  crystal_fields: prisma_fields   # Luminous crystal formations
+  spore_plains: spore_flats       # Bioluminescent spore flora
+  toxic_marshes: blight_mires     # Chemical runoff pools
+  volcanic_rock: ember_crust      # Hardened volcanic terrain
+
+  # Terrain Actions
+  clear_terrain: purge_terrain    # Remove vegetation/crystals for building
+  level_terrain: grade_terrain    # Flatten elevation
+  terraform: reclaim_terrain      # Major terrain reshaping (late-game)
+
+  # Terrain Features
+  spawn_point: emergence_site     # Starting location for player colony
+
+# ============================================================================
+# ZONE TERMS
+# ============================================================================
+
+zones:
+  # Primary Zones
+  residential: habitation
+  commercial: exchange
+  industrial: fabrication
+
+  # Zone Density
+  light_residential: low_density_habitation
+  dense_residential: high_density_habitation
+  light_commercial: low_density_exchange
+  dense_commercial: high_density_exchange
+  light_industrial: low_density_fabrication
+  dense_industrial: high_density_fabrication
+
+  # Zone States
+  zoned: designated
+  unzoned: undesignated
+  rezoning: redesignation
+
+# ============================================================================
+# INFRASTRUCTURE TERMS
+# ============================================================================
+
+infrastructure:
+  # Power/Energy
+  power: energy
+  electricity: energy
+  power_plant: energy_nexus
+  power_line: energy_conduit
+  power_grid: energy_matrix
+  blackout: grid_collapse
+  brownout: energy_deficit
+
+  # Water/Fluid
+  water: fluid
+  water_system: fluid_network
+  water_pump: fluid_extractor
+  water_tower: fluid_reservoir
+  pipes: fluid_conduits
+  water_pressure: fluid_pressure
+
+  # Transportation
+  road: pathway
+  roads: pathways
+  highway: transit_corridor
+  street: pathway
+  traffic: flow
+  congestion: flow_blockage
+  intersection: junction
+
+  # Rail
+  railroad: rail_line
+  train: rail_transport
+  train_station: rail_terminal
+  subway: subterra_rail
+  subway_station: subterra_terminal
+
+  # Other Transit
+  bus: transport_pod
+  bus_depot: pod_hub
+  airport: aero_port
+  seaport: aqua_port
+
+# ============================================================================
+# SERVICES TERMS
+# ============================================================================
+
+services:
+  # Safety
+  police: enforcers
+  police_station: enforcer_post
+  fire_department: hazard_response
+  fire_station: hazard_response_post
+  firefighter: hazard_responder
+
+  # Health
+  hospital: medical_nexus
+  clinic: medical_post
+  health: vitality
+  life_expectancy: longevity
+
+  # Education
+  school: learning_center
+  college: advanced_learning_center
+  university: knowledge_nexus
+  library: archive
+  museum: heritage_vault
+  education: knowledge_quotient
+
+  # Recreation
+  park: green_zone
+  stadium: arena
+  zoo: creature_preserve
+  marina: watercraft_dock
+
+# ============================================================================
+# ECONOMY TERMS
+# ============================================================================
+
+economy:
+  money: credits
+  dollar: credit
+  dollars: credits
+  budget: colony_treasury
+  taxes: tribute
+  tax_rate: tribute_rate
+  income: revenue
+  expenses: expenditure
+  debt: deficit
+  loan: credit_advance
+  bond: treasury_bond
+
+# ============================================================================
+# SIMULATION TERMS
+# ============================================================================
+
+simulation:
+  # Metrics
+  happiness: harmony
+  crime: disorder
+  crime_rate: disorder_index
+  pollution: contamination
+  land_value: sector_value
+  property_value: sector_value
+
+  # Demand
+  demand: growth_pressure
+  rci_demand: zone_pressure  # Residential/Commercial/Industrial
+
+  # Time
+  year: cycle
+  month: phase
+  day: rotation
+
+# ============================================================================
+# DISASTER TERMS
+# ============================================================================
+
+disasters:
+  disaster: catastrophe
+  earthquake: seismic_event
+  flood: inundation
+  tornado: vortex_storm
+  hurricane: mega_storm
+  fire: conflagration
+  riot: civil_unrest
+  nuclear_meltdown: core_breach
+
+  # Alien-specific
+  ufo_attack: null  # Removed - we ARE the aliens
+  monster_attack: titan_emergence
+  cosmic_event: void_anomaly
+  radiation_event: cosmic_radiation
+
+# ============================================================================
+# BUILDING TERMS
+# ============================================================================
+
+buildings:
+  building: structure
+  skyscraper: tower
+  house: dwelling
+  apartment: hab_unit
+  office: work_center
+  factory: fabricator
+  warehouse: storage_hub
+
+  # States
+  under_construction: materializing
+  abandoned: derelict
+  demolished: deconstructed
+  rubble: debris
+
+# ============================================================================
+# PROGRESSION TERMS
+# ============================================================================
+
+progression:
+  # Rewards
+  mayors_mansion: overseers_sanctum
+  city_hall: command_nexus
+  statue: monument
+  military_base: defense_installation
+  arcology: arcology  # Keep as-is, it's already sci-fi
+
+  # Milestones
+  milestone: achievement
+  population_milestone: growth_achievement
+
+  # Edicts (Epic 14)
+  edict: edict                              # Policy/decree system
+  edict_slot: guidance_channel              # Edict capacity slot
+  decree: edict                             # Synonym
+
+  # Transcendence (Epic 14)
+  transcendence: transcendence              # Ultimate achievement state
+  transcendence_monument: transcendence_marker  # 150K reward building
+  exodus: null  # Removed - no win conditions (Core Principle #4)
+
+  # Arcology types (Epic 14)
+  plymouth_arcology: plymouth_arcology
+  forest_arcology: forest_arcology
+  darco_arcology: darco_arcology
+  launch_arcology: launch_arcology
+
+  # Milestone names (Epic 14)
+  colony_emergence: colony_emergence        # 2K threshold
+  colony_establishment: colony_establishment # 10K threshold
+  colony_identity: colony_identity          # 30K threshold
+  colony_security: colony_security          # 60K threshold
+  colony_wonder: colony_wonder              # 90K threshold
+  colony_ascension: colony_ascension        # 120K threshold
+  colony_transcendence: colony_transcendence # 150K threshold
+
+  # Reward building names (Epic 14)
+  eternity_marker: eternity_marker          # Monument (30K)
+  aegis_complex: aegis_complex              # Defense Installation (60K)
+  resonance_spire: resonance_spire          # Special Landmark (90K)
+
+# ============================================================================
+# CODE NAMING CONVENTIONS
+# These are used in actual code, not player-facing
+# ============================================================================
+
+code_naming:
+  # Suffixes
+  component_suffix: Component      # e.g., EnergyComponent
+  system_suffix: System            # e.g., EnergySystem
+  event_suffix: Event              # e.g., GridCollapseEvent
+  manager_suffix: Manager          # e.g., NetworkManager (non-ECS)
+
+  # Prefixes
+  interface_prefix: I              # e.g., IEnergyConsumer
+  abstract_prefix: Base            # e.g., BaseBuilding
+
+  # Casing
+  class_names: PascalCase          # e.g., EnergySystem
+  function_names: snake_case       # e.g., calculate_energy()
+  variable_names: snake_case       # e.g., grid_position
+  constant_names: SCREAMING_SNAKE  # e.g., MAX_ENERGY_OUTPUT
+  file_names: PascalCase           # e.g., EnergySystem.cpp
+
+  # Component Fields
+  component_fields: snake_case     # e.g., energy_level, is_powered
+
+# ============================================================================
+# MULTIPLAYER TERMS
+# ============================================================================
+
+multiplayer:
+  game_master: world_keeper       # Virtual entity owning unclaimed tiles
+  host: prime_overseer
+  client: connected_overseer
+  lobby: staging_area
+  player_color: faction_color
+  territory: domain
+  shared_infrastructure: mutual_works
+
+# ============================================================================
+# OWNERSHIP TERMS
+# ============================================================================
+
+ownership:
+  unclaimed: uncharted            # Tiles owned by Game Master
+  claimed: chartered              # Tiles owned by a player
+  abandoned: forsaken             # Player left, decay starting
+  ghost_town: remnant             # Fully decayed colony
+  purchase: charter               # Act of buying a tile
+  tile: sector                    # Individual land unit
+
+# ============================================================================
+# UI TERMS
+# ============================================================================
+
+ui:
+  classic_mode: legacy_interface    # SimCity 2000-style layout
+  holographic_mode: holo_interface  # Sci-fi holographic layout
+  minimap: sector_scan              # Minimap display
+  toolbar: command_array            # Tool selection bar
+  info_panel: data_readout          # Selected entity info display
+  overlay: scan_layer               # Data overlay (power, water, etc.)
+  query_tool: probe_function        # Click-to-inspect tool
+  tooltip: hover_data               # Hover information popup
+  notification: alert_pulse         # Toast notification
+  dialog: comm_panel                # Modal dialog window
+  popup: info_burst                 # Temporary information popup
+  budget_window: colony_treasury_panel
+  slider: adjustment_control        # UI slider control
+  status_bar: colony_status         # Top status display
+  demand_meter: zone_pressure_indicator
+
+# ============================================================================
+# MAP TERMS
+# ============================================================================
+
+map:
+  small_map: compact_region         # 128x128 map
+  medium_map: standard_region       # 256x256 map
+  large_map: expanse_region         # 512x512 map
+  map_size: region_scale            # Map size setting

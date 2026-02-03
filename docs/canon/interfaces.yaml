@@ -1,0 +1,2055 @@
+# ============================================================================
+# ZERGCITY CANONICAL INTERFACES
+# ============================================================================
+# Contracts between systems. These define how systems communicate.
+# Implementations MUST adhere to these interfaces.
+#
+# Version: 0.13.0
+# Last Updated: 2026-01-29
+# ============================================================================
+
+version: "0.17.0"
+
+# ============================================================================
+# SIMULATION INTERFACES
+# ============================================================================
+
+simulation:
+  ISimulatable:
+    description: "Systems that participate in the simulation tick"
+    purpose: "Ensures consistent update ordering and timing"
+    methods:
+      - name: tick
+        params:
+          - name: delta_time
+            type: float
+            description: "Time since last tick in seconds"
+        returns: void
+        description: "Called every simulation tick (server-side)"
+
+      - name: get_priority
+        params: []
+        returns: int
+        description: "Execution order (lower = earlier). Default 100."
+
+    implemented_by:
+      - TerrainSystem (priority: 5)
+      - EnergySystem (priority: 10)
+      - FluidSystem (priority: 20)
+      - ZoneSystem (priority: 30)
+      - BuildingSystem (priority: 40)
+      - TransportSystem (priority: 45)
+      - RailSystem (priority: 47)
+      - PopulationSystem (priority: 50)
+      - DemandSystem (priority: 52)
+      - ServicesSystem (priority: 55)
+      - EconomySystem (priority: 60)
+      - DisorderSystem (priority: 70)
+      - DisasterSystem (priority: 75)
+      - ContaminationSystem (priority: 80)
+      - LandValueSystem (priority: 85)
+      - ProgressionSystem (priority: 90)
+
+    notes:
+      - "Only runs on server in multiplayer"
+      - "Fixed timestep (50ms = 20 ticks/sec)"
+
+  ISimulationTime:
+    description: "Query simulation time state"
+    purpose: "Decouple systems from SimulationCore implementation details"
+
+    methods:
+      - name: get_current_tick
+        params: []
+        returns: uint64_t
+        description: "Current simulation tick number"
+
+      - name: get_current_cycle
+        params: []
+        returns: uint32_t
+        description: "Current in-game cycle (year)"
+
+      - name: get_current_phase
+        params: []
+        returns: uint8_t
+        description: "Current phase within cycle (0-11)"
+
+      - name: get_simulation_speed
+        params: []
+        returns: float
+        description: "Current speed multiplier (0.0 = paused, 1.0 = normal, 2.0 = fast, 3.0 = ultra)"
+
+      - name: is_paused
+        params: []
+        returns: bool
+        description: "Whether simulation is paused"
+
+      - name: get_ticks_per_phase
+        params: []
+        returns: uint32_t
+        description: "Number of ticks in one phase (for time calculations)"
+
+    implemented_by:
+      - SimulationCore (Epic 10)
+
+    notes:
+      - "All time queries are read-only"
+      - "Speed changes go through SimulationCore commands, not this interface"
+
+# ============================================================================
+# UTILITY CONSUMER INTERFACES
+# ============================================================================
+
+utilities:
+  IEnergyConsumer:
+    description: "Entities that consume energy from the grid"
+    purpose: "Allows EnergySystem to manage power distribution"
+
+    component_requirements:
+      - EnergyComponent
+      - PositionComponent
+
+    methods:
+      - name: get_energy_required
+        params: []
+        returns: uint32
+        description: "Energy units needed per tick"
+
+      - name: on_energy_state_changed
+        params:
+          - name: has_power
+            type: bool
+        returns: void
+        description: "Called when power availability changes"
+
+      - name: get_energy_priority
+        params: []
+        returns: uint8
+        description: "Priority during brownout (higher = keep powered longer)"
+
+    implemented_by:
+      - All buildings in habitation zones
+      - All buildings in exchange zones
+      - All buildings in fabrication zones
+      - Fluid extractors (need power to pump)
+      - Rail terminals
+      - Subterra systems
+
+    notes:
+      - "Priority levels: 1=critical (medical/command), 2=important (enforcer/hazard), 3=normal (exchange/fabrication), 4=low (habitation)"
+
+  IEnergyProducer:
+    description: "Entities that generate energy for the grid"
+    purpose: "Allows EnergySystem to calculate available power"
+
+    component_requirements:
+      - EnergyProducerComponent
+      - PositionComponent
+
+    methods:
+      - name: get_energy_output
+        params: []
+        returns: uint32
+        description: "Current energy output"
+
+      - name: get_max_output
+        params: []
+        returns: uint32
+        description: "Maximum possible output"
+
+      - name: get_efficiency
+        params: []
+        returns: float
+        description: "Current efficiency (0.0 - 1.0)"
+
+    implemented_by:
+      - Carbon nexus
+      - Petrochemical nexus
+      - Gaseous nexus
+      - Nuclear nexus
+      - Wind turbines
+      - Hydro nexus
+      - Solar collectors
+      - Fusion reactor (future tech)
+      - Microwave receiver (future tech)
+
+  IEnergyProvider:
+    description: "Provides energy state queries for other systems"
+    purpose: "Allows BuildingSystem and other consumers to query power state without direct EnergySystem coupling"
+
+    methods:
+      - name: is_powered
+        params:
+          - name: entity
+            type: EntityID
+        returns: bool
+        description: "Whether entity is currently receiving power"
+
+      - name: is_powered_at
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+          - name: owner
+            type: PlayerID
+        returns: bool
+        description: "Whether position has power coverage and pool surplus"
+
+      - name: get_pool_state
+        params:
+          - name: owner
+            type: PlayerID
+        returns: EnergyPoolState
+        description: "Current pool state (Healthy/Marginal/Deficit/Collapse)"
+
+    implemented_by:
+      - EnergySystem (Epic 5)
+
+    notes:
+      - "Replaces Epic 4 stub (ticket 4-019)"
+      - "is_powered_at combines coverage check + pool surplus check"
+
+  IFluidConsumer:
+    description: "Entities that consume fluid (water) from the network"
+    purpose: "Allows FluidSystem to manage water distribution"
+
+    component_requirements:
+      - FluidComponent
+      - PositionComponent
+
+    methods:
+      - name: get_fluid_required
+        params: []
+        returns: uint32
+        description: "Fluid units needed per tick"
+
+      - name: on_fluid_state_changed
+        params:
+          - name: has_fluid
+            type: bool
+        returns: void
+        description: "Called when water availability changes"
+
+    implemented_by:
+      - All buildings in habitation zones
+      - All buildings in exchange zones
+      - Some fabrication buildings
+
+    notes:
+      - "Fluid affects habitability and sector value"
+
+  IFluidProducer:
+    description: "Entities that provide fluid to the network"
+    purpose: "Allows FluidSystem to calculate available water"
+
+    methods:
+      - name: get_fluid_output
+        params: []
+        returns: uint32
+        description: "Current fluid output per tick"
+
+      - name: get_reservoir_level
+        params: []
+        returns: uint32
+        description: "Current stored fluid (for reservoirs)"
+
+    implemented_by:
+      - Fluid extractor (pump)
+      - Fluid reservoir (tower)
+
+  IFluidProvider:
+    description: "Provides fluid state queries for other systems"
+    purpose: "Allows BuildingSystem and other consumers to query fluid state without direct FluidSystem coupling"
+
+    methods:
+      - name: has_fluid
+        params:
+          - name: entity
+            type: EntityID
+        returns: bool
+        description: "Whether entity is currently receiving fluid"
+
+      - name: has_fluid_at
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+          - name: owner
+            type: PlayerID
+        returns: bool
+        description: "Whether position has fluid coverage and pool surplus"
+
+      - name: get_pool_state
+        params:
+          - name: owner
+            type: PlayerID
+        returns: FluidPoolState
+        description: "Current pool state (Healthy/Marginal/Deficit/Collapse)"
+
+      - name: get_reservoir_buffer_ticks
+        params:
+          - name: owner
+            type: PlayerID
+        returns: uint32
+        description: "Estimated ticks of buffer remaining from reservoirs"
+
+    implemented_by:
+      - FluidSystem (Epic 6)
+
+    notes:
+      - "Mirrors IEnergyProvider pattern for consistency"
+      - "has_fluid_at combines coverage check + pool surplus check"
+      - "Reservoir buffer provides grace period (unlike energy's immediate impact)"
+
+# ============================================================================
+# TRANSPORT INTERFACES
+# ============================================================================
+
+transport:
+  ITransportConnectable:
+    description: "Entities that need road connectivity to function"
+    purpose: "Enforces the 3-tile road proximity rule for buildings"
+
+    methods:
+      - name: get_nearest_road_distance
+        params: []
+        returns: uint32
+        description: "Distance to nearest road tile (0 if adjacent)"
+
+      - name: is_road_accessible
+        params: []
+        returns: bool
+        description: "True if within required road proximity (3 tiles)"
+
+      - name: get_traffic_contribution
+        params: []
+        returns: uint32
+        description: "How much traffic this entity adds to nearby roads"
+
+    implemented_by:
+      - All zone buildings (habitation, exchange, fabrication)
+      - Service buildings
+      - Energy nexuses
+
+    notes:
+      - "Buildings beyond 3 tiles from road cannot develop"
+      - "Used by BuildingSystem to validate building placement"
+
+  ITransportProvider:
+    description: "Provides transport state queries for other systems"
+    purpose: "Allows BuildingSystem and other consumers to query transport state without direct TransportSystem coupling"
+
+    methods:
+      - name: is_road_accessible
+        params:
+          - name: entity
+            type: EntityID
+        returns: bool
+        description: "Whether entity is within 3 tiles of a pathway"
+
+      - name: is_road_accessible_at
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+          - name: max_distance
+            type: uint8_t
+            description: "Maximum distance (default 3)"
+        returns: bool
+        description: "Whether position is within max_distance tiles of a pathway"
+
+      - name: get_nearest_road_distance
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: uint8_t
+        description: "Distance to nearest pathway (0 if adjacent, 255 if none)"
+
+      - name: is_connected_to_network
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: bool
+        description: "Whether pathway at position is part of a connected network"
+
+      - name: are_connected
+        params:
+          - name: x1
+            type: int32_t
+          - name: y1
+            type: int32_t
+          - name: x2
+            type: int32_t
+          - name: y2
+            type: int32_t
+        returns: bool
+        description: "Whether two positions are connected via the pathway network"
+
+      - name: get_congestion_at
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: float
+        description: "Congestion level at position (0.0 = free, 1.0 = gridlock)"
+
+      - name: get_traffic_volume_at
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: uint32_t
+        description: "Traffic volume at position (for pollution calculation)"
+
+      - name: get_network_id_at
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: uint32_t
+        description: "Network ID for pathway at position (0 = no pathway)"
+
+    implemented_by:
+      - TransportSystem (Epic 7)
+
+    notes:
+      - "Replaces Epic 4 stub (StubTransportProvider)"
+      - "Mirrors IEnergyProvider/IFluidProvider pattern for consistency"
+      - "Uses Manhattan distance for 3-tile rule"
+
+# ============================================================================
+# SERVICE INTERFACES
+# ============================================================================
+
+services:
+  IServiceProvider:
+    description: "Buildings that provide services to nearby tiles"
+    purpose: "Allows simulation to query service coverage"
+
+    methods:
+      - name: get_service_type
+        params: []
+        returns: ServiceType
+        description: "Type of service (enforcer, hazard_response, medical, education)"
+
+      - name: get_coverage_radius
+        params: []
+        returns: uint32
+        description: "Radius of effect in tiles"
+
+      - name: get_effectiveness
+        params: []
+        returns: float
+        description: "Current effectiveness (0.0 - 1.0) based on funding"
+
+      - name: get_coverage_at
+        params:
+          - name: position
+            type: GridPosition
+        returns: float
+        description: "Service coverage strength at position (0.0 - 1.0)"
+
+    implemented_by:
+      - Enforcer post (reduces disorder)
+      - Hazard response post (fire protection)
+      - Medical nexus (improves longevity)
+      - Learning center (improves education)
+      - Archive (improves education)
+
+    service_types:
+      enforcer: "Reduces disorder in radius"
+      hazard_response: "Provides fire protection in radius"
+      medical: "Improves longevity globally"
+      education: "Improves knowledge quotient globally"
+
+# ============================================================================
+# DISASTER INTERFACES
+# ============================================================================
+
+disasters:
+  IDamageable:
+    description: "Entities that can be damaged by disasters"
+    purpose: "Allows DisasterSystem to apply damage"
+
+    methods:
+      - name: get_health
+        params: []
+        returns: uint32
+        description: "Current health points"
+
+      - name: get_max_health
+        params: []
+        returns: uint32
+        description: "Maximum health points"
+
+      - name: apply_damage
+        params:
+          - name: amount
+            type: uint32
+          - name: damage_type
+            type: DamageType
+        returns: void
+        description: "Apply damage of specified type"
+
+      - name: is_destroyed
+        params: []
+        returns: bool
+        description: "True if health <= 0"
+
+    implemented_by:
+      - All buildings
+      - Infrastructure (roads, conduits, pipes)
+
+    damage_types:
+      fire: "From fires and conflagrations"
+      seismic: "From earthquakes"
+      flood: "From inundation"
+      storm: "From vortex storms, mega storms"
+      explosion: "From core breaches, etc."
+
+  IEmergencyResponder:
+    description: "Service buildings that respond to disasters"
+    purpose: "Allows DisasterSystem to dispatch emergency response"
+
+    methods:
+      - name: can_respond_to
+        params:
+          - name: disaster_type
+            type: DisasterType
+        returns: bool
+        description: "Whether this responder handles this disaster type"
+
+      - name: dispatch_to
+        params:
+          - name: position
+            type: GridPosition
+        returns: bool
+        description: "Send responders to position. Returns false if unavailable."
+
+      - name: get_response_effectiveness
+        params: []
+        returns: float
+        description: "How effective this responder is (based on funding)"
+
+    implemented_by:
+      - Hazard response post (fires)
+      - Enforcer post (riots/civil unrest)
+
+  IDisasterProvider:
+    description: "Provides disaster state queries for other systems"
+    purpose: "Allows UISystem, RenderingSystem, and other consumers to query disaster state without direct DisasterSystem coupling"
+
+    methods:
+      - name: get_active_disasters
+        params: []
+        returns: "std::vector<DisasterInfo>"
+        description: "All currently active disasters"
+
+      - name: is_on_fire
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: bool
+        description: "Whether position is currently on fire"
+
+      - name: get_fire_intensity
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: uint8_t
+        description: "Fire intensity at position (0 = no fire, 255 = max)"
+
+      - name: get_recovery_zones
+        params: []
+        returns: "std::vector<RecoveryZoneInfo>"
+        description: "All active recovery zones"
+
+      - name: get_statistics
+        params:
+          - name: owner
+            type: PlayerID
+        returns: DisasterStatistics
+        description: "Disaster statistics for a player (damage, recoveries, etc.)"
+
+    implemented_by:
+      - DisasterSystem (Epic 13)
+
+    notes:
+      - "Fire queries use ConflagrationGrid for O(1) lookup"
+      - "Recovery zones are entity-based, not grid-based"
+
+  IEmergencyResponseProvider:
+    description: "Aggregates emergency responders for disaster response coordination"
+    purpose: "Allows DisasterSystem to query and dispatch responders without direct ECS coupling"
+
+    methods:
+      - name: get_available_responders
+        params:
+          - name: disaster_type
+            type: DisasterType
+          - name: owner
+            type: PlayerID
+        returns: "std::vector<EntityID>"
+        description: "All available responders for disaster type owned by player"
+
+      - name: request_dispatch
+        params:
+          - name: responder
+            type: EntityID
+          - name: position
+            type: GridPosition
+        returns: bool
+        description: "Request responder dispatch to position. Returns false if unavailable."
+
+      - name: release_responder
+        params:
+          - name: responder
+            type: EntityID
+        returns: void
+        description: "Release responder back to available pool"
+
+      - name: get_response_effectiveness
+        params:
+          - name: responder
+            type: EntityID
+        returns: float
+        description: "Effectiveness of specific responder (0.0-1.0)"
+
+    implemented_by:
+      - ServicesSystem (Epic 9)
+
+    notes:
+      - "Aggregates IEmergencyResponder implementations"
+      - "Handles responder capacity and availability tracking"
+
+# ============================================================================
+# PROGRESSION INTERFACES
+# ============================================================================
+
+progression:
+  IProgressionProvider:
+    description: "Query progression state for milestone and unlock checks"
+    purpose: "Allows UISystem, BuildingSystem, and effect-consuming systems to query progression state without direct ProgressionSystem coupling"
+
+    methods:
+      - name: has_milestone
+        params:
+          - name: owner
+            type: PlayerID
+          - name: milestone
+            type: MilestoneType
+        returns: bool
+        description: "Whether player has achieved the specified milestone"
+
+      - name: get_highest_milestone
+        params:
+          - name: owner
+            type: PlayerID
+        returns: MilestoneType
+        description: "Highest milestone achieved by player"
+
+      - name: get_milestone_count
+        params:
+          - name: owner
+            type: PlayerID
+        returns: uint8_t
+        description: "Number of milestones achieved by player"
+
+      - name: get_next_milestone_population
+        params:
+          - name: owner
+            type: PlayerID
+        returns: uint32_t
+        description: "Population required for next milestone (0 if all achieved)"
+
+      - name: is_reward_building_unlocked
+        params:
+          - name: owner
+            type: PlayerID
+          - name: building_type
+            type: RewardBuildingType
+        returns: bool
+        description: "Whether player can build the specified reward building"
+
+      - name: is_arcology_type_unlocked
+        params:
+          - name: owner
+            type: PlayerID
+          - name: arcology_type
+            type: ArcologyType
+        returns: bool
+        description: "Whether player can build the specified arcology type"
+
+      - name: get_unlocked_rewards
+        params:
+          - name: owner
+            type: PlayerID
+        returns: "std::vector<RewardBuildingType>"
+        description: "All reward building types unlocked by player"
+
+      - name: get_arcology_count
+        params:
+          - name: owner
+            type: PlayerID
+        returns: uint8_t
+        description: "Number of arcologies owned by player"
+
+      - name: get_max_arcologies
+        params:
+          - name: owner
+            type: PlayerID
+        returns: uint8_t
+        description: "Maximum arcologies player can build"
+
+      - name: can_build_arcology
+        params:
+          - name: owner
+            type: PlayerID
+        returns: bool
+        description: "Whether player can build another arcology (count < max)"
+
+      - name: is_edict_active
+        params:
+          - name: owner
+            type: PlayerID
+          - name: edict
+            type: EdictType
+        returns: bool
+        description: "Whether the specified edict is currently active"
+
+      - name: get_active_edicts
+        params:
+          - name: owner
+            type: PlayerID
+        returns: "std::vector<EdictType>"
+        description: "All currently active edicts for player"
+
+      - name: get_edict_modifier
+        params:
+          - name: edict
+            type: EdictType
+        returns: float
+        description: "Effect multiplier for the specified edict type"
+
+      - name: get_peak_population
+        params:
+          - name: owner
+            type: PlayerID
+        returns: uint32_t
+        description: "Highest population ever achieved by player (milestones are permanent)"
+
+      - name: get_total_arcology_capacity
+        params:
+          - name: owner
+            type: PlayerID
+        returns: uint32_t
+        description: "Sum of population capacity from all player's arcologies"
+
+    implemented_by:
+      - ProgressionSystem (Epic 14)
+
+    notes:
+      - "Milestones are permanent once achieved - population can drop but milestone remains"
+      - "Arcology population counts toward milestone thresholds"
+      - "Edict modifiers are global constants, not per-player"
+
+  IUnlockPrerequisite:
+    description: "Check if building construction prerequisites are met"
+    purpose: "Allows BuildingSystem to verify unlock requirements before allowing construction"
+
+    methods:
+      - name: meets_prerequisites
+        params:
+          - name: owner
+            type: PlayerID
+          - name: template_id
+            type: uint32_t
+        returns: bool
+        description: "Whether all prerequisites are met for the building template"
+
+      - name: get_prerequisite_failure_reason
+        params:
+          - name: owner
+            type: PlayerID
+          - name: template_id
+            type: uint32_t
+        returns: "std::string"
+        description: "Human-readable reason why prerequisites aren't met (empty if met)"
+
+    implemented_by:
+      - ProgressionSystem (Epic 14)
+      - StubUnlockPrerequisite (pre-Epic 14)
+
+    stub_behavior:
+      meets_prerequisites: "Returns true (all builds allowed)"
+      get_prerequisite_failure_reason: "Returns empty string"
+
+    notes:
+      - "BuildingSystem queries this interface before allowing construction"
+      - "Stub returns true until ProgressionSystem is implemented"
+      - "Failure reasons are player-facing text using canon terminology"
+
+# ============================================================================
+# CONTAMINATION INTERFACES
+# ============================================================================
+
+contamination:
+  IContaminationSource:
+    description: "Entities that produce contamination (pollution)"
+    purpose: "Allows ContaminationSystem to calculate pollution generation"
+
+    methods:
+      - name: get_contamination_output
+        params: []
+        returns: uint32
+        description: "Contamination units produced per tick"
+
+      - name: get_contamination_type
+        params: []
+        returns: ContaminationType
+        description: "Type of contamination produced"
+
+    implemented_by:
+      - Fabrication buildings (industrial pollution)
+      - Certain energy nexuses (carbon, petrochemical, gaseous)
+      - High-traffic roads (traffic pollution)
+      - Terrain: blight_mires / toxic_marshes (natural contamination)
+
+    contamination_types:
+      industrial: "From fabrication zones"
+      traffic: "From congested roads"
+      energy: "From polluting power plants"
+      terrain: "From blight_mires (toxic_marshes) terrain type"
+
+# ============================================================================
+# BUILDING INTERFACES
+# ============================================================================
+
+buildings:
+  IBuildable:
+    description: "Anything that can be constructed by a player"
+    purpose: "Unified construction interface"
+
+    methods:
+      - name: get_construction_cost
+        params: []
+        returns: uint32
+        description: "Cost in credits to build"
+
+      - name: get_construction_time
+        params: []
+        returns: uint32
+        description: "Ticks to complete construction"
+
+      - name: get_footprint
+        params: []
+        returns: "GridRect"
+        description: "Tiles occupied by this structure"
+
+      - name: can_build_at
+        params:
+          - name: position
+            type: GridPosition
+          - name: terrain
+            type: "const TerrainData&"
+        returns: bool
+        description: "Whether this can be placed at position"
+
+    implemented_by:
+      - All buildings
+      - All infrastructure (roads, conduits, etc.)
+
+  IDemolishable:
+    description: "Anything that can be demolished"
+    purpose: "Unified demolition interface"
+
+    methods:
+      - name: get_demolition_cost
+        params: []
+        returns: uint32
+        description: "Cost to demolish (0 for most things)"
+
+      - name: on_demolished
+        params: []
+        returns: void
+        description: "Cleanup when demolished"
+
+    notes:
+      - "Demolishing creates debris that must be cleared"
+
+# ============================================================================
+# QUERY INTERFACES
+# ============================================================================
+
+queries:
+  IGridQueryable:
+    description: "Systems that can answer questions about grid positions"
+    purpose: "Allows UI and other systems to query spatial state"
+
+    methods:
+      - name: get_entities_at
+        params:
+          - name: position
+            type: GridPosition
+        returns: "std::vector<EntityID>"
+        description: "All entities at grid position"
+
+      - name: get_entity_at
+        params:
+          - name: position
+            type: GridPosition
+        returns: "std::optional<EntityID>"
+        description: "Primary entity at position (building/zone)"
+
+    implemented_by:
+      - SpatialIndex (core utility, not a system)
+
+  IStatQueryable:
+    description: "Systems that provide statistics for UI display"
+    purpose: "Allows UI to show system-specific metrics"
+
+    methods:
+      - name: get_stat_value
+        params:
+          - name: stat_id
+            type: StatID
+        returns: float
+        description: "Current value of the statistic"
+
+      - name: get_stat_history
+        params:
+          - name: stat_id
+            type: StatID
+          - name: periods
+            type: uint32
+        returns: "std::vector<float>"
+        description: "Historical values for graphing"
+
+    implemented_by:
+      - PopulationSystem (population stats)
+      - EconomySystem (financial stats)
+      - EnergySystem (power stats)
+      - DisorderSystem (crime stats)
+      - ContaminationSystem (pollution stats)
+
+# ============================================================================
+# TERRAIN INTERFACES
+# ============================================================================
+
+terrain:
+  ITerrainQueryable:
+    description: "Read-only terrain data queries for gameplay systems"
+    purpose: "Allows any system to query terrain type, elevation, moisture, and flags at a position"
+
+    methods:
+      - name: get_terrain_type
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: TerrainType
+        description: "Terrain type at grid position"
+
+      - name: get_elevation
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: uint8_t
+        description: "Elevation (0-31) at grid position"
+
+      - name: get_moisture
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: uint8_t
+        description: "Moisture level at grid position"
+
+      - name: is_buildable
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: bool
+        description: "Whether position can be built on (terrain allows + not water/toxic)"
+
+      - name: get_water_body_id
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: uint8_t
+        description: "Water body identifier (0 = not water)"
+
+      - name: get_water_distance
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: uint8_t
+        description: "Manhattan distance to nearest water tile (capped at 255)"
+
+    implemented_by:
+      - TerrainSystem (Epic 3)
+
+    notes:
+      - "Backed by dense 2D grid — O(1) lookups"
+      - "Thread-safe for read access during render"
+
+  ITerrainRenderData:
+    description: "Chunk-based terrain data for mesh generation"
+    purpose: "Provides RenderingSystem with terrain data organized by 32x32 chunks for GPU mesh building"
+
+    methods:
+      - name: get_chunk_data
+        params:
+          - name: chunk_x
+            type: int32_t
+          - name: chunk_y
+            type: int32_t
+        returns: "const TerrainChunkData*"
+        description: "Terrain data for a 32x32 chunk (null if out of bounds)"
+
+      - name: get_dirty_chunks
+        params: []
+        returns: "std::vector<ChunkCoord>"
+        description: "Chunks modified since last call (for incremental mesh rebuild)"
+
+      - name: get_map_size_in_chunks
+        params: []
+        returns: "ChunkCoord"
+        description: "Map dimensions in chunk units"
+
+    implemented_by:
+      - TerrainSystem (Epic 3)
+
+    notes:
+      - "Chunk size is 32x32 tiles, aligned with Epic 2 spatial partitioning"
+      - "RenderingSystem generates heightmap mesh from chunk data"
+      - "Dirty tracking uses TerrainModifiedEvent"
+
+  ITerrainModifier:
+    description: "Terrain modification requests (server-authoritative)"
+    purpose: "Allows systems to request terrain changes through a validated interface"
+
+    methods:
+      - name: request_purge
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+          - name: player_id
+            type: PlayerID
+        returns: bool
+        description: "Request to clear vegetation/crystals at position. Returns false if not clearable."
+
+      - name: request_grade
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+          - name: target_elevation
+            type: uint8_t
+          - name: player_id
+            type: PlayerID
+        returns: bool
+        description: "Request to flatten terrain to target elevation. Multi-tick operation."
+
+      - name: request_terraform
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+          - name: target_type
+            type: TerrainType
+          - name: player_id
+            type: PlayerID
+        returns: bool
+        description: "Request major terrain reshaping. Multi-tick, late-game operation."
+
+    implemented_by:
+      - TerrainSystem (Epic 3)
+
+    notes:
+      - "Server-authoritative: client sends request, server validates and applies"
+      - "Purge is instant; Grade and Terraform are multi-tick operations"
+      - "Emits TerrainModifiedEvent on completion"
+
+# ============================================================================
+# RENDERING INTERFACES
+# ============================================================================
+
+rendering:
+  IRenderStateProvider:
+    description: "Provides interpolation data for smooth rendering between simulation ticks"
+    purpose: "Allows RenderingSystem to interpolate entity transforms for 60fps from 20Hz simulation"
+
+    methods:
+      - name: get_previous_tick_time
+        params: []
+        returns: float
+        description: "Timestamp of the previous simulation tick"
+
+      - name: get_current_tick_time
+        params: []
+        returns: float
+        description: "Timestamp of the current simulation tick"
+
+      - name: get_interpolation_alpha
+        params: []
+        returns: float
+        description: "Value 0.0-1.0 representing position between ticks"
+
+      - name: get_previous_position
+        params:
+          - name: entity
+            type: EntityID
+        returns: "std::optional<PositionComponent>"
+        description: "Entity position at previous tick (for lerp)"
+
+      - name: get_current_position
+        params:
+          - name: entity
+            type: EntityID
+        returns: "std::optional<PositionComponent>"
+        description: "Entity position at current tick (for lerp)"
+
+    implemented_by:
+      - SyncSystem (Epic 1)
+
+    stub_implementation: |
+      For local/single-player mode without Epic 1:
+      - get_interpolation_alpha() returns 1.0 (use current state)
+      - get_previous_position() returns same as current
+      - Entities render at current position without interpolation
+
+      RenderingSystem should work correctly with or without SyncSystem by
+      checking if IRenderStateProvider is available.
+
+    notes:
+      - "Only needed for multiplayer smooth rendering"
+      - "Static buildings can skip interpolation entirely"
+      - "Interpolate: beings, vehicles, construction progress"
+
+  ICursorSync:
+    description: "Syncs cursor positions for multiplayer cursor display"
+    purpose: "Allows RenderingSystem to show other players' cursor positions"
+
+    methods:
+      - name: get_player_cursors
+        params: []
+        returns: "std::vector<PlayerCursor>"
+        description: "All remote player cursor positions"
+
+      - name: update_local_cursor
+        params:
+          - name: world_position
+            type: Vec3
+        returns: void
+        description: "Report local player cursor position to sync"
+
+    data_types:
+      PlayerCursor:
+        fields:
+          - name: player_id
+            type: PlayerID
+          - name: world_position
+            type: Vec3
+          - name: is_active
+            type: bool
+
+    implemented_by:
+      - SyncSystem (Epic 1)
+
+    stub_implementation: |
+      For local/single-player mode:
+      - get_player_cursors() returns empty vector
+      - update_local_cursor() is a no-op
+
+      RenderingSystem should handle empty cursor list gracefully.
+
+    notes:
+      - "Cursor sync is unreliable UDP, 10-20Hz update rate"
+      - "Not every tick - cursor is visual feedback only"
+
+# ============================================================================
+# NETWORK INTERFACES
+# ============================================================================
+
+network:
+  ISerializable:
+    description: "Components/data that can be sent over network"
+    purpose: "Ensures all synced data can be serialized"
+
+    methods:
+      - name: serialize
+        params:
+          - name: buffer
+            type: "WriteBuffer&"
+        returns: void
+        description: "Write data to buffer"
+
+      - name: deserialize
+        params:
+          - name: buffer
+            type: "ReadBuffer&"
+        returns: void
+        description: "Read data from buffer"
+
+      - name: get_serialized_size
+        params: []
+        returns: size_t
+        description: "Bytes needed for serialization"
+
+    implemented_by:
+      - All components that sync over network
+      - All network messages
+
+    notes:
+      - "Use fixed-size types (uint32_t not int)"
+      - "Use little-endian byte order"
+      - "Version your serialization format"
+
+  INetworkHandler:
+    description: "Systems that handle network messages"
+    purpose: "Route incoming messages to appropriate handlers"
+
+    methods:
+      - name: handle_message
+        params:
+          - name: message
+            type: "const NetworkMessage&"
+          - name: sender
+            type: PlayerID
+        returns: void
+        description: "Process incoming message"
+
+      - name: get_handled_types
+        params: []
+        returns: "std::vector<MessageType>"
+        description: "Message types this handler processes"
+
+# ============================================================================
+# OVERLAY INTERFACES
+# ============================================================================
+
+overlays:
+  IGridOverlay:
+    description: "Provide overlay data for UI rendering"
+    purpose: "Standardize grid-based overlay visualization across systems"
+
+    methods:
+      - name: get_overlay_data
+        params: []
+        returns: "const uint8_t*"
+        description: "Raw pointer to overlay grid data (row-major)"
+
+      - name: get_overlay_width
+        params: []
+        returns: uint32_t
+        description: "Width of overlay grid in tiles"
+
+      - name: get_overlay_height
+        params: []
+        returns: uint32_t
+        description: "Height of overlay grid in tiles"
+
+      - name: get_value_at
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: uint8_t
+        description: "Overlay value at grid position (0-255)"
+
+      - name: get_color_scheme
+        params: []
+        returns: OverlayColorScheme
+        description: "Color scheme for rendering (heat map, gradient, etc.)"
+
+    implemented_by:
+      - LandValueSystem (Epic 10)
+      - DisorderSystem (Epic 10)
+      - ContaminationSystem (Epic 10)
+
+    color_schemes:
+      heat_map: "Red (high) to blue (low) gradient"
+      green_red: "Green (good) to red (bad) gradient"
+      purple_yellow: "Purple (low) to yellow (high) for contamination"
+      coverage: "Binary or stepped coverage visualization"
+
+    notes:
+      - "UISystem uses this to render data overlays"
+      - "Overlay data is read-only for rendering"
+      - "Color scheme determines visualization style"
+
+# ============================================================================
+# DEMAND INTERFACES
+# ============================================================================
+
+demand:
+  IDemandProvider:
+    description: "Query RCI demand values"
+    purpose: "BuildingSystem queries for zone development decisions"
+
+    methods:
+      - name: get_demand
+        params:
+          - name: zone_type
+            type: ZoneBuildingType
+          - name: owner
+            type: PlayerID
+        returns: int8_t
+        description: "Demand value for zone type (-100 to +100)"
+
+      - name: get_demand_cap
+        params:
+          - name: zone_type
+            type: ZoneBuildingType
+          - name: owner
+            type: PlayerID
+        returns: uint32_t
+        description: "Maximum buildings of this type based on infrastructure"
+
+      - name: has_positive_demand
+        params:
+          - name: zone_type
+            type: ZoneBuildingType
+          - name: owner
+            type: PlayerID
+        returns: bool
+        description: "Whether zone type has positive demand (>0)"
+
+      - name: get_demand_factors
+        params:
+          - name: zone_type
+            type: ZoneBuildingType
+          - name: owner
+            type: PlayerID
+        returns: DemandFactors
+        description: "Breakdown of factors affecting demand (for UI)"
+
+    implemented_by:
+      - DemandSystem (Epic 10)
+
+    notes:
+      - "BuildingSystem checks has_positive_demand before spawning"
+      - "Demand cap prevents infinite building regardless of demand"
+
+# ============================================================================
+# STUB INTERFACES (Forward declarations for later epics)
+# ============================================================================
+
+stubs:
+  IServiceQueryable:
+    description: "Query service coverage (stub until Epic 9)"
+    purpose: "PopulationSystem and DisorderSystem query service effects before ServicesSystem exists"
+
+    methods:
+      - name: get_coverage
+        params:
+          - name: service_type
+            type: ServiceType
+          - name: owner
+            type: PlayerID
+        returns: float
+        description: "Overall coverage for service type (0.0-1.0)"
+
+      - name: get_coverage_at
+        params:
+          - name: service_type
+            type: ServiceType
+          - name: position
+            type: GridPosition
+        returns: float
+        description: "Service coverage at specific position (0.0-1.0)"
+
+      - name: get_effectiveness
+        params:
+          - name: service_type
+            type: ServiceType
+          - name: owner
+            type: PlayerID
+        returns: float
+        description: "Service effectiveness based on funding (0.0-1.0)"
+
+    implemented_by:
+      - StubServiceProvider (Epic 10 stub)
+      - ServicesSystem (Epic 9 real implementation)
+
+    stub_behavior:
+      get_coverage: "Returns 0.5 (neutral baseline)"
+      get_coverage_at: "Returns 0.5 (neutral baseline)"
+      get_effectiveness: "Returns 1.0 (full effectiveness)"
+
+    notes:
+      - "Epic 10 provides stub implementation returning neutral values"
+      - "Epic 9 replaces stub with real ServicesSystem"
+      - "Neutral values ensure simulation works before services exist"
+
+  IEconomyQueryable:
+    description: "Query economy data (stub until Epic 11)"
+    purpose: "DemandSystem queries tribute rates before EconomySystem exists"
+
+    methods:
+      - name: get_tribute_rate
+        params:
+          - name: zone_type
+            type: ZoneBuildingType
+          - name: owner
+            type: PlayerID
+        returns: int
+        description: "Current tribute (tax) rate for zone type (0-20%)"
+
+      - name: get_average_tribute_rate
+        params:
+          - name: owner
+            type: PlayerID
+        returns: int
+        description: "Average tribute rate across all zones"
+
+      - name: get_treasury_balance
+        params:
+          - name: owner
+            type: PlayerID
+        returns: int64_t
+        description: "Current treasury balance in credits"
+
+    implemented_by:
+      - StubEconomyProvider (Epic 10 stub)
+      - EconomySystem (Epic 11 real implementation)
+
+    stub_behavior:
+      get_tribute_rate: "Returns 7 (7% default rate)"
+      get_average_tribute_rate: "Returns 7 (7% default rate)"
+      get_treasury_balance: "Returns 20000 (starting credits)"
+
+    notes:
+      - "Epic 10 provides stub implementation with default values"
+      - "Epic 11 replaces stub with real EconomySystem"
+      - "7% is the balanced default tax rate"
+
+# ============================================================================
+# DATA CONTRACTS
+# ============================================================================
+# Shared data structures that cross system boundaries
+
+data_contracts:
+  GridPosition:
+    description: "A position on the tile grid"
+    fields:
+      - name: x
+        type: int32_t
+      - name: y
+        type: int32_t
+    used_by:
+      - All spatial systems
+      - All components with position
+
+  GridRect:
+    description: "A rectangular area on the grid"
+    fields:
+      - name: x
+        type: int32_t
+      - name: y
+        type: int32_t
+      - name: width
+        type: int32_t
+      - name: height
+        type: int32_t
+    used_by:
+      - Building footprints
+      - Zone areas
+      - Selection tools
+
+  PlayerID:
+    description: "Unique identifier for a player or the Game Master"
+    type: uint8_t
+    special_values:
+      GAME_MASTER: 0    # Virtual entity owning unclaimed/ghost tiles
+      PLAYER_1: 1
+      PLAYER_2: 2
+      PLAYER_3: 3
+      PLAYER_4: 4
+      # Expandable for more players
+    notes:
+      - "GAME_MASTER (0) owns all tiles at game start"
+      - "Players buy tiles from GAME_MASTER only"
+      - "Ghost town tiles revert to GAME_MASTER ownership"
+    used_by:
+      - OwnershipComponent
+      - All player-related systems
+      - TilePurchaseSystem
+
+  EntityID:
+    description: "Unique identifier for an entity"
+    type: uint32_t
+    special_values:
+      INVALID: 0
+    used_by:
+      - ECS registry
+      - All entity references
+
+  Credits:
+    description: "Currency amount"
+    type: int64_t
+    notes:
+      - "Signed to allow debt"
+      - "64-bit to avoid overflow in large cities"
+    used_by:
+      - EconomySystem
+      - All cost calculations
+
+  IncomeBreakdown:
+    description: "Breakdown of colony income sources"
+    fields:
+      - name: habitation_tribute
+        type: Credits
+        description: "Tribute from habitation zones"
+      - name: exchange_tribute
+        type: Credits
+        description: "Tribute from exchange zones"
+      - name: fabrication_tribute
+        type: Credits
+        description: "Tribute from fabrication zones"
+      - name: total
+        type: Credits
+        description: "Sum of all income"
+    used_by:
+      - EconomySystem (provides)
+      - UISystem (budget window)
+
+  ExpenseBreakdown:
+    description: "Breakdown of colony expenses"
+    fields:
+      - name: service_costs
+        type: Credits
+        description: "Service building maintenance"
+      - name: infrastructure_costs
+        type: Credits
+        description: "Road, conduit, pipe maintenance"
+      - name: bond_payments
+        type: Credits
+        description: "Credit advance interest and principal"
+      - name: total
+        type: Credits
+        description: "Sum of all expenses"
+    used_by:
+      - EconomySystem (provides)
+      - UISystem (budget window)
+
+  CreditAdvance:
+    description: "A bond/loan taken by the colony"
+    fields:
+      - name: principal
+        type: Credits
+        description: "Original amount borrowed"
+      - name: remaining
+        type: Credits
+        description: "Amount still owed"
+      - name: interest_rate
+        type: uint8_t
+        description: "Annual interest rate (5-10%)"
+      - name: cycles_remaining
+        type: uint16_t
+        description: "Cycles until fully repaid"
+    notes:
+      - "Maximum 5 active bonds per player"
+      - "Total debt capped at 2x annual income"
+    used_by:
+      - EconomySystem
+      - UISystem (bond management)
+
+  SaveResult:
+    description: "Result of a save operation"
+    fields:
+      - name: success
+        type: bool
+      - name: error_message
+        type: "std::string"
+        description: "Empty on success"
+      - name: file_path
+        type: "std::string"
+        description: "Where save was written"
+      - name: file_size_bytes
+        type: uint64_t
+      - name: save_duration_ms
+        type: float
+    used_by:
+      - PersistenceSystem
+
+  LoadResult:
+    description: "Result of a load operation"
+    fields:
+      - name: success
+        type: bool
+      - name: error_message
+        type: "std::string"
+      - name: loaded_tick
+        type: uint64_t
+        description: "Simulation tick from save"
+      - name: entity_count
+        type: uint32_t
+      - name: load_duration_ms
+        type: float
+    used_by:
+      - PersistenceSystem
+
+  CompatibilityResult:
+    description: "Save file compatibility check result"
+    fields:
+      - name: can_load
+        type: bool
+      - name: needs_migration
+        type: bool
+      - name: reason
+        type: "std::string"
+        description: "Why it can't load, or migration notes"
+      - name: save_format_version
+        type: uint32_t
+      - name: save_game_version
+        type: GameVersion
+    used_by:
+      - PersistenceSystem
+
+  SaveSlotMetadata:
+    description: "Metadata for save file browser display"
+    fields:
+      - name: slot_id
+        type: "std::string"
+      - name: display_name
+        type: "std::string"
+      - name: file_path
+        type: "std::string"
+      - name: save_timestamp
+        type: uint64_t
+      - name: simulation_tick
+        type: uint64_t
+      - name: player_count
+        type: uint32_t
+      - name: map_size
+        type: uint32_t
+      - name: file_size_bytes
+        type: uint64_t
+      - name: game_version
+        type: uint32_t
+      - name: is_autosave
+        type: bool
+      - name: total_population
+        type: uint32_t
+      - name: total_buildings
+        type: uint32_t
+      - name: player_names
+        type: "std::vector<std::string>"
+      - name: thumbnail_path
+        type: "std::optional<std::string>"
+    used_by:
+      - PersistenceSystem
+      - UISystem (world browser)
+
+  AutoSaveConfig:
+    description: "Configuration for checkpoint system"
+    fields:
+      - name: enabled
+        type: bool
+        default: true
+      - name: interval_cycles
+        type: uint32_t
+        default: 10
+      - name: max_checkpoints
+        type: uint32_t
+        default: 3
+      - name: save_before_disaster
+        type: bool
+        default: true
+      - name: save_on_milestone
+        type: bool
+        default: true
+    used_by:
+      - PersistenceSystem
+
+  ClientSettings:
+    description: "Client-side user preferences"
+    fields:
+      - name: audio
+        type: VolumeSettings
+      - name: video
+        type: VideoSettings
+      - name: controls
+        type: ControlSettings
+      - name: ui
+        type: UISettings
+      - name: multiplayer
+        type: MultiplayerSettings
+    used_by:
+      - SettingsManager
+      - UISystem
+
+# ============================================================================
+# UI EVENTS
+# ============================================================================
+# Events produced by UISystem and consumed by game systems
+
+ui_events:
+  UIToolSelectedEvent:
+    description: "Emitted when player selects a tool"
+    fields:
+      - name: tool_type
+        type: ToolType
+      - name: zone_type
+        type: "std::optional<ZoneType>"
+      - name: infra_type
+        type: "std::optional<InfraType>"
+    produced_by: UISystem
+    consumed_by:
+      - RenderingSystem (cursor display)
+      - BuildingSystem (placement preview)
+
+  UIBuildRequestEvent:
+    description: "Emitted when player requests building placement"
+    fields:
+      - name: position
+        type: GridPosition
+      - name: building_type
+        type: BuildingType
+      - name: requester
+        type: PlayerID
+    produced_by: UISystem
+    consumed_by: BuildingSystem
+
+  UIZoneRequestEvent:
+    description: "Emitted when player requests zone designation"
+    fields:
+      - name: area
+        type: GridRect
+      - name: zone_type
+        type: ZoneType
+      - name: density
+        type: ZoneDensity
+      - name: requester
+        type: PlayerID
+    produced_by: UISystem
+    consumed_by: ZoneSystem
+
+  UITributeRateChangedEvent:
+    description: "Emitted when player adjusts tribute rate"
+    fields:
+      - name: zone_type
+        type: ZoneBuildingType
+      - name: new_rate
+        type: uint8_t
+      - name: player
+        type: PlayerID
+    produced_by: UISystem
+    consumed_by: EconomySystem
+
+  UIFundingChangedEvent:
+    description: "Emitted when player adjusts service funding"
+    fields:
+      - name: service_type
+        type: ServiceType
+      - name: new_level
+        type: uint8_t
+      - name: player
+        type: PlayerID
+    produced_by: UISystem
+    consumed_by: EconomySystem
+
+  UIOverlayToggledEvent:
+    description: "Emitted when player toggles overlay"
+    fields:
+      - name: overlay_type
+        type: OverlayType
+      - name: enabled
+        type: bool
+    produced_by: UISystem
+    consumed_by: UISystem (internal state)
+
+# ============================================================================
+# AUDIO INTERFACES
+# ============================================================================
+
+audio:
+  IAudioProvider:
+    description: "Provides audio playback services for other systems"
+    purpose: "Allows systems to trigger sounds without direct AudioSystem coupling"
+
+    methods:
+      - name: play_sound
+        params:
+          - name: sound_type
+            type: SoundEffectType
+        returns: void
+        description: "Play a non-positional sound effect"
+
+      - name: play_sound_at
+        params:
+          - name: sound_type
+            type: SoundEffectType
+          - name: position
+            type: GridPosition
+        returns: void
+        description: "Play a positional sound effect at world location"
+
+      - name: stop_sound
+        params:
+          - name: sound_type
+            type: SoundEffectType
+        returns: void
+        description: "Stop all instances of a sound type"
+
+      - name: set_volume
+        params:
+          - name: channel
+            type: AudioChannel
+          - name: level
+            type: float
+        returns: void
+        description: "Set volume for audio channel (0.0 - 1.0)"
+
+      - name: get_volume
+        params:
+          - name: channel
+            type: AudioChannel
+        returns: float
+        description: "Get current volume for audio channel"
+
+      - name: play_music
+        params: []
+        returns: void
+        description: "Start/resume music playback"
+
+      - name: pause_music
+        params: []
+        returns: void
+        description: "Pause music playback"
+
+      - name: stop_music
+        params: []
+        returns: void
+        description: "Stop music playback completely"
+
+      - name: skip_track
+        params: []
+        returns: void
+        description: "Skip to next track in playlist"
+
+      - name: is_music_playing
+        params: []
+        returns: bool
+        description: "Whether music is currently playing"
+
+      - name: is_sound_playing
+        params:
+          - name: sound_type
+            type: SoundEffectType
+        returns: bool
+        description: "Whether any instance of sound type is playing"
+
+    implemented_by:
+      - AudioSystem (Epic 15)
+
+    notes:
+      - "Client-only interface - not available on server"
+      - "Sound playback is fire-and-forget"
+      - "Positional sounds use CameraSystem for listener position"
+      - "AudioChannel values: Master, Music, SFX, Ambient, UI"
+
+  AudioChannel:
+    description: "Audio output channels for independent volume control"
+    values:
+      - Master: "Global multiplier for all audio"
+      - Music: "Background music playback"
+      - SFX: "Sound effects from game actions"
+      - Ambient: "Colony activity hum and environmental sounds"
+      - UI: "Interface sounds (clicks, alerts)"
+
+  SoundEffectType:
+    description: "Categories and types of sound effects"
+    categories:
+      construction:
+        - ZoneDesignated
+        - BuildingMaterializing
+        - BuildingComplete
+        - Demolition
+      infrastructure:
+        - PathwayPlaced
+        - ConduitPlaced
+        - PipePlaced
+        - InfrastructureConnected
+      ui:
+        - ButtonClick
+        - ToolSelected
+        - MenuOpen
+        - MenuClose
+        - AlertPulse
+        - NotificationDismiss
+      simulation:
+        - DisasterWarning
+        - DisasterActive
+        - DisasterEnded
+        - MilestoneAchieved
+        - PopulationThreshold
+      ambient:
+        - ColonyHum
+        - WindEnvironmental
+        - BioluminescentPulse
+
+# ============================================================================
+# PERSISTENCE INTERFACES
+# ============================================================================
+
+persistence:
+  IPersistenceProvider:
+    description: "Save and load world state to/from files"
+    purpose: "User-facing save/load features on top of continuous database"
+
+    methods:
+      - name: save_world
+        params:
+          - name: slot_name
+            type: "const std::string&"
+          - name: display_name
+            type: "const std::string&"
+        returns: SaveResult
+        description: "Save current world to named slot"
+
+      - name: load_world
+        params:
+          - name: slot_name
+            type: "const std::string&"
+        returns: LoadResult
+        description: "Load world from named slot"
+
+      - name: auto_save
+        params: []
+        returns: SaveResult
+        description: "Trigger checkpoint save"
+
+      - name: export_world
+        params:
+          - name: file_path
+            type: "const std::string&"
+        returns: SaveResult
+        description: "Export world to arbitrary file path"
+
+      - name: import_world
+        params:
+          - name: file_path
+            type: "const std::string&"
+        returns: LoadResult
+        description: "Import world from file path"
+
+      - name: export_template
+        params:
+          - name: file_path
+            type: "const std::string&"
+        returns: SaveResult
+        description: "Export as World Template (stripped of player data)"
+
+      - name: list_saves
+        params: []
+        returns: "std::vector<SaveSlotMetadata>"
+        description: "Enumerate all save slots with metadata"
+
+      - name: delete_save
+        params:
+          - name: slot_name
+            type: "const std::string&"
+        returns: bool
+        description: "Delete a save slot"
+
+      - name: rename_save
+        params:
+          - name: old_name
+            type: "const std::string&"
+          - name: new_name
+            type: "const std::string&"
+        returns: bool
+        description: "Rename a save slot"
+
+      - name: check_compatibility
+        params:
+          - name: file_path
+            type: "const std::string&"
+        returns: CompatibilityResult
+        description: "Check if save file can be loaded"
+
+      - name: set_auto_save_config
+        params:
+          - name: config
+            type: "const AutoSaveConfig&"
+        returns: void
+        description: "Configure checkpoint behavior"
+
+      - name: get_auto_save_config
+        params: []
+        returns: AutoSaveConfig
+        description: "Get current checkpoint configuration"
+
+    implemented_by:
+      - PersistenceSystem (Epic 16)
+
+    notes:
+      - "Server-only in multiplayer"
+      - "Clients cannot directly save/load game state"
+      - "Uses ISerializable from Epic 1 for component serialization"
+
+  ISettingsProvider:
+    description: "Client-side settings persistence"
+    purpose: "Save/load audio, video, control, UI preferences"
+
+    methods:
+      - name: get_settings
+        params: []
+        returns: "const ClientSettings&"
+        description: "Get current settings"
+
+      - name: set_settings
+        params:
+          - name: settings
+            type: "const ClientSettings&"
+        returns: void
+        description: "Update and persist settings"
+
+      - name: reset_to_defaults
+        params: []
+        returns: void
+        description: "Reset all settings to defaults"
+
+      - name: reload
+        params: []
+        returns: void
+        description: "Reload settings from disk (discard in-memory changes)"
+
+    implemented_by:
+      - SettingsManager (Epic 16)
+
+    notes:
+      - "Client-only, never synced to server"
+      - "JSON format for human readability"
