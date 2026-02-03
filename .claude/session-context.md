@@ -72,22 +72,24 @@ All 4 POCs are in the ZergCity list, ready for implementation:
 
 ---
 
-## Asset Acquisition (Pending)
+## Asset Acquisition (Complete)
 
-**Needed for POC-1 testing:** 8 low-poly building models in glTF format
+**Location:** `assets/models/buildings/`
+**Total:** 39 models (1.7 MB) - CC0 licensed
 
 | Category | Count | Source |
 |----------|-------|--------|
-| Low-density habitation | 2 | Poly Pizza / itch.io |
-| Medium-density habitation | 2 | Poly Pizza / itch.io |
-| High-density habitation | 2 | Poly Pizza / itch.io |
-| Low-density exchange | 1 | Poly Pizza / itch.io |
-| Low-density fabrication | 1 | Poly Pizza / itch.io |
+| Low-density habitation | 8 | Kenney Suburban Houses Pack |
+| Medium-density habitation | 6 | Kenney City Kit |
+| High-density habitation | 6 | Kenney City Kit |
+| Low-density exchange | 2 | Kenney City Kit |
+| High-density exchange | 7 | Kenney City Kit |
+| Low-density fabrication | 9 | Kenney City Kit |
+| Service | 1 | Kenney City Kit |
 
-**Recommended Sources:**
-- [Poly Pizza](https://poly.pizza/explore/Buildings) - Free glTF, no login
-- [itch.io Low Poly](https://itch.io/game-assets/free/tag-low-poly) - KayKit packs
-- [ITHappy Studios](https://ithappystudios.com/) - Consistent style
+**Sources Used:**
+- [Kenney City Kit](https://poly.pizza/bundle/City-Kit-0CkvGrBJ0u) - 31 models
+- [Kenney Suburban Houses](https://poly.pizza/bundle/Suburban-Houses-Pack-dZQwy8vcDv) - 8 models
 
 ---
 
@@ -138,9 +140,9 @@ All 18 epics fully planned:
 
 ## Next Steps
 
-1. **Restart Claude Code** to activate Puppeteer MCP
-2. **Acquire test assets** from Poly Pizza or itch.io
-3. **Begin POC-1** (SDL_GPU Toon Shading) or user's choice
+1. ~~**Restart Claude Code** to activate Puppeteer MCP~~ ✅ Done
+2. ~~**Acquire test assets** from Poly Pizza~~ ✅ Done (39 models)
+3. **Begin POC-1** (SDL_GPU Toon Shading) - READY
 4. **Validate benchmarks** against success criteria
 5. **Update confidence assessment** based on POC results
 

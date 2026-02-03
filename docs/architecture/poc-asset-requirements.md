@@ -446,17 +446,36 @@ infrastructure_conduit_pylon.glb
 
 ## 6. Asset Tracking
 
-| Model | Source Pack | Triangles | Footprint | Status |
-|-------|-------------|-----------|-----------|--------|
-| habitation_low_01 | | | | Pending |
-| habitation_low_02 | | | | Pending |
-| habitation_medium_01 | | | | Pending |
-| habitation_medium_02 | | | | Pending |
-| habitation_high_01 | | | | Pending |
-| habitation_high_02 | | | | Pending |
-| exchange_low_01 | | | | Pending |
-| fabrication_low_01 | | | | Pending |
+**Source:** Kenney (poly.pizza) - CC0 Public Domain
+**Location:** `assets/models/buildings/`
+
+### Essential Models (8 minimum requirement met)
+
+| Model | Source Pack | Size | Status |
+|-------|-------------|------|--------|
+| habitation_low_01.glb | Suburban Houses | 23 KB | Acquired |
+| habitation_low_02.glb | Suburban Houses | 29 KB | Acquired |
+| habitation_medium_01.glb | City Kit | 37 KB | Acquired |
+| habitation_medium_02.glb | City Kit | 45 KB | Acquired |
+| habitation_high_01.glb | City Kit | 42 KB | Acquired |
+| habitation_high_02.glb | City Kit | 61 KB | Acquired |
+| exchange_low_01.glb | City Kit | 18 KB | Acquired |
+| fabrication_low_01.glb | City Kit | 15 KB | Acquired |
+
+### Additional Models Acquired (31 bonus models)
+
+| Category | Count | Source |
+|----------|-------|--------|
+| habitation_low_03 to _08 | 6 | Suburban Houses |
+| habitation_medium_03 to _06 | 4 | City Kit |
+| habitation_high_03 to _06 | 4 | City Kit |
+| exchange_low_02 | 1 | City Kit |
+| exchange_high_01 to _07 | 7 | City Kit |
+| fabrication_low_02 to _09 | 8 | City Kit |
+| service_medical_sign_01 | 1 | City Kit |
+
+**Total:** 39 models (1.7 MB) - exceeds 8-model minimum by 4.9x
 
 ---
 
-*This document supports POC-1 validation. Update the Asset Tracking table as models are acquired and exported.*
+*Assets acquired 2026-02-02 from poly.pizza. All models are CC0 licensed (no attribution required).*
