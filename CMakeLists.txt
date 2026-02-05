@@ -46,13 +46,19 @@ set(SIMS3000_SOURCES
     src/app/SimulationClock.cpp
     src/app/FrameStats.cpp
     src/app/Config.cpp
+    src/app/DebugConsole.cpp
+    src/app/ServerCLI.cpp
+    src/core/Random.cpp
     src/render/Window.cpp
     src/input/InputSystem.cpp
     src/input/ActionMapping.cpp
     src/input/CameraController.cpp
+    src/input/InputContext.cpp
     src/assets/AssetManager.cpp
     src/assets/TextureLoader.cpp
     src/assets/ModelLoader.cpp
+    src/assets/AsyncLoader.cpp
+    src/assets/AudioLoader.cpp
     src/ecs/Registry.cpp
     src/ecs/SystemManager.cpp
 )
