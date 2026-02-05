@@ -8,6 +8,7 @@
         "glm",
         "enet",
         "lz4",
-        "entt"
+        "entt",
+        "nlohmann-json"
     ]
 }
