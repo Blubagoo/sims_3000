@@ -26,3 +26,6 @@ Thumbs.db
 
 # Environment variables
 .env
+
+# vcpkg installed dependencies (regenerated from vcpkg.json)
+vcpkg_installed/

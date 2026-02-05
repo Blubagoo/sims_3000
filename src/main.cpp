@@ -1,82 +1,74 @@
 /**
  * @file main.cpp
  * @brief Entry point for Sims 3000 - SimCity-inspired city builder
+ *
+ * Usage:
+ *   sims_3000             - Run as client (default)
+ *   sims_3000 --server    - Run as dedicated server
+ *   sims_3000 --server --port 7778  - Server on custom port
  */
 
-#include <SDL3/SDL.h>
+#include "sims3000/app/Application.h"
+#include <SDL3/SDL_log.h>
+#include <cstring>
+#include <cstdlib>
 
-int main(int argc, char* argv[])
-{
-    // Suppress unused parameter warnings
-    (void)argc;
-    (void)argv;
+namespace {
 
-    // Initialize SDL with video subsystem
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-        SDL_Log("Failed to initialize SDL: %s", SDL_GetError());
-        return 1;
-    }
+void printUsage(const char* programName) {
+    SDL_Log("Usage: %s [options]", programName);
+    SDL_Log("Options:");
+    SDL_Log("  --server       Run as dedicated server (headless)");
+    SDL_Log("  --port <num>   Server port (default: 7777)");
+    SDL_Log("  --fullscreen   Start in fullscreen mode");
+    SDL_Log("  --width <num>  Window width (default: 1280)");
+    SDL_Log("  --height <num> Window height (default: 720)");
+    SDL_Log("  --help         Show this help message");
+}
 
-    // Create window centered on screen
-    SDL_Window* window = SDL_CreateWindow(
-        "Sims 3000",
-        800,
-        600,
-        0  // No special flags
-    );
+sims3000::ApplicationConfig parseArgs(int argc, char* argv[]) {
+    sims3000::ApplicationConfig config;
 
-    if (!window) {
-        SDL_Log("Failed to create window: %s", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
-
-    // Create renderer for the window
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, nullptr);
-
-    if (!renderer) {
-        SDL_Log("Failed to create renderer: %s", SDL_GetError());
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-
-    // Main event loop
-    bool running = true;
-    SDL_Event event;
-
-    while (running) {
-        // Poll all pending events
-        while (SDL_PollEvent(&event)) {
-            switch (event.type) {
-                case SDL_EVENT_QUIT:
-                    running = false;
-                    break;
-
-                case SDL_EVENT_KEY_DOWN:
-                    // Close on ESC key
-                    if (event.key.key == SDLK_ESCAPE) {
-                        running = false;
-                    }
-                    break;
-
-                default:
-                    break;
-            }
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], "--server") == 0) {
+            config.serverMode = true;
+        } else if (std::strcmp(argv[i], "--port") == 0 && i + 1 < argc) {
+            config.serverPort = std::atoi(argv[++i]);
+        } else if (std::strcmp(argv[i], "--fullscreen") == 0) {
+            config.startFullscreen = true;
+        } else if (std::strcmp(argv[i], "--width") == 0 && i + 1 < argc) {
+            config.windowWidth = std::atoi(argv[++i]);
+        } else if (std::strcmp(argv[i], "--height") == 0 && i + 1 < argc) {
+            config.windowHeight = std::atoi(argv[++i]);
+        } else if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
+            printUsage(argv[0]);
+            std::exit(0);
         }
-
-        // Clear screen to dark blue-gray color
-        SDL_SetRenderDrawColor(renderer, 30, 30, 40, 255);
-        SDL_RenderClear(renderer);
-
-        // Present the rendered frame
-        SDL_RenderPresent(renderer);
     }
 
-    // Clean shutdown
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    return config;
+}
 
-    return 0;
+} // anonymous namespace
+
+int main(int argc, char* argv[]) {
+    SDL_Log("Sims 3000 starting...");
+
+    // Parse command line arguments
+    sims3000::ApplicationConfig config = parseArgs(argc, argv);
+
+    // Override title for server mode
+    if (config.serverMode) {
+        config.title = "Sims 3000 Server";
+    }
+
+    // Create and run application
+    sims3000::Application app(config);
+
+    if (!app.isValid()) {
+        SDL_Log("Failed to initialize application");
+        return 1;
+    }
+
+    return app.run();
 }
