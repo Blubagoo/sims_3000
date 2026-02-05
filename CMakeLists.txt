@@ -49,6 +49,7 @@ set(SIMS3000_SOURCES
     src/app/DebugConsole.cpp
     src/app/ServerCLI.cpp
     src/core/Random.cpp
+    src/core/Logger.cpp
     src/render/Window.cpp
     src/input/InputSystem.cpp
     src/input/ActionMapping.cpp
@@ -61,6 +62,7 @@ set(SIMS3000_SOURCES
     src/assets/AudioLoader.cpp
     src/ecs/Registry.cpp
     src/ecs/SystemManager.cpp
+    src/ecs/Components.cpp
 )
 
 # Define header files (for IDE integration)
@@ -68,7 +70,9 @@ set(SIMS3000_HEADERS
     include/sims3000/core/types.h
     include/sims3000/core/ISimulationTime.h
     include/sims3000/core/ISimulatable.h
+    include/sims3000/core/Interpolatable.h
     include/sims3000/core/Serialization.h
+    include/sims3000/core/Logger.h
     include/sims3000/app/Application.h
     include/sims3000/app/AppState.h
     include/sims3000/app/Config.h

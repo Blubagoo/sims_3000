@@ -336,6 +336,7 @@ Available skills that agents can invoke:
 | Skill | Command | Purpose |
 |-------|---------|---------|
 | Plan Epic | `/plan-epic <N>` | Orchestrate agents to plan an epic's tickets |
+| Do Epic | `/do-epic <N>` | Execute an epic with agent delegation and SA verification |
 | Update Canon | `/update-canon` | Update project canon files with decisions |
 | Agent Discussion | `/agent-discussion` | Structured Q&A between agents |
 
@@ -357,6 +358,37 @@ This skill:
 6. Captures any decisions where canon conflicts arise
 
 **Output:** A complete, canon-verified ticket list ready for implementation.
+
+### Do Epic
+
+**Primary workflow for implementing a planned epic.**
+
+```
+/do-epic 1                    # Execute Epic 1
+```
+
+This skill:
+1. Loads epic tickets from `/docs/epics/epic-{N}/tickets.md`
+2. Syncs with ClickUp to check current status
+3. Creates execution queue based on dependencies
+4. For each ticket:
+   - Selects best agent for the domain
+   - Delegates implementation
+   - Verifies build and tests pass
+   - **SA verifies against acceptance criteria** (mandatory)
+   - Only marks done in ClickUp after SA passes
+5. Produces progress log and verification reports
+
+**Key principle:** A ticket is ONLY done after SA verification passes. Agent-reported "complete" is not sufficient.
+
+**Lessons baked in from Epic 0:**
+- SA verification is mandatory (no shortcuts)
+- Build after every ticket (catch issues early)
+- Exact acceptance criteria matching (not just "something exists")
+- Parallel agents for independent tickets (efficiency)
+- Max 3 retries then ask user (don't spin forever)
+
+**Output:** Completed epic with all tickets SA-verified and ClickUp updated.
 
 ### Agent Discussion
 

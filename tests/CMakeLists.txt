@@ -18,6 +18,21 @@ target_link_libraries(test_core_types PRIVATE
 
 add_test(NAME CoreTypes COMMAND test_core_types)
 
+# Test executable for Interpolatable template
+add_executable(test_interpolatable
+    core/test_interpolatable.cpp
+)
+
+target_include_directories(test_interpolatable PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_interpolatable PRIVATE
+    glm::glm
+)
+
+add_test(NAME Interpolatable COMMAND test_interpolatable)
+
 # Test executable for simulation clock
 add_executable(test_simulation_clock
     app/test_simulation_clock.cpp

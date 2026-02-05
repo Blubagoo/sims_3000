@@ -120,13 +120,67 @@ public:
  * @enum SyncPolicy
  * @brief Component synchronization policy for networking.
  */
-enum class SyncPolicy {
-    None,           // Never synced (client-only visuals)
-    ServerAuth,     // Server authoritative, full sync
-    Predicted,      // Client predicted, server validated
-    Interpolated,   // Interpolated on client between server states
-    EventDriven     // Only synced on change via events
+enum class SyncPolicy : std::uint8_t {
+    None = 0,           // Never synced (local-only)
+    OnChange = 1,       // Sync when value changes
+    Periodic = 2,       // Sync at fixed intervals
+    Reliable = 3,       // Guaranteed delivery (for critical state)
+    Unreliable = 4      // Best-effort (for frequent updates like position)
 };
+
+/**
+ * @struct ComponentMeta
+ * @brief Metadata traits for component types.
+ *
+ * Default specialization provides default sync policy.
+ * Specialize for specific component types to customize behavior.
+ *
+ * Usage:
+ *   // Specialize for a component type
+ *   template<>
+ *   struct ComponentMeta<PositionComponent> {
+ *       static constexpr SyncPolicy syncPolicy = SyncPolicy::Unreliable;
+ *       static constexpr bool interpolated = true;
+ *   };
+ *
+ *   // Query at compile-time
+ *   constexpr auto policy = ComponentMeta<PositionComponent>::syncPolicy;
+ */
+template<typename T>
+struct ComponentMeta {
+    /// Default sync policy - never synced (local-only)
+    static constexpr SyncPolicy syncPolicy = SyncPolicy::None;
+
+    /// Whether this component should be interpolated for smooth rendering
+    static constexpr bool interpolated = false;
+
+    /// Human-readable component name for debugging/logging
+    static constexpr const char* name = "UnknownComponent";
+};
+
+/**
+ * @brief Helper to get sync policy for a component type at compile-time.
+ */
+template<typename T>
+inline constexpr SyncPolicy getSyncPolicy() {
+    return ComponentMeta<T>::syncPolicy;
+}
+
+/**
+ * @brief Helper to check if a component type is interpolated.
+ */
+template<typename T>
+inline constexpr bool isInterpolated() {
+    return ComponentMeta<T>::interpolated;
+}
+
+/**
+ * @brief Helper to get component name for debugging.
+ */
+template<typename T>
+inline constexpr const char* getComponentName() {
+    return ComponentMeta<T>::name;
+}
 
 } // namespace sims3000
 
