@@ -2,6 +2,12 @@
     "name": "sims-3000",
     "version": "0.1.0",
     "dependencies": [
-        "sdl3"
+        "sdl3",
+        "sdl3-ttf",
+        "cgltf",
+        "glm",
+        "enet",
+        "lz4",
+        "entt"
     ]
 }
