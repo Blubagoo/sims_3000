@@ -45,6 +45,7 @@ set(SIMS3000_SOURCES
     src/app/Application.cpp
     src/app/SimulationClock.cpp
     src/app/FrameStats.cpp
+    src/app/Config.cpp
     src/render/Window.cpp
     src/input/InputSystem.cpp
     src/input/ActionMapping.cpp
@@ -61,7 +62,10 @@ set(SIMS3000_HEADERS
     include/sims3000/core/types.h
     include/sims3000/core/ISimulationTime.h
     include/sims3000/core/ISimulatable.h
+    include/sims3000/core/Serialization.h
     include/sims3000/app/Application.h
+    include/sims3000/app/AppState.h
+    include/sims3000/app/Config.h
     include/sims3000/app/SimulationClock.h
     include/sims3000/app/FrameStats.h
     include/sims3000/render/Window.h
@@ -74,6 +78,7 @@ set(SIMS3000_HEADERS
     include/sims3000/ecs/Registry.h
     include/sims3000/ecs/Components.h
     include/sims3000/ecs/SystemManager.h
+    include/sims3000/net/InputMessage.h
 )
 
 # Create executable

@@ -6,6 +6,8 @@
 #ifndef SIMS3000_APP_APPLICATION_H
 #define SIMS3000_APP_APPLICATION_H
 
+#include "sims3000/app/AppState.h"
+#include "sims3000/app/Config.h"
 #include "sims3000/app/SimulationClock.h"
 #include "sims3000/app/FrameStats.h"
 #include "sims3000/render/Window.h"
@@ -28,6 +30,8 @@ struct ApplicationConfig {
     int windowWidth = 1280;
     int windowHeight = 720;
     bool startFullscreen = false;
+    bool serverMode = false;      // Run as headless server
+    int serverPort = 7777;        // Server listen port
 };
 
 /**
@@ -40,6 +44,8 @@ struct ApplicationConfig {
  * - Input handling
  * - System updates
  * - Asset management
+ *
+ * Supports both client and dedicated server modes.
  */
 class Application {
 public:
@@ -61,6 +67,11 @@ public:
     bool isValid() const;
 
     /**
+     * Check if running in server mode.
+     */
+    bool isServerMode() const;
+
+    /**
      * Run the main game loop.
      * Blocks until shutdown is requested.
      * @return Exit code (0 = success)
@@ -74,12 +85,23 @@ public:
     void requestShutdown();
 
     /**
+     * Get current application state.
+     */
+    AppState getState() const;
+
+    /**
+     * Request state transition.
+     * @param newState Target state
+     */
+    void requestStateChange(AppState newState);
+
+    /**
      * Get the simulation clock.
      */
     const ISimulationTime& getSimulationTime() const;
 
     /**
-     * Get the input system.
+     * Get the input system (client only).
      */
     InputSystem& getInput();
 
@@ -94,7 +116,7 @@ public:
     SystemManager& getSystems();
 
     /**
-     * Get the asset manager.
+     * Get the asset manager (client only).
      */
     AssetManager& getAssets();
 
@@ -104,21 +126,36 @@ public:
     const FrameStats& getFrameStats() const;
 
     /**
-     * Get the window.
+     * Get the window (client only).
      */
     Window& getWindow();
+
+    /**
+     * Get configuration.
+     */
+    Config& getConfig();
+    const Config& getConfig() const;
 
 private:
     void processEvents();
     void updateSimulation();
     void render();
     void shutdown();
+    void transitionState(AppState newState);
+    void onStateEnter(AppState state);
+    void onStateExit(AppState state);
 
-    ApplicationConfig m_config;
+    ApplicationConfig m_appConfig;
+    Config m_config;
     bool m_valid = false;
     bool m_running = false;
+    bool m_serverMode = false;
+    AppState m_currentState = AppState::Menu;
+    AppState m_pendingState = AppState::Menu;
+    bool m_stateChangeRequested = false;
 
     // Core systems (order matters for initialization)
+    // Window, Input, Assets are nullptr in server mode
     std::unique_ptr<Window> m_window;
     std::unique_ptr<InputSystem> m_input;
     std::unique_ptr<AssetManager> m_assets;
