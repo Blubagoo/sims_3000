@@ -31,6 +31,53 @@ using Credits = std::int64_t;
 using SimulationTick = std::uint64_t;
 
 /**
+ * @enum MapSizeTier
+ * @brief Map size configuration tiers.
+ *
+ * Determines grid dimensions and expected entity counts:
+ * - Small:  128x128 (16,384 tiles) - fast startup, lighter resource use
+ * - Medium: 256x256 (65,536 tiles) - balanced (default)
+ * - Large:  512x512 (262,144 tiles) - maximum city size
+ *
+ * Use MapSizeTier::getDimensions() to get the actual width/height.
+ */
+enum class MapSizeTier : std::uint8_t {
+    Small = 0,   ///< 128x128 grid
+    Medium = 1,  ///< 256x256 grid (default)
+    Large = 2    ///< 512x512 grid
+};
+
+/**
+ * @brief Get map dimensions for a given tier.
+ *
+ * @param tier The map size tier.
+ * @param width Output: grid width in tiles.
+ * @param height Output: grid height in tiles.
+ */
+inline void getMapDimensionsForTier(MapSizeTier tier,
+                                    std::uint16_t& width,
+                                    std::uint16_t& height) {
+    switch (tier) {
+        case MapSizeTier::Small:
+            width = 128;
+            height = 128;
+            break;
+        case MapSizeTier::Medium:
+            width = 256;
+            height = 256;
+            break;
+        case MapSizeTier::Large:
+            width = 512;
+            height = 512;
+            break;
+        default:
+            width = 256;
+            height = 256;
+            break;
+    }
+}
+
+/**
  * @struct GridPosition
  * @brief Tile-based position on the game grid.
  *
@@ -66,6 +113,7 @@ static_assert(sizeof(PlayerID) == 1, "PlayerID must be 1 byte");
 static_assert(sizeof(Credits) == 8, "Credits must be 8 bytes");
 static_assert(sizeof(SimulationTick) == 8, "SimulationTick must be 8 bytes");
 static_assert(sizeof(GridPosition) == 4, "GridPosition must be 4 bytes");
+static_assert(sizeof(MapSizeTier) == 1, "MapSizeTier must be 1 byte");
 
 } // namespace sims3000
 

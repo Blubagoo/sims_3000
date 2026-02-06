@@ -4,6 +4,7 @@
  */
 
 #include "sims3000/ecs/Components.h"
+#include "sims3000/net/NetworkBuffer.h"
 #include <cstring>
 
 namespace sims3000 {
@@ -56,6 +57,301 @@ OwnershipComponent OwnershipComponent::deserialize(const std::uint8_t* data, std
     // Deserialize state_changed_at - 8 bytes
     std::memcpy(&result.state_changed_at, data + offset, sizeof(result.state_changed_at));
     offset += sizeof(result.state_changed_at);
+
+    return result;
+}
+
+// =============================================================================
+// Network Serialization (using NetworkBuffer)
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// PositionComponent Network Serialization
+// -----------------------------------------------------------------------------
+
+void PositionComponent::serialize_net(NetworkBuffer& buffer) const {
+    // Write version byte first for backward compatibility
+    buffer.write_u8(ComponentVersion::Position);
+
+    // Write grid position (x, y) as signed 16-bit integers
+    // Note: NetworkBuffer doesn't have write_i16, so we use write_u16 with reinterpret
+    std::uint16_t x_as_u16;
+    std::uint16_t y_as_u16;
+    std::uint16_t elev_as_u16;
+    std::memcpy(&x_as_u16, &pos.x, sizeof(pos.x));
+    std::memcpy(&y_as_u16, &pos.y, sizeof(pos.y));
+    std::memcpy(&elev_as_u16, &elevation, sizeof(elevation));
+
+    buffer.write_u16(x_as_u16);
+    buffer.write_u16(y_as_u16);
+    buffer.write_u16(elev_as_u16);
+}
+
+PositionComponent PositionComponent::deserialize_net(NetworkBuffer& buffer) {
+    PositionComponent result;
+
+    // Read and validate version
+    std::uint8_t version = buffer.read_u8();
+
+    if (version >= 1) {
+        // Version 1 format: grid_x, grid_y, elevation
+        std::uint16_t x_as_u16 = buffer.read_u16();
+        std::uint16_t y_as_u16 = buffer.read_u16();
+        std::uint16_t elev_as_u16 = buffer.read_u16();
+
+        std::memcpy(&result.pos.x, &x_as_u16, sizeof(result.pos.x));
+        std::memcpy(&result.pos.y, &y_as_u16, sizeof(result.pos.y));
+        std::memcpy(&result.elevation, &elev_as_u16, sizeof(result.elevation));
+    }
+    // Future versions would add else-if branches here
+    // Default values are already set in the struct definition
+
+    return result;
+}
+
+// -----------------------------------------------------------------------------
+// OwnershipComponent Network Serialization
+// -----------------------------------------------------------------------------
+
+void OwnershipComponent::serialize_net(NetworkBuffer& buffer) const {
+    // Write version byte first for backward compatibility
+    buffer.write_u8(ComponentVersion::Ownership);
+
+    // Write owner (PlayerID is u8)
+    buffer.write_u8(owner);
+
+    // Write state (OwnershipState is u8 enum)
+    buffer.write_u8(static_cast<std::uint8_t>(state));
+
+    // Write state_changed_at (SimulationTick is u64)
+    // NetworkBuffer doesn't have write_u64, so write as two u32s (low, high)
+    std::uint32_t low = static_cast<std::uint32_t>(state_changed_at & 0xFFFFFFFF);
+    std::uint32_t high = static_cast<std::uint32_t>((state_changed_at >> 32) & 0xFFFFFFFF);
+    buffer.write_u32(low);
+    buffer.write_u32(high);
+}
+
+OwnershipComponent OwnershipComponent::deserialize_net(NetworkBuffer& buffer) {
+    OwnershipComponent result;
+
+    // Read and validate version
+    std::uint8_t version = buffer.read_u8();
+
+    if (version >= 1) {
+        // Version 1 format: owner, state, state_changed_at
+        result.owner = buffer.read_u8();
+        result.state = static_cast<OwnershipState>(buffer.read_u8());
+
+        // Read state_changed_at as two u32s (low, high)
+        std::uint32_t low = buffer.read_u32();
+        std::uint32_t high = buffer.read_u32();
+        result.state_changed_at = static_cast<SimulationTick>(low) |
+                                  (static_cast<SimulationTick>(high) << 32);
+    }
+    // Future versions would add else-if branches here
+    // Default values are already set in the struct definition
+
+    return result;
+}
+
+// -----------------------------------------------------------------------------
+// TransformComponent Network Serialization
+// -----------------------------------------------------------------------------
+
+void TransformComponent::serialize_net(NetworkBuffer& buffer) const {
+    buffer.write_u8(ComponentVersion::Transform);
+    buffer.write_f32(position.x);
+    buffer.write_f32(position.y);
+    buffer.write_f32(position.z);
+    buffer.write_f32(rotation);
+}
+
+TransformComponent TransformComponent::deserialize_net(NetworkBuffer& buffer) {
+    TransformComponent result;
+    std::uint8_t version = buffer.read_u8();
+
+    if (version >= 1) {
+        result.position.x = buffer.read_f32();
+        result.position.y = buffer.read_f32();
+        result.position.z = buffer.read_f32();
+        result.rotation = buffer.read_f32();
+    }
+
+    return result;
+}
+
+// -----------------------------------------------------------------------------
+// BuildingComponent Network Serialization
+// -----------------------------------------------------------------------------
+
+void BuildingComponent::serialize_net(NetworkBuffer& buffer) const {
+    buffer.write_u8(ComponentVersion::Building);
+    buffer.write_u32(buildingType);
+    buffer.write_u8(level);
+    buffer.write_u8(health);
+    buffer.write_u8(flags);
+}
+
+BuildingComponent BuildingComponent::deserialize_net(NetworkBuffer& buffer) {
+    BuildingComponent result;
+    std::uint8_t version = buffer.read_u8();
+
+    if (version >= 1) {
+        result.buildingType = buffer.read_u32();
+        result.level = buffer.read_u8();
+        result.health = buffer.read_u8();
+        result.flags = buffer.read_u8();
+    }
+
+    return result;
+}
+
+// -----------------------------------------------------------------------------
+// EnergyComponent Network Serialization
+// -----------------------------------------------------------------------------
+
+void EnergyComponent::serialize_net(NetworkBuffer& buffer) const {
+    buffer.write_u8(ComponentVersion::Energy);
+    buffer.write_i32(consumption);
+    buffer.write_i32(capacity);
+    buffer.write_u8(connected);
+}
+
+EnergyComponent EnergyComponent::deserialize_net(NetworkBuffer& buffer) {
+    EnergyComponent result;
+    std::uint8_t version = buffer.read_u8();
+
+    if (version >= 1) {
+        result.consumption = buffer.read_i32();
+        result.capacity = buffer.read_i32();
+        result.connected = buffer.read_u8();
+    }
+
+    return result;
+}
+
+// -----------------------------------------------------------------------------
+// PopulationComponent Network Serialization
+// -----------------------------------------------------------------------------
+
+void PopulationComponent::serialize_net(NetworkBuffer& buffer) const {
+    buffer.write_u8(ComponentVersion::Population);
+    buffer.write_u16(current);
+    buffer.write_u16(capacity);
+    buffer.write_u8(happiness);
+    buffer.write_u8(employmentRate);
+}
+
+PopulationComponent PopulationComponent::deserialize_net(NetworkBuffer& buffer) {
+    PopulationComponent result;
+    std::uint8_t version = buffer.read_u8();
+
+    if (version >= 1) {
+        result.current = buffer.read_u16();
+        result.capacity = buffer.read_u16();
+        result.happiness = buffer.read_u8();
+        result.employmentRate = buffer.read_u8();
+    }
+
+    return result;
+}
+
+// -----------------------------------------------------------------------------
+// ZoneComponent Network Serialization
+// -----------------------------------------------------------------------------
+
+void ZoneComponent::serialize_net(NetworkBuffer& buffer) const {
+    buffer.write_u8(ComponentVersion::Zone);
+    buffer.write_u8(zoneType);
+    buffer.write_u8(density);
+    buffer.write_u8(desirability);
+}
+
+ZoneComponent ZoneComponent::deserialize_net(NetworkBuffer& buffer) {
+    ZoneComponent result;
+    std::uint8_t version = buffer.read_u8();
+
+    if (version >= 1) {
+        result.zoneType = buffer.read_u8();
+        result.density = buffer.read_u8();
+        result.desirability = buffer.read_u8();
+    }
+
+    return result;
+}
+
+// -----------------------------------------------------------------------------
+// TransportComponent Network Serialization
+// -----------------------------------------------------------------------------
+
+void TransportComponent::serialize_net(NetworkBuffer& buffer) const {
+    buffer.write_u8(ComponentVersion::Transport);
+    buffer.write_u32(roadConnectionId);
+    buffer.write_u16(trafficLoad);
+    buffer.write_u8(accessibility);
+}
+
+TransportComponent TransportComponent::deserialize_net(NetworkBuffer& buffer) {
+    TransportComponent result;
+    std::uint8_t version = buffer.read_u8();
+
+    if (version >= 1) {
+        result.roadConnectionId = buffer.read_u32();
+        result.trafficLoad = buffer.read_u16();
+        result.accessibility = buffer.read_u8();
+    }
+
+    return result;
+}
+
+// -----------------------------------------------------------------------------
+// ServiceCoverageComponent Network Serialization
+// -----------------------------------------------------------------------------
+
+void ServiceCoverageComponent::serialize_net(NetworkBuffer& buffer) const {
+    buffer.write_u8(ComponentVersion::ServiceCoverage);
+    buffer.write_u8(police);
+    buffer.write_u8(fire);
+    buffer.write_u8(health);
+    buffer.write_u8(education);
+    buffer.write_u8(parks);
+}
+
+ServiceCoverageComponent ServiceCoverageComponent::deserialize_net(NetworkBuffer& buffer) {
+    ServiceCoverageComponent result;
+    std::uint8_t version = buffer.read_u8();
+
+    if (version >= 1) {
+        result.police = buffer.read_u8();
+        result.fire = buffer.read_u8();
+        result.health = buffer.read_u8();
+        result.education = buffer.read_u8();
+        result.parks = buffer.read_u8();
+    }
+
+    return result;
+}
+
+// -----------------------------------------------------------------------------
+// TaxableComponent Network Serialization
+// -----------------------------------------------------------------------------
+
+void TaxableComponent::serialize_net(NetworkBuffer& buffer) const {
+    buffer.write_u8(ComponentVersion::Taxable);
+    buffer.write_i32(income);
+    buffer.write_i32(taxPaid);
+    buffer.write_u8(taxBracket);
+}
+
+TaxableComponent TaxableComponent::deserialize_net(NetworkBuffer& buffer) {
+    TaxableComponent result;
+    std::uint8_t version = buffer.read_u8();
+
+    if (version >= 1) {
+        result.income = buffer.read_i32();
+        result.taxPaid = buffer.read_i32();
+        result.taxBracket = buffer.read_u8();
+    }
 
     return result;
 }

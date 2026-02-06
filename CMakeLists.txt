@@ -29,6 +29,8 @@ find_package(SDL3_ttf REQUIRED CONFIG)
 find_package(glm REQUIRED CONFIG)
 find_package(EnTT REQUIRED CONFIG)
 find_package(lz4 REQUIRED CONFIG)
+find_package(unofficial-enet CONFIG REQUIRED)
+find_package(readerwriterqueue CONFIG REQUIRED)
 
 # Find cgltf (header-only)
 find_path(CGLTF_INCLUDE_DIR cgltf.h)
@@ -55,6 +57,8 @@ set(SIMS3000_SOURCES
     src/input/ActionMapping.cpp
     src/input/CameraController.cpp
     src/input/InputContext.cpp
+    src/input/InputProducer.cpp
+    src/input/PendingActionTracker.cpp
     src/assets/AssetManager.cpp
     src/assets/TextureLoader.cpp
     src/assets/ModelLoader.cpp
@@ -63,6 +67,20 @@ set(SIMS3000_SOURCES
     src/ecs/Registry.cpp
     src/ecs/SystemManager.cpp
     src/ecs/Components.cpp
+    src/net/NetworkBuffer.cpp
+    src/net/ENetTransport.cpp
+    src/net/NetworkThread.cpp
+    src/net/NetworkMessage.cpp
+    src/net/ClientMessages.cpp
+    src/net/ServerMessages.cpp
+    src/net/NetworkClient.cpp
+    src/net/NetworkServer.cpp
+    src/net/InputHandler.cpp
+    src/net/RateLimiter.cpp
+    src/net/ConnectionValidator.cpp
+    src/sync/SyncSystem.cpp
+    src/sync/EntityIdGenerator.cpp
+    src/persistence/FilePersistenceProvider.cpp
 )
 
 # Define header files (for IDE integration)
@@ -89,6 +107,27 @@ set(SIMS3000_HEADERS
     include/sims3000/ecs/Components.h
     include/sims3000/ecs/SystemManager.h
     include/sims3000/net/InputMessage.h
+    include/sims3000/net/NetworkBuffer.h
+    include/sims3000/net/INetworkTransport.h
+    include/sims3000/net/ENetTransport.h
+    include/sims3000/net/MockTransport.h
+    include/sims3000/net/NetworkThread.h
+    include/sims3000/net/NetworkMessage.h
+    include/sims3000/net/ClientMessages.h
+    include/sims3000/net/ServerMessages.h
+    include/sims3000/net/NetworkClient.h
+    include/sims3000/net/NetworkServer.h
+    include/sims3000/net/INetworkHandler.h
+    include/sims3000/net/InputHandler.h
+    include/sims3000/net/RateLimiter.h
+    include/sims3000/net/ConnectionValidator.h
+    include/sims3000/input/InputProducer.h
+    include/sims3000/input/PendingActionTracker.h
+    include/sims3000/sync/SyncSystem.h
+    include/sims3000/sync/EntityIdGenerator.h
+    include/sims3000/persistence/IPersistenceProvider.h
+    include/sims3000/persistence/NullPersistenceProvider.h
+    include/sims3000/persistence/FilePersistenceProvider.h
 )
 
 # Create executable
@@ -112,7 +151,14 @@ target_link_libraries(${PROJECT_NAME}
         glm::glm
         EnTT::EnTT
         lz4::lz4
+        unofficial::enet::enet
+        readerwriterqueue::readerwriterqueue
 )
+
+# ENet requires Windows networking libraries
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ws2_32 winmm)
+endif()
 
 if(nlohmann_json_FOUND)
     target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)

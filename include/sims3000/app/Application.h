@@ -16,8 +16,12 @@
 #include "sims3000/ecs/Registry.h"
 #include "sims3000/ecs/SystemManager.h"
 #include "sims3000/assets/AssetManager.h"
+#include "sims3000/net/NetworkServer.h"
+#include "sims3000/net/NetworkClient.h"
+#include "sims3000/sync/SyncSystem.h"
 
 #include <memory>
+#include <string>
 
 namespace sims3000 {
 
@@ -30,8 +34,12 @@ struct ApplicationConfig {
     int windowWidth = 1280;
     int windowHeight = 720;
     bool startFullscreen = false;
-    bool serverMode = false;      // Run as headless server
-    int serverPort = 7777;        // Server listen port
+    bool serverMode = false;        // Run as headless server
+    int serverPort = 7777;          // Server listen port
+    std::string connectAddress;     // Server address to connect to (client mode)
+    std::uint16_t connectPort = 0;  // Server port to connect to (client mode, 0 = don't auto-connect)
+    std::string playerName = "Player";  // Player name for multiplayer
+    MapSizeTier mapSize = MapSizeTier::Medium;  // Map size tier (server mode)
 };
 
 /**
@@ -136,14 +144,55 @@ public:
     Config& getConfig();
     const Config& getConfig() const;
 
+    /**
+     * Get the network server (server mode only).
+     * @return Pointer to NetworkServer, nullptr in client mode.
+     */
+    NetworkServer* getNetworkServer();
+
+    /**
+     * Get the network client (client mode only).
+     * @return Pointer to NetworkClient, nullptr in server mode.
+     */
+    NetworkClient* getNetworkClient();
+
+    /**
+     * Get the sync system.
+     */
+    SyncSystem& getSyncSystem();
+
+    /**
+     * Connect to a server (client mode).
+     * @param address Server IP/hostname.
+     * @param port Server port.
+     * @return true if connection attempt started.
+     */
+    bool connectToServer(const std::string& address, std::uint16_t port);
+
+    /**
+     * Disconnect from server (client mode).
+     */
+    void disconnectFromServer();
+
+    /**
+     * Get current tick number (for display/debugging).
+     */
+    SimulationTick getCurrentTick() const;
+
 private:
     void processEvents();
+    void processNetworkMessages();
     void updateSimulation();
+    void generateAndSendDeltas();
+    void applyPendingStateUpdates();
     void render();
     void shutdown();
     void transitionState(AppState newState);
     void onStateEnter(AppState state);
     void onStateExit(AppState state);
+    void onClientStateChange(ConnectionState oldState, ConnectionState newState);
+    void initializeNetworking();
+    void shutdownNetworking();
 
     ApplicationConfig m_appConfig;
     Config m_config;
@@ -161,6 +210,11 @@ private:
     std::unique_ptr<AssetManager> m_assets;
     std::unique_ptr<Registry> m_registry;
     std::unique_ptr<SystemManager> m_systems;
+
+    // Networking (server XOR client, not both)
+    std::unique_ptr<NetworkServer> m_networkServer;
+    std::unique_ptr<NetworkClient> m_networkClient;
+    std::unique_ptr<SyncSystem> m_syncSystem;
 
     SimulationClock m_clock;
     FrameStats m_frameStats;

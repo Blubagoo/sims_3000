@@ -19,6 +19,7 @@ namespace sims3000 {
 
 // Forward declarations
 class Application;
+class NetworkServer;
 
 /**
  * @class ServerCLI
@@ -84,6 +85,12 @@ public:
      */
     float getUptime() const { return m_uptime; }
 
+    /**
+     * Set the NetworkServer instance for CLI commands.
+     * @param server Network server to use for players/kick/say commands.
+     */
+    void setNetworkServer(NetworkServer* server) { m_networkServer = server; }
+
 private:
     void inputThreadFunc();
     void processCommand(const std::string& input);
@@ -109,6 +116,8 @@ private:
     float m_uptime = 0.0f;
     float m_heartbeatInterval = 30.0f;
     float m_timeSinceHeartbeat = 0.0f;
+
+    NetworkServer* m_networkServer = nullptr;
 };
 
 } // namespace sims3000

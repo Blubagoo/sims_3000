@@ -9,6 +9,7 @@
         "enet",
         "lz4",
         "entt",
-        "nlohmann-json"
+        "nlohmann-json",
+        "readerwriterqueue"
     ]
 }

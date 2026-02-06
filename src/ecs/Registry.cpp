@@ -14,6 +14,21 @@ EntityID Registry::create() {
     return static_cast<EntityID>(m_registry.create());
 }
 
+EntityID Registry::createWithId(EntityID id) {
+    auto hint = static_cast<entt::entity>(id);
+
+    // If entity already exists (reconnection scenario), destroy it first
+    if (m_registry.valid(hint)) {
+        m_registry.destroy(hint);
+    }
+
+    // Create with the specified ID as hint
+    // EnTT's create(hint) will use the hint ID if available
+    auto created = m_registry.create(hint);
+
+    return static_cast<EntityID>(created);
+}
+
 void Registry::destroy(EntityID entity) {
     m_registry.destroy(static_cast<entt::entity>(entity));
 }

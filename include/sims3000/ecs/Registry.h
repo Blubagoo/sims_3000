@@ -37,6 +37,22 @@ public:
     EntityID create();
 
     /**
+     * Create an entity with a specific ID (client-side).
+     *
+     * Used by clients to create entities with server-assigned IDs.
+     * The server is authoritative for ID generation; clients use
+     * this method to recreate entities with the exact ID from the server.
+     *
+     * @param id The specific entity ID to create.
+     * @return The created entity ID.
+     *
+     * @note If the ID is already in use, the existing entity is destroyed
+     *       first (to handle reconnection scenarios).
+     * @note Returns the actual created ID which should match the requested ID.
+     */
+    EntityID createWithId(EntityID id);
+
+    /**
      * Destroy an entity and all its components.
      * @param entity Entity to destroy
      */

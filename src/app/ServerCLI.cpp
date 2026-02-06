@@ -4,10 +4,12 @@
  */
 
 #include "sims3000/app/ServerCLI.h"
+#include "sims3000/net/NetworkServer.h"
 #include <SDL3/SDL_log.h>
 #include <iostream>
 #include <sstream>
 #include <cstdio>
+#include <cstdlib>
 
 namespace sims3000 {
 
@@ -131,24 +133,108 @@ void ServerCLI::cmdStatus() {
     std::printf("\n=== Server Status ===\n");
     std::printf("Uptime: %02d:%02d:%02d\n", hours, minutes, seconds);
     std::printf("Tick rate: 20 ticks/sec (50ms per tick)\n");
-    std::printf("Map size: %s\n", m_mapSize.c_str());
-    std::printf("Connected players: 0\n");  // Placeholder until Epic 1
+
+    if (m_networkServer) {
+        const auto& config = m_networkServer->getConfig();
+        const char* sizeStr = "medium";
+        switch (config.mapSize) {
+            case MapSizeTier::Small:  sizeStr = "small"; break;
+            case MapSizeTier::Medium: sizeStr = "medium"; break;
+            case MapSizeTier::Large:  sizeStr = "large"; break;
+        }
+        std::printf("Map size: %s\n", sizeStr);
+        std::printf("Port: %d\n", config.port);
+        std::printf("Connected players: %u/%u\n",
+                   m_networkServer->getClientCount(),
+                   config.maxPlayers);
+        std::printf("Server state: %s\n",
+                   getServerNetworkStateName(m_networkServer->getState()));
+        std::printf("Current tick: %llu\n",
+                   static_cast<unsigned long long>(m_networkServer->getCurrentTick()));
+    } else {
+        std::printf("Map size: %s\n", m_mapSize.c_str());
+        std::printf("Connected players: 0\n");
+    }
+
     std::printf("=====================\n\n");
 }
 
 void ServerCLI::cmdPlayers() {
     std::printf("\n=== Connected Overseers ===\n");
-    std::printf("No players connected.\n");  // Placeholder until Epic 1
+
+    if (m_networkServer) {
+        auto clients = m_networkServer->getClients();
+        if (clients.empty()) {
+            std::printf("No players connected.\n");
+        } else {
+            std::printf("%-4s  %-20s  %-12s  %-8s\n", "ID", "Name", "Status", "Latency");
+            std::printf("----  --------------------  ------------  --------\n");
+            for (const auto& client : clients) {
+                const char* statusStr = "Unknown";
+                switch (client.status) {
+                    case PlayerStatus::Connecting:   statusStr = "Connecting"; break;
+                    case PlayerStatus::Connected:    statusStr = "Connected"; break;
+                    case PlayerStatus::Disconnected: statusStr = "Disconnected"; break;
+                    case PlayerStatus::TimedOut:     statusStr = "Timed Out"; break;
+                    case PlayerStatus::Kicked:       statusStr = "Kicked"; break;
+                }
+                std::printf("%-4d  %-20s  %-12s  %4u ms\n",
+                           client.playerId,
+                           client.playerName.c_str(),
+                           statusStr,
+                           client.latencyMs);
+            }
+            std::printf("\nTotal: %u/%u players\n",
+                       m_networkServer->getClientCount(),
+                       m_networkServer->getConfig().maxPlayers);
+        }
+    } else {
+        std::printf("No players connected.\n");  // NetworkServer not attached
+    }
+
     std::printf("===========================\n\n");
 }
 
 void ServerCLI::cmdKick(const std::string& args) {
     if (args.empty()) {
-        std::printf("Usage: kick <player_id>\n");
+        std::printf("Usage: kick <player_id|player_name>\n");
         return;
     }
-    std::printf("[PLACEHOLDER] Would kick player: %s\n", args.c_str());
-    // Actual implementation in Epic 1 (networking)
+
+    if (!m_networkServer) {
+        std::printf("Error: Network server not available.\n");
+        return;
+    }
+
+    // Try to parse as player ID first
+    char* endptr = nullptr;
+    long playerId = std::strtol(args.c_str(), &endptr, 10);
+
+    if (endptr != args.c_str() && *endptr == '\0' && playerId > 0 && playerId <= 255) {
+        // Numeric player ID
+        auto client = m_networkServer->getClientByPlayerId(static_cast<PlayerID>(playerId));
+        if (client) {
+            std::printf("Kicking player %ld (%s)...\n", playerId, client->playerName.c_str());
+            m_networkServer->kickPlayer(static_cast<PlayerID>(playerId), "Kicked by server operator");
+        } else {
+            std::printf("Player ID %ld not found.\n", playerId);
+        }
+    } else {
+        // Try to find by name
+        bool found = false;
+        for (const auto& client : m_networkServer->getClients()) {
+            if (client.playerName == args) {
+                std::printf("Kicking player %s (ID %d)...\n",
+                           client.playerName.c_str(), client.playerId);
+                m_networkServer->kickPlayer(client.playerId, "Kicked by server operator");
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            std::printf("Player '%s' not found.\n", args.c_str());
+        }
+    }
 }
 
 void ServerCLI::cmdSay(const std::string& args) {
@@ -156,8 +242,14 @@ void ServerCLI::cmdSay(const std::string& args) {
         std::printf("Usage: say <message>\n");
         return;
     }
-    std::printf("[PLACEHOLDER] Would broadcast: %s\n", args.c_str());
-    // Actual implementation in Epic 1 (networking)
+
+    if (!m_networkServer) {
+        std::printf("Error: Network server not available.\n");
+        return;
+    }
+
+    std::printf("[SERVER] %s\n", args.c_str());
+    m_networkServer->broadcastServerChat(args);
 }
 
 void ServerCLI::cmdSave() {

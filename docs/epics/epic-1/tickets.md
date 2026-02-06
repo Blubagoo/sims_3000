@@ -61,7 +61,7 @@ Integrate ENet networking library into the project via vcpkg. Create a thin abst
 - [ ] ENetTransport implementation wraps ENet host/peer operations
 - [ ] MockTransport implementation stores messages in queues for testing
 - [ ] Basic connection test passes (connect, send message, receive, disconnect)
-- [ ] Cross-platform build verified (Windows, Linux)
+- [ ] Windows build verified
 
 **Dependencies:**
 - Blocked by: None
@@ -213,7 +213,7 @@ Implement server-to-client message types. These messages represent authoritative
 - [ ] ServerStatusMessage: server state (LOADING, READY, RUNNING)
 - [ ] All messages implement serialize/deserialize
 - [ ] Snapshot chunking: 64KB chunks with sequence numbers
-- [ ] Message header includes compression flag
+- [ ] Message includes compression flag indicating whether payload is LZ4 compressed
 - [ ] ServerStatusMessage includes map_size_tier field (small/medium/large) and map dimensions so clients know world size on connect
 
 **Dependencies:**
@@ -404,7 +404,7 @@ Implement change detection using EnTT signals to track dirty entities. SyncSyste
 - [ ] Track change type per entity: created, updated, destroyed
 - [ ] Entity added to dirty set on any component modification
 - [ ] Dirty set cleared after delta generation
-- [ ] SyncPolicy metadata respected: EveryTick, OnChange, Never (per Epic 0)
+- [ ] SyncPolicy metadata respected: Periodic, OnChange, None (per Epic 0)
 - [ ] Components with SyncPolicy::Never excluded from sync
 - [ ] Enforcement: all modifications must use registry.patch() for signal triggering
 
