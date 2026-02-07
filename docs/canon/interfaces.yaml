@@ -953,7 +953,7 @@ queries:
 terrain:
   ITerrainQueryable:
     description: "Read-only terrain data queries for gameplay systems"
-    purpose: "Allows any system to query terrain type, elevation, moisture, and flags at a position"
+    purpose: "Primary interface for downstream systems (ZoneSystem, EnergySystem, FluidSystem, TransportSystem, PortSystem, LandValueSystem) to query terrain. All queries O(1) or pre-computed."
 
     methods:
       - name: get_terrain_type
@@ -963,7 +963,7 @@ terrain:
           - name: y
             type: int32_t
         returns: TerrainType
-        description: "Terrain type at grid position"
+        description: "Terrain type at grid position. Returns Substrate for out-of-bounds."
 
       - name: get_elevation
         params:
@@ -972,16 +972,7 @@ terrain:
           - name: y
             type: int32_t
         returns: uint8_t
-        description: "Elevation (0-31) at grid position"
-
-      - name: get_moisture
-        params:
-          - name: x
-            type: int32_t
-          - name: y
-            type: int32_t
-        returns: uint8_t
-        description: "Moisture level at grid position"
+        description: "Elevation (0-31) at grid position. Returns 0 for out-of-bounds."
 
       - name: is_buildable
         params:
@@ -990,16 +981,20 @@ terrain:
           - name: y
             type: int32_t
         returns: bool
-        description: "Whether position can be built on (terrain allows + not water/toxic)"
+        description: "Whether position can be built on. Logic: (type.buildable OR (type.clearable AND is_cleared)) AND NOT is_underwater. Returns false for out-of-bounds."
 
-      - name: get_water_body_id
+      - name: get_slope
         params:
-          - name: x
+          - name: x1
             type: int32_t
-          - name: y
+          - name: y1
+            type: int32_t
+          - name: x2
+            type: int32_t
+          - name: y2
             type: int32_t
         returns: uint8_t
-        description: "Water body identifier (0 = not water)"
+        description: "Absolute elevation difference between two tiles. Returns 0 if either out-of-bounds."
 
       - name: get_water_distance
         params:
@@ -1007,54 +1002,180 @@ terrain:
             type: int32_t
           - name: y
             type: int32_t
+        returns: uint32_t
+        description: "Manhattan distance to nearest water tile (pre-computed). Returns 255 for out-of-bounds."
+
+      - name: get_average_elevation
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+          - name: radius
+            type: uint32_t
+        returns: float
+        description: "Average elevation within radius. Returns 0.0f if center out-of-bounds."
+
+      - name: get_value_bonus
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: float
+        description: "Land value bonus from terrain type. Can be negative (toxic terrain). Returns 0.0f for out-of-bounds."
+
+      - name: get_harmony_bonus
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: float
+        description: "Harmony (happiness) bonus from terrain type. Can be negative. Returns 0.0f for out-of-bounds."
+
+      - name: get_build_cost_modifier
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: int32_t
+        description: "Build cost multiplier as percentage (100 = 1.0x). Returns 100 for out-of-bounds."
+
+      - name: get_contamination_output
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: uint32_t
+        description: "Contamination units generated per tick by terrain (BlightMires). Returns 0 for out-of-bounds."
+
+      - name: get_map_width
+        params: []
+        returns: uint32_t
+        description: "Map width in tiles (128, 256, or 512)"
+
+      - name: get_map_height
+        params: []
+        returns: uint32_t
+        description: "Map height in tiles (128, 256, or 512)"
+
+      - name: get_sea_level
+        params: []
         returns: uint8_t
-        description: "Manhattan distance to nearest water tile (capped at 255)"
+        description: "Sea level elevation (default: 8). Tiles at or below are underwater."
 
     implemented_by:
       - TerrainSystem (Epic 3)
 
+    header_file: "include/sims3000/terrain/ITerrainQueryable.h"
+
     notes:
+      - "All methods are const for read-only access"
       - "Backed by dense 2D grid — O(1) lookups"
       - "Thread-safe for read access during render"
+      - "Out-of-bounds coordinates return safe defaults (not UB)"
+      - "Buildability: type.buildable OR (type.clearable AND is_cleared) AND NOT is_underwater"
 
   ITerrainRenderData:
-    description: "Chunk-based terrain data for mesh generation"
-    purpose: "Provides RenderingSystem with terrain data organized by 32x32 chunks for GPU mesh building"
+    description: "Terrain data interface for RenderingSystem mesh generation"
+    purpose: "Provides RenderingSystem with terrain data for mesh building: const TerrainGrid access, TerrainTypeInfo lookup, dirty chunk tracking, water body queries, and flow direction queries"
 
     methods:
-      - name: get_chunk_data
+      - name: get_grid
+        params: []
+        returns: "const TerrainGrid&"
+        description: "Const reference to the full terrain grid for mesh generation"
+
+      - name: get_type_info
+        params:
+          - name: type
+            type: TerrainType
+        returns: "const TerrainTypeInfo&"
+        description: "Per-type rendering properties (emissive color, intensity)"
+
+      - name: is_chunk_dirty
         params:
           - name: chunk_x
-            type: int32_t
+            type: uint32_t
           - name: chunk_y
+            type: uint32_t
+        returns: bool
+        description: "Check if chunk needs render data rebuild"
+
+      - name: clear_chunk_dirty
+        params:
+          - name: chunk_x
+            type: uint32_t
+          - name: chunk_y
+            type: uint32_t
+        returns: void
+        description: "Clear dirty flag after rebuilding chunk mesh"
+
+      - name: get_chunk_size
+        params: []
+        returns: uint32_t
+        description: "Returns 32 (TERRAIN_CHUNK_SIZE constant)"
+
+      - name: get_water_body_id
+        params:
+          - name: x
             type: int32_t
-        returns: "const TerrainChunkData*"
-        description: "Terrain data for a 32x32 chunk (null if out of bounds)"
+          - name: y
+            type: int32_t
+        returns: uint16_t
+        description: "Water body ID for tile (0 = not in water body)"
 
-      - name: get_dirty_chunks
-        params: []
-        returns: "std::vector<ChunkCoord>"
-        description: "Chunks modified since last call (for incremental mesh rebuild)"
+      - name: get_flow_direction
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+        returns: FlowDirection
+        description: "Flow direction for river UV scrolling"
 
-      - name: get_map_size_in_chunks
+      - name: get_map_width
         params: []
-        returns: "ChunkCoord"
-        description: "Map dimensions in chunk units"
+        returns: uint32_t
+        description: "Map width in tiles (128, 256, or 512)"
+
+      - name: get_map_height
+        params: []
+        returns: uint32_t
+        description: "Map height in tiles (128, 256, or 512)"
+
+      - name: get_chunks_x
+        params: []
+        returns: uint32_t
+        description: "Number of chunks in X direction (map_width / 32)"
+
+      - name: get_chunks_y
+        params: []
+        returns: uint32_t
+        description: "Number of chunks in Y direction (map_height / 32)"
 
     implemented_by:
       - TerrainSystem (Epic 3)
 
+    header_file: "include/sims3000/terrain/ITerrainRenderData.h"
+
     notes:
+      - "All methods except clear_chunk_dirty() are const for read-only access"
+      - "get_grid() returns const reference - no copy, rendering cannot modify terrain"
       - "Chunk size is 32x32 tiles, aligned with Epic 2 spatial partitioning"
-      - "RenderingSystem generates heightmap mesh from chunk data"
-      - "Dirty tracking uses TerrainModifiedEvent"
+      - "RenderingSystem rebuilds at most one dirty chunk per frame to avoid GPU stalls"
+      - "Water body IDs enable single-mesh-per-body water rendering"
+      - "Flow directions enable directional UV scrolling on FlowChannel tiles"
 
   ITerrainModifier:
     description: "Terrain modification requests (server-authoritative)"
-    purpose: "Allows systems to request terrain changes through a validated interface"
+    purpose: "Allows systems to request terrain changes through a validated interface. Separate from ITerrainQueryable because modifications are only available server-side in multiplayer."
 
     methods:
-      - name: request_purge
+      - name: clear_terrain
         params:
           - name: x
             type: int32_t
@@ -1063,9 +1184,9 @@ terrain:
           - name: player_id
             type: PlayerID
         returns: bool
-        description: "Request to clear vegetation/crystals at position. Returns false if not clearable."
+        description: "Clear vegetation/crystals at position (sets IS_CLEARED flag). Returns false if not clearable."
 
-      - name: request_grade
+      - name: level_terrain
         params:
           - name: x
             type: int32_t
@@ -1076,27 +1197,37 @@ terrain:
           - name: player_id
             type: PlayerID
         returns: bool
-        description: "Request to flatten terrain to target elevation. Multi-tick operation."
+        description: "Flatten terrain to target elevation. Returns false if not modifiable (water, toxic)."
 
-      - name: request_terraform
+      - name: get_clear_cost
         params:
           - name: x
             type: int32_t
           - name: y
             type: int32_t
-          - name: target_type
-            type: TerrainType
-          - name: player_id
-            type: PlayerID
-        returns: bool
-        description: "Request major terrain reshaping. Multi-tick, late-game operation."
+        returns: int64_t
+        const: true
+        description: "Cost in credits to clear terrain at position. Returns 0 if already cleared, -1 if not clearable. Negative values indicate resource yield (e.g., PrismaFields crystals)."
+
+      - name: get_level_cost
+        params:
+          - name: x
+            type: int32_t
+          - name: y
+            type: int32_t
+          - name: target_elevation
+            type: uint8_t
+        returns: int64_t
+        const: true
+        description: "Cost in credits to level terrain to target elevation. Returns 0 if already at target, -1 if not levelable."
 
     implemented_by:
       - TerrainSystem (Epic 3)
 
     notes:
       - "Server-authoritative: client sends request, server validates and applies"
-      - "Purge is instant; Grade and Terraform are multi-tick operations"
+      - "Cost query methods are const - safe for client-side UI preview"
+      - "Modification methods validate preconditions (correct terrain type, within bounds)"
       - "Emits TerrainModifiedEvent on completion"
 
 # ============================================================================

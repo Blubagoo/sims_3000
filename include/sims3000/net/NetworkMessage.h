@@ -149,6 +149,24 @@ enum class MessageType : std::uint16_t {
     /// Trade completion notification
     TradeComplete = 113,
 
+    /// Terrain modification request (client -> server)
+    TerrainModifyRequest = 120,
+
+    /// Terrain modification response (server -> client)
+    TerrainModifyResponse = 121,
+
+    /// Terrain modified broadcast (server -> all clients)
+    TerrainModifiedEvent = 122,
+
+    /// Terrain sync request (server -> client) - seed + modifications
+    TerrainSyncRequest = 123,
+
+    /// Terrain sync verify (client -> server) - checksum verification
+    TerrainSyncVerify = 124,
+
+    /// Terrain sync complete (server -> client) - sync result
+    TerrainSyncComplete = 125,
+
     // Gameplay message range end marker (not a real message type)
     _GameplayEnd = 199,
 

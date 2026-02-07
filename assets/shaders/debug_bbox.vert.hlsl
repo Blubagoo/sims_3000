@@ -7,7 +7,8 @@
 // Usage: Draw LINE_LIST primitives with vertex buffer bound.
 
 // Uniform buffer matching DebugBBoxUBO struct
-cbuffer BBoxUniforms : register(b0)
+// SDL_GPU maps vertex uniform buffers to space1
+cbuffer BBoxUniforms : register(b0, space1)
 {
     float4x4 viewProjection;  // View-projection matrix
 };

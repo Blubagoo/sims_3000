@@ -189,6 +189,7 @@ void ViewModeController::applyModeStates(ViewMode mode, float ghostAlpha) {
             // Underground hidden, surface layers visible
             m_visibility.setLayerVisibility(RenderLayer::Underground, LayerState::Hidden);
             m_visibility.setLayerVisibility(RenderLayer::Terrain, LayerState::Visible);
+            m_visibility.setLayerVisibility(RenderLayer::Vegetation, LayerState::Visible);
             m_visibility.setLayerVisibility(RenderLayer::Water, LayerState::Visible);
             m_visibility.setLayerVisibility(RenderLayer::Roads, LayerState::Visible);
             m_visibility.setLayerVisibility(RenderLayer::Buildings, LayerState::Visible);
@@ -202,6 +203,7 @@ void ViewModeController::applyModeStates(ViewMode mode, float ghostAlpha) {
             // Underground mode: surface ghosted, underground visible
             m_visibility.setLayerVisibility(RenderLayer::Underground, LayerState::Visible);
             m_visibility.setLayerVisibility(RenderLayer::Terrain, LayerState::Ghost);
+            m_visibility.setLayerVisibility(RenderLayer::Vegetation, LayerState::Ghost);
             m_visibility.setLayerVisibility(RenderLayer::Water, LayerState::Visible);
             m_visibility.setLayerVisibility(RenderLayer::Roads, LayerState::Ghost);
             m_visibility.setLayerVisibility(RenderLayer::Buildings, LayerState::Ghost);
@@ -215,6 +217,7 @@ void ViewModeController::applyModeStates(ViewMode mode, float ghostAlpha) {
             // Cutaway mode: both surface and underground visible
             m_visibility.setLayerVisibility(RenderLayer::Underground, LayerState::Visible);
             m_visibility.setLayerVisibility(RenderLayer::Terrain, LayerState::Visible);
+            m_visibility.setLayerVisibility(RenderLayer::Vegetation, LayerState::Visible);
             m_visibility.setLayerVisibility(RenderLayer::Water, LayerState::Visible);
             m_visibility.setLayerVisibility(RenderLayer::Roads, LayerState::Visible);
             m_visibility.setLayerVisibility(RenderLayer::Buildings, LayerState::Visible);

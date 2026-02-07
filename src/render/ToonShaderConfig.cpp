@@ -1,11 +1,19 @@
 /**
  * @file ToonShaderConfig.cpp
  * @brief Implementation of runtime-configurable toon shader parameters.
+ *
+ * Includes terrain visual configuration integration (Ticket 3-039).
  */
 
 #include "sims3000/render/ToonShaderConfig.h"
+#include "sims3000/render/TerrainVisualConfig.h"
 #include <algorithm>
 #include <cmath>
+#include <fstream>
+
+#ifdef SIMS3000_HAS_JSON
+#include <nlohmann/json.hpp>
+#endif
 
 namespace sims3000 {
 
@@ -326,5 +334,204 @@ void ToonShaderConfig::initializeTerrainEmissivePresets() {
         0.7f
     };
 }
+
+// =============================================================================
+// Terrain Visual Configuration Integration (Ticket 3-039)
+// =============================================================================
+
+TerrainVisualConfigManager& ToonShaderConfig::getTerrainVisualConfig() {
+    return TerrainVisualConfigManager::instance();
+}
+
+const TerrainVisualConfigManager& ToonShaderConfig::getTerrainVisualConfig() const {
+    return TerrainVisualConfigManager::instance();
+}
+
+bool ToonShaderConfig::isTerrainConfigDirty() const {
+    return TerrainVisualConfigManager::instance().isDirty();
+}
+
+void ToonShaderConfig::clearTerrainDirtyFlag() {
+    TerrainVisualConfigManager::instance().clearDirtyFlag();
+}
+
+bool ToonShaderConfig::isAnyDirty() const {
+    return m_dirty || TerrainVisualConfigManager::instance().isDirty();
+}
+
+void ToonShaderConfig::clearAllDirtyFlags() {
+    m_dirty = false;
+    TerrainVisualConfigManager::instance().clearDirtyFlag();
+}
+
+bool ToonShaderConfig::loadTerrainConfigFromFile(const std::string& filepath) {
+    return TerrainVisualConfigManager::instance().loadFromFile(filepath);
+}
+
+bool ToonShaderConfig::saveTerrainConfigToFile(const std::string& filepath) const {
+    return TerrainVisualConfigManager::instance().saveToFile(filepath);
+}
+
+void ToonShaderConfig::resetTerrainConfigToDefaults() {
+    TerrainVisualConfigManager::instance().resetToDefaults();
+}
+
+// =============================================================================
+// TerrainVisualConfigManager Implementation
+// =============================================================================
+
+#ifdef SIMS3000_HAS_JSON
+
+namespace {
+    // Helper to convert GlowBehavior to string
+    std::string glowBehaviorToString(GlowBehavior behavior) {
+        switch (behavior) {
+            case GlowBehavior::Static: return "static";
+            case GlowBehavior::Pulse: return "pulse";
+            case GlowBehavior::Shimmer: return "shimmer";
+            case GlowBehavior::Flow: return "flow";
+            case GlowBehavior::Irregular: return "irregular";
+            default: return "static";
+        }
+    }
+
+    // Helper to convert string to GlowBehavior
+    GlowBehavior stringToGlowBehavior(const std::string& str) {
+        if (str == "pulse") return GlowBehavior::Pulse;
+        if (str == "shimmer") return GlowBehavior::Shimmer;
+        if (str == "flow") return GlowBehavior::Flow;
+        if (str == "irregular") return GlowBehavior::Irregular;
+        return GlowBehavior::Static;
+    }
+}
+
+bool TerrainVisualConfigManager::loadFromFile(const std::string& filepath) {
+    try {
+        std::ifstream file(filepath);
+        if (!file.is_open()) {
+            return false;
+        }
+
+        nlohmann::json j;
+        file >> j;
+
+        // Load base colors
+        if (j.contains("base_colors") && j["base_colors"].is_array()) {
+            const auto& colors = j["base_colors"];
+            for (std::size_t i = 0; i < std::min(colors.size(), TERRAIN_PALETTE_SIZE); ++i) {
+                const auto& c = colors[i];
+                float r = c.value("r", 0.0f);
+                float g = c.value("g", 0.0f);
+                float b = c.value("b", 0.0f);
+                float a = c.value("a", 1.0f);
+                m_config.setBaseColor(i, glm::vec4(r, g, b, a));
+            }
+        }
+
+        // Load emissive colors
+        if (j.contains("emissive_colors") && j["emissive_colors"].is_array()) {
+            const auto& colors = j["emissive_colors"];
+            for (std::size_t i = 0; i < std::min(colors.size(), TERRAIN_PALETTE_SIZE); ++i) {
+                const auto& c = colors[i];
+                float r = c.value("r", 0.0f);
+                float g = c.value("g", 0.0f);
+                float b = c.value("b", 0.0f);
+                float intensity = c.value("intensity", 0.5f);
+                m_config.setEmissiveColor(i, glm::vec3(r, g, b), intensity);
+            }
+        }
+
+        // Load glow parameters
+        if (j.contains("glow_params") && j["glow_params"].is_array()) {
+            const auto& params = j["glow_params"];
+            for (std::size_t i = 0; i < std::min(params.size(), TERRAIN_PALETTE_SIZE); ++i) {
+                const auto& p = params[i];
+                GlowParameters gp;
+                gp.behavior = stringToGlowBehavior(p.value("behavior", "static"));
+                gp.period = p.value("period", 0.0f);
+                gp.amplitude = p.value("amplitude", 0.0f);
+                gp.phase_offset = p.value("phase_offset", 0.0f);
+                m_config.setGlowParameters(i, gp);
+            }
+        }
+
+        // Load sea level
+        if (j.contains("sea_level")) {
+            m_config.setSeaLevel(j["sea_level"].get<float>());
+        }
+
+        markDirty();
+        return true;
+    }
+    catch (...) {
+        return false;
+    }
+}
+
+bool TerrainVisualConfigManager::saveToFile(const std::string& filepath) const {
+    try {
+        nlohmann::json j;
+
+        // Save base colors
+        nlohmann::json baseColors = nlohmann::json::array();
+        for (std::size_t i = 0; i < TERRAIN_PALETTE_SIZE; ++i) {
+            const auto& c = m_config.base_colors[i];
+            baseColors.push_back({
+                {"r", c.r}, {"g", c.g}, {"b", c.b}, {"a", c.a}
+            });
+        }
+        j["base_colors"] = baseColors;
+
+        // Save emissive colors
+        nlohmann::json emissiveColors = nlohmann::json::array();
+        for (std::size_t i = 0; i < TERRAIN_PALETTE_SIZE; ++i) {
+            const auto& c = m_config.emissive_colors[i];
+            emissiveColors.push_back({
+                {"r", c.r}, {"g", c.g}, {"b", c.b}, {"intensity", c.a}
+            });
+        }
+        j["emissive_colors"] = emissiveColors;
+
+        // Save glow parameters
+        nlohmann::json glowParams = nlohmann::json::array();
+        for (std::size_t i = 0; i < TERRAIN_PALETTE_SIZE; ++i) {
+            const auto& p = m_config.glow_params[i];
+            glowParams.push_back({
+                {"behavior", glowBehaviorToString(p.behavior)},
+                {"period", p.period},
+                {"amplitude", p.amplitude},
+                {"phase_offset", p.phase_offset}
+            });
+        }
+        j["glow_params"] = glowParams;
+
+        // Save sea level
+        j["sea_level"] = m_config.sea_level;
+
+        std::ofstream file(filepath);
+        if (!file.is_open()) {
+            return false;
+        }
+
+        file << j.dump(2);
+        return true;
+    }
+    catch (...) {
+        return false;
+    }
+}
+
+#else
+
+// Stub implementations when JSON is not available
+bool TerrainVisualConfigManager::loadFromFile(const std::string& /*filepath*/) {
+    return false;
+}
+
+bool TerrainVisualConfigManager::saveToFile(const std::string& /*filepath*/) const {
+    return false;
+}
+
+#endif // SIMS3000_HAS_JSON
 
 } // namespace sims3000

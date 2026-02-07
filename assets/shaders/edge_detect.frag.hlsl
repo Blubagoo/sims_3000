@@ -4,6 +4,12 @@
 // Primary signal: Normal discontinuities
 // Secondary signal: Linearized depth discontinuities
 //
+// Terrain-specific tuning (Ticket 3-035):
+// - Cliff edges: Bold outlines from strong normal discontinuities (normal.y < 0.5)
+// - Water shorelines: Visible outlines at water/land normal transitions
+// - Gentle slopes: Depth threshold scales with distance to avoid noise
+// - Terrain type boundaries: Color contrast provides separation; edge detection is bonus
+//
 // Handles perspective projection with non-linear depth buffer by
 // linearizing depth values before Sobel filtering.
 //
@@ -118,6 +124,69 @@ float sobelNormal(float3 samples[9])
     return sqrt(dot(gx, gx) + dot(gy, gy));
 }
 
+// =============================================================================
+// Terrain-Specific Edge Detection (Ticket 3-035)
+// =============================================================================
+
+// Terrain edge detection constants
+static const float CLIFF_NORMAL_Y_THRESHOLD = 0.5;   // Cliff when normal.y < this
+static const float CLIFF_EDGE_WEIGHT = 1.5;          // Boost factor for cliff edges
+static const float SHORELINE_EDGE_WEIGHT = 1.25;     // Boost factor for shorelines
+static const float GENTLE_SLOPE_ANGLE_COS = 0.94;    // cos(20 degrees) - gentle slope threshold
+static const float DISTANCE_SCALE_MIN = 0.5;         // Min scaling at far distance
+static const float DISTANCE_SCALE_MAX = 1.0;         // Max scaling at near distance
+
+// Calculate edge weight multiplier based on terrain characteristics
+// Uses center normal (samples[4]) to identify terrain features
+float calculateTerrainEdgeWeight(float3 centerNormal, float normalEdge)
+{
+    float weight = 1.0;
+
+    // Check if this is a cliff edge (normal pointing mostly horizontal)
+    // Cliffs have normal.y close to 0 (vertical faces)
+    if (abs(centerNormal.y) < CLIFF_NORMAL_Y_THRESHOLD)
+    {
+        // This is a cliff face - boost edge weight for bold outlines
+        // The lower the normal.y, the steeper the cliff, the bolder the edge
+        float cliffFactor = 1.0 - abs(centerNormal.y) / CLIFF_NORMAL_Y_THRESHOLD;
+        weight *= lerp(1.0, CLIFF_EDGE_WEIGHT, cliffFactor);
+    }
+
+    // Detect shoreline by checking for strong normal discontinuity
+    // combined with near-horizontal normals (water is always flat)
+    // If normal edge is high and center normal is near-vertical, likely a shoreline
+    if (normalEdge > 0.3 && abs(centerNormal.y) > 0.9)
+    {
+        // Potential shoreline - apply modest boost
+        weight *= SHORELINE_EDGE_WEIGHT;
+    }
+
+    return weight;
+}
+
+// Scale depth threshold based on distance to reduce noise on gentle distant slopes
+// At far distances, depth differences are smaller in screen space
+float scaleDepthThresholdByDistance(float linearDepth)
+{
+    // Normalize depth to [0, 1] range based on near/far planes
+    float normalizedDist = saturate((linearDepth - nearPlane) / (farPlane - nearPlane));
+
+    // At near distances: use full threshold (1.0 scale)
+    // At far distances: use reduced threshold (0.5 scale) to avoid noise
+    float scale = lerp(DISTANCE_SCALE_MAX, DISTANCE_SCALE_MIN, normalizedDist);
+
+    return scale;
+}
+
+// Check if this is a gentle slope that should suppress depth edges
+// Gentle slopes (< ~20 degrees) should not produce depth artifacts
+bool isGentleSlope(float3 centerNormal)
+{
+    // cos(angle) = normal.y for angle from vertical
+    // Gentle slope: normal.y > cos(20 degrees) ~= 0.94
+    return abs(centerNormal.y) > GENTLE_SLOPE_ANGLE_COS;
+}
+
 PSOutput main(PSInput input)
 {
     PSOutput output;
@@ -152,6 +221,11 @@ PSOutput main(PSInput input)
         normalSamples[i] = normalSample.xyz * 2.0 - 1.0;
     }
 
+    // Get center depth and normal for terrain-specific adjustments
+    float rawCenterDepth = depthTexture.Sample(pointSampler, input.texCoord);
+    float linearCenterDepth = linearizeDepth(rawCenterDepth);
+    float3 centerNormal = normalSamples[4]; // Center sample
+
     // Sample depth (secondary edge signal)
     float depthSamples[9];
     for (int j = 0; j < 9; ++j)
@@ -166,13 +240,39 @@ PSOutput main(PSInput input)
     float normalEdge = sobelNormal(normalSamples);
     float depthEdge = sobelSingle(depthSamples);
 
+    // ==========================================================================
+    // Terrain-Specific Edge Detection (Ticket 3-035)
+    // ==========================================================================
+
+    // Calculate terrain edge weight multiplier for cliffs and shorelines
+    float terrainWeight = calculateTerrainEdgeWeight(centerNormal, normalEdge);
+
+    // Scale depth threshold based on distance (reduces noise on gentle distant slopes)
+    float distanceScale = scaleDepthThresholdByDistance(linearCenterDepth);
+    float adjustedDepthThreshold = depthThreshold / distanceScale;
+
+    // Check if this is a gentle slope - suppress depth edges to avoid noise
+    bool gentleSlope = isGentleSlope(centerNormal);
+
     // Apply thresholds
-    float normalEdgeMask = step(normalThreshold, normalEdge);
-    float depthEdgeMask = step(depthThreshold, depthEdge);
+    // Normal edges: apply terrain weight for bolder cliff/shoreline outlines
+    float normalEdgeMask = step(normalThreshold, normalEdge * terrainWeight);
+
+    // Depth edges: use distance-adjusted threshold and suppress on gentle slopes
+    float depthEdgeMask = 0.0;
+    if (!gentleSlope)
+    {
+        depthEdgeMask = step(adjustedDepthThreshold, depthEdge);
+    }
 
     // Combine: normal edges are primary, depth edges fill gaps
     // Normal edges take precedence; depth edges are secondary
-    float edgeMask = saturate(normalEdgeMask + depthEdgeMask * 0.5);
+    // For terrain, normal edges carry most of the outline information
+    float edgeMask = saturate(normalEdgeMask + depthEdgeMask * 0.3);
+
+    // ==========================================================================
+    // Final Color Composition
+    // ==========================================================================
 
     // Sample original scene color
     float4 sceneColor = sceneColorTexture.Sample(pointSampler, input.texCoord);

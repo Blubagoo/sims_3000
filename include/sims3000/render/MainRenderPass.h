@@ -180,6 +180,11 @@ struct MainRenderPassStats {
     std::uint32_t shadowMapResolution = 0;
     bool shadowsEnabled = false;
 
+    // Terrain chunk culling stats (ticket 3-034)
+    std::uint32_t terrainChunksTotal = 0;     ///< Total terrain chunks
+    std::uint32_t terrainChunksVisible = 0;   ///< Chunks passing frustum test
+    float terrainChunkCullRatio = 0.0f;       ///< Ratio of culled chunks (0-1)
+
     // Frame info
     std::uint32_t frameNumber = 0;
     bool swapchainAcquired = false;
@@ -202,6 +207,9 @@ struct MainRenderPassStats {
         bloomTimeMs = 0.0f;
         totalFrameTimeMs = 0.0f;
         shadowsEnabled = false;
+        terrainChunksTotal = 0;
+        terrainChunksVisible = 0;
+        terrainChunkCullRatio = 0.0f;
         swapchainAcquired = false;
     }
 };

@@ -220,6 +220,39 @@ void EdgeDetectionPass::setDepthThreshold(float threshold) {
     m_config.depthThreshold = std::clamp(threshold, 0.0f, 1.0f);
 }
 
+void EdgeDetectionPass::applyTerrainConfig() {
+    if (!m_terrainConfigActive) {
+        // Store current config as building config before switching
+        m_buildingConfig = m_config;
+    }
+
+    // Apply terrain-specific configuration
+    m_config.normalThreshold = TerrainEdgeConfig::NORMAL_THRESHOLD;
+    m_config.depthThreshold = TerrainEdgeConfig::DEPTH_THRESHOLD;
+    m_config.edgeThickness = std::clamp(TerrainEdgeConfig::EDGE_THICKNESS, 0.5f, 3.0f);
+
+    m_terrainConfigActive = true;
+
+    SDL_LogDebug(SDL_LOG_CATEGORY_GPU,
+                 "EdgeDetectionPass: Applied terrain config (normal=%.2f, depth=%.2f, thickness=%.1f)",
+                 m_config.normalThreshold, m_config.depthThreshold, m_config.edgeThickness);
+}
+
+void EdgeDetectionPass::applyBuildingConfig() {
+    if (m_terrainConfigActive) {
+        // Restore stored building config
+        m_config.normalThreshold = m_buildingConfig.normalThreshold;
+        m_config.depthThreshold = m_buildingConfig.depthThreshold;
+        m_config.edgeThickness = m_buildingConfig.edgeThickness;
+
+        m_terrainConfigActive = false;
+
+        SDL_LogDebug(SDL_LOG_CATEGORY_GPU,
+                     "EdgeDetectionPass: Applied building config (normal=%.2f, depth=%.2f, thickness=%.1f)",
+                     m_config.normalThreshold, m_config.depthThreshold, m_config.edgeThickness);
+    }
+}
+
 // =============================================================================
 // Private Implementation
 // =============================================================================

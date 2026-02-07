@@ -11,14 +11,25 @@
  * - Emissive multiplier
  * - Per-terrain-type emissive color presets
  * - Ambient light level
+ * - Terrain visual configuration (Ticket 3-039)
  *
  * Changes take effect immediately without shader recompilation or restart.
  * Supports day/night palette shifts and accessibility options.
+ *
+ * Integration with TerrainVisualConfig (Ticket 3-039):
+ * - ToonShaderConfig owns and manages TerrainVisualConfigManager
+ * - Terrain base colors and emissive presets are accessible via getTerrainVisualConfig()
+ * - Changes to terrain visuals trigger dirty flag for GPU uniform updates
+ * - Config can be loaded from file for rapid iteration
  *
  * Usage:
  *   auto& config = ToonShaderConfig::instance();
  *   config.setBandThreshold(1, 0.35f);
  *   config.setBloomIntensity(0.8f);
+ *
+ *   // Terrain visual access (Ticket 3-039):
+ *   auto& terrainConfig = config.getTerrainVisualConfig();
+ *   terrainConfig.setBaseColor(0, glm::vec4(0.1f, 0.1f, 0.15f, 1.0f));
  */
 
 #ifndef SIMS3000_RENDER_TOON_SHADER_CONFIG_H
@@ -27,8 +38,13 @@
 #include <glm/glm.hpp>
 #include <array>
 #include <cstdint>
+#include <string>
 
 namespace sims3000 {
+
+// Forward declarations
+class TerrainVisualConfigManager;
+struct TerrainVisualConfig;
 
 /**
  * @enum TerrainType
@@ -359,6 +375,59 @@ public:
     void applyHighContrastPreset();
 
     // =========================================================================
+    // Terrain Visual Configuration (Ticket 3-039)
+    // =========================================================================
+
+    /**
+     * @brief Get the terrain visual configuration manager.
+     * @return Reference to the TerrainVisualConfigManager singleton.
+     *
+     * Provides access to per-terrain-type base colors, emissive colors,
+     * and glow behavior parameters. Changes take effect immediately.
+     */
+    TerrainVisualConfigManager& getTerrainVisualConfig();
+
+    /**
+     * @brief Get const access to terrain visual configuration manager.
+     * @return Const reference to the TerrainVisualConfigManager singleton.
+     */
+    const TerrainVisualConfigManager& getTerrainVisualConfig() const;
+
+    /**
+     * @brief Check if terrain visual configuration has changed.
+     * @return True if terrain config changed since last clearTerrainDirtyFlag().
+     */
+    bool isTerrainConfigDirty() const;
+
+    /**
+     * @brief Clear the terrain configuration dirty flag.
+     *
+     * Called by the rendering system after uploading terrain config to GPU.
+     */
+    void clearTerrainDirtyFlag();
+
+    /**
+     * @brief Load terrain visual configuration from JSON file.
+     * @param filepath Path to JSON configuration file.
+     * @return True if loading succeeded, false otherwise.
+     */
+    bool loadTerrainConfigFromFile(const std::string& filepath);
+
+    /**
+     * @brief Save terrain visual configuration to JSON file.
+     * @param filepath Path to JSON configuration file.
+     * @return True if saving succeeded, false otherwise.
+     */
+    bool saveTerrainConfigToFile(const std::string& filepath) const;
+
+    /**
+     * @brief Reset terrain visual configuration to defaults.
+     *
+     * Restores terrain colors and glow parameters to Game Designer specifications.
+     */
+    void resetTerrainConfigToDefaults();
+
+    // =========================================================================
     // State Query
     // =========================================================================
 
@@ -367,8 +436,16 @@ public:
      * @return True if any parameter changed since last clearDirtyFlag().
      *
      * Used by the rendering system to detect when to re-upload uniforms.
+     * Note: This checks ToonShaderConfig dirty flag only. For terrain config,
+     * use isTerrainConfigDirty().
      */
     bool isDirty() const { return m_dirty; }
+
+    /**
+     * @brief Check if any configuration (toon or terrain) has changed.
+     * @return True if either toon or terrain config changed.
+     */
+    bool isAnyDirty() const;
 
     /**
      * @brief Clear the dirty flag.
@@ -376,6 +453,11 @@ public:
      * Called by the rendering system after uploading configuration to GPU.
      */
     void clearDirtyFlag() { m_dirty = false; }
+
+    /**
+     * @brief Clear all dirty flags (toon and terrain).
+     */
+    void clearAllDirtyFlags();
 
 private:
     // =========================================================================

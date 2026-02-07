@@ -21,9 +21,16 @@
 #include "sims3000/net/NetworkClient.h"
 #include "sims3000/sync/SyncSystem.h"
 #include "sims3000/render/ToonPipeline.h"
+#include "sims3000/render/CameraState.h"
+#include "sims3000/render/ShaderCompiler.h"
+#include "sims3000/terrain/TerrainGrid.h"
+#include "sims3000/terrain/TerrainChunk.h"
+#include "sims3000/terrain/TerrainChunkMeshGenerator.h"
+#include "sims3000/terrain/TerrainVertex.h"
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace sims3000 {
 
@@ -246,6 +253,35 @@ private:
 
     // Timing
     std::uint64_t m_lastFrameTime = 0;
+
+    // Demo rendering (for manual testing Epic 2)
+    bool initDemo();
+    void updateDemoCamera(float deltaTime);
+    void renderDemo(SDL_GPUCommandBuffer* cmdBuffer, SDL_GPUTexture* swapchain);
+    void cleanupDemo();
+
+    CameraState m_demoCamera;
+    std::unique_ptr<ShaderCompiler> m_shaderCompiler;
+    SDL_GPUBuffer* m_demoVertexBuffer = nullptr;
+    SDL_GPUBuffer* m_demoIndexBuffer = nullptr;
+    SDL_GPUBuffer* m_demoUniformBuffer = nullptr;
+    SDL_GPUGraphicsPipeline* m_demoPipeline = nullptr;
+    SDL_GPUShader* m_demoVertShader = nullptr;
+    SDL_GPUShader* m_demoFragShader = nullptr;
+    bool m_demoInitialized = false;
+
+    // Terrain rendering (Epic 3)
+    bool initTerrain();
+    void renderTerrain(SDL_GPUCommandBuffer* cmdBuffer, SDL_GPUTexture* swapchain);
+    void cleanupTerrain();
+
+    terrain::TerrainGrid m_terrainGrid;
+    std::vector<terrain::TerrainChunk> m_terrainChunks;
+    terrain::TerrainChunkMeshGenerator m_terrainMeshGenerator;
+    SDL_GPUGraphicsPipeline* m_terrainPipeline = nullptr;
+    SDL_GPUShader* m_terrainVertShader = nullptr;
+    SDL_GPUShader* m_terrainFragShader = nullptr;
+    bool m_terrainInitialized = false;
 };
 
 } // namespace sims3000

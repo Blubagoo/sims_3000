@@ -187,6 +187,7 @@ void LayerVisibility::enableUndergroundView() {
 
     // Ghost surface layers
     setLayerVisibility(RenderLayer::Terrain, LayerState::Ghost);
+    setLayerVisibility(RenderLayer::Vegetation, LayerState::Ghost);
     setLayerVisibility(RenderLayer::Roads, LayerState::Ghost);
     setLayerVisibility(RenderLayer::Buildings, LayerState::Ghost);
     setLayerVisibility(RenderLayer::Units, LayerState::Ghost);
@@ -204,6 +205,7 @@ void LayerVisibility::disableUndergroundView() {
 
     // Restore surface layers to visible
     setLayerVisibility(RenderLayer::Terrain, LayerState::Visible);
+    setLayerVisibility(RenderLayer::Vegetation, LayerState::Visible);
     setLayerVisibility(RenderLayer::Roads, LayerState::Visible);
     setLayerVisibility(RenderLayer::Buildings, LayerState::Visible);
     setLayerVisibility(RenderLayer::Units, LayerState::Visible);
@@ -221,6 +223,7 @@ bool LayerVisibility::isUndergroundViewActive() const {
 
     // Check if any surface layer is ghosted
     if (isGhost(RenderLayer::Terrain)) return true;
+    if (isGhost(RenderLayer::Vegetation)) return true;
     if (isGhost(RenderLayer::Buildings)) return true;
     if (isGhost(RenderLayer::Roads)) return true;
     if (isGhost(RenderLayer::Units)) return true;

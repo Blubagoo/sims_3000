@@ -243,6 +243,87 @@ add_custom_target(debug_bbox_shaders DEPENDS
     "${DEBUG_BBOX_FRAG_SPIRV}"
 )
 
+# Compile terrain shaders (vertex + fragment)
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/terrain.vert.hlsl"
+    NAME "terrain.vert"
+    PROFILE "vs_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(TERRAIN_VERT_DXIL "${SHADER_DXIL_OUTPUT}")
+set(TERRAIN_VERT_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/terrain.frag.hlsl"
+    NAME "terrain.frag"
+    PROFILE "ps_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(TERRAIN_FRAG_DXIL "${SHADER_DXIL_OUTPUT}")
+set(TERRAIN_FRAG_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+# Create custom target for terrain shaders
+add_custom_target(terrain_shaders DEPENDS
+    "${TERRAIN_VERT_DXIL}"
+    "${TERRAIN_VERT_SPIRV}"
+    "${TERRAIN_FRAG_DXIL}"
+    "${TERRAIN_FRAG_SPIRV}"
+)
+
+# Compile water shaders (vertex + fragment)
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/water.vert.hlsl"
+    NAME "water.vert"
+    PROFILE "vs_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(WATER_VERT_DXIL "${SHADER_DXIL_OUTPUT}")
+set(WATER_VERT_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/water.frag.hlsl"
+    NAME "water.frag"
+    PROFILE "ps_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(WATER_FRAG_DXIL "${SHADER_DXIL_OUTPUT}")
+set(WATER_FRAG_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+# Create custom target for water shaders
+add_custom_target(water_shaders DEPENDS
+    "${WATER_VERT_DXIL}"
+    "${WATER_VERT_SPIRV}"
+    "${WATER_FRAG_DXIL}"
+    "${WATER_FRAG_SPIRV}"
+)
+
+# Compile terrain debug shaders (vertex + fragment)
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/terrain_debug.vert.hlsl"
+    NAME "terrain_debug.vert"
+    PROFILE "vs_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(TERRAIN_DEBUG_VERT_DXIL "${SHADER_DXIL_OUTPUT}")
+set(TERRAIN_DEBUG_VERT_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/terrain_debug.frag.hlsl"
+    NAME "terrain_debug.frag"
+    PROFILE "ps_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(TERRAIN_DEBUG_FRAG_DXIL "${SHADER_DXIL_OUTPUT}")
+set(TERRAIN_DEBUG_FRAG_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+# Create custom target for terrain debug shaders
+add_custom_target(terrain_debug_shaders DEPENDS
+    "${TERRAIN_DEBUG_VERT_DXIL}"
+    "${TERRAIN_DEBUG_VERT_SPIRV}"
+    "${TERRAIN_DEBUG_FRAG_DXIL}"
+    "${TERRAIN_DEBUG_FRAG_SPIRV}"
+)
+
 # Define source files
 set(SIMS3000_SOURCES
     src/main.cpp
@@ -290,6 +371,9 @@ set(SIMS3000_SOURCES
     src/render/DebugBoundingBoxOverlay.cpp
     src/render/CursorRenderer.cpp
     src/render/LODSystem.cpp
+    src/render/VegetationPlacementGenerator.cpp
+    src/render/VegetationRenderer.cpp
+    src/render/TerrainDebugOverlay.cpp
     ${EMBEDDED_SHADERS_OUTPUT}
     src/input/InputSystem.cpp
     src/input/ActionMapping.cpp
@@ -327,6 +411,28 @@ set(SIMS3000_SOURCES
     src/sync/SyncSystem.cpp
     src/sync/EntityIdGenerator.cpp
     src/persistence/FilePersistenceProvider.cpp
+    src/terrain/ChunkDirtyTracker.cpp
+    src/terrain/WaterDistanceField.cpp
+    src/terrain/ProceduralNoise.cpp
+    src/terrain/ContaminationSourceQuery.cpp
+    src/terrain/ElevationGenerator.cpp
+    src/terrain/BiomeGenerator.cpp
+    src/terrain/WaterBodyGenerator.cpp
+    src/terrain/SpawnPointGenerator.cpp
+    src/terrain/MapValidator.cpp
+    src/terrain/TerrainModificationSystem.cpp
+    src/terrain/GradeTerrainOperation.cpp
+    src/terrain/TerraformOperation.cpp
+    src/terrain/TerrainNetworkMessages.cpp
+    src/terrain/TerrainNetworkHandler.cpp
+    src/terrain/TerrainClientHandler.cpp
+    src/terrain/TerrainNormals.cpp
+    src/terrain/WaterMeshGenerator.cpp
+    src/terrain/TerrainChunkMeshGenerator.cpp
+    src/terrain/TerrainModificationVisualPipeline.cpp
+    src/terrain/TerrainChunkCuller.cpp
+    src/terrain/TerrainGridSerializer.cpp
+    src/terrain/TerrainNetworkSync.cpp
 )
 
 # Define header files (for IDE integration)
@@ -383,6 +489,11 @@ set(SIMS3000_HEADERS
     include/sims3000/render/PlayerCursor.h
     include/sims3000/render/CursorRenderer.h
     include/sims3000/render/LODSystem.h
+    include/sims3000/render/TerrainVisualConfig.h
+    include/sims3000/render/WaterVisualConfig.h
+    include/sims3000/render/VegetationInstance.h
+    include/sims3000/render/VegetationRenderer.h
+    include/sims3000/render/TerrainDebugOverlay.h
     include/sims3000/sync/ICursorSync.h
     include/sims3000/input/InputSystem.h
     include/sims3000/input/ActionMapping.h
@@ -425,6 +536,41 @@ set(SIMS3000_HEADERS
     include/sims3000/persistence/IPersistenceProvider.h
     include/sims3000/persistence/NullPersistenceProvider.h
     include/sims3000/persistence/FilePersistenceProvider.h
+    include/sims3000/terrain/TerrainTypes.h
+    include/sims3000/terrain/TerrainTypeInfo.h
+    include/sims3000/terrain/TerrainGrid.h
+    include/sims3000/terrain/TerrainEvents.h
+    include/sims3000/terrain/ChunkDirtyTracker.h
+    include/sims3000/terrain/WaterData.h
+    include/sims3000/terrain/WaterDistanceField.h
+    include/sims3000/terrain/ProceduralNoise.h
+    include/sims3000/terrain/ContaminationSourceQuery.h
+    include/sims3000/terrain/ITerrainQueryable.h
+    include/sims3000/terrain/ITerrainRenderData.h
+    include/sims3000/terrain/ElevationGenerator.h
+    include/sims3000/terrain/BiomeGenerator.h
+    include/sims3000/terrain/WaterBodyGenerator.h
+    include/sims3000/terrain/SpawnPointGenerator.h
+    include/sims3000/terrain/MapSizeScaling.h
+    include/sims3000/terrain/MapValidator.h
+    include/sims3000/terrain/ITerrainModifier.h
+    include/sims3000/terrain/TerrainModificationSystem.h
+    include/sims3000/terrain/TerrainModificationComponent.h
+    include/sims3000/terrain/GradeTerrainOperation.h
+    include/sims3000/terrain/TerraformOperation.h
+    include/sims3000/terrain/TerrainVertex.h
+    include/sims3000/terrain/TerrainChunk.h
+    include/sims3000/terrain/TerrainLODMesh.h
+    include/sims3000/terrain/TerrainNetworkMessages.h
+    include/sims3000/terrain/TerrainNetworkHandler.h
+    include/sims3000/terrain/TerrainClientHandler.h
+    include/sims3000/terrain/TerrainNormals.h
+    include/sims3000/terrain/WaterMesh.h
+    include/sims3000/terrain/TerrainChunkMeshGenerator.h
+    include/sims3000/terrain/TerrainModificationVisualPipeline.h
+    include/sims3000/terrain/TerrainChunkCuller.h
+    include/sims3000/terrain/TerrainGridSerializer.h
+    include/sims3000/terrain/TerrainNetworkSync.h
 )
 
 # Create executable
@@ -434,7 +580,7 @@ add_executable(${PROJECT_NAME}
 )
 
 # Depend on embedded shaders generation and runtime shaders
-add_dependencies(${PROJECT_NAME} embedded_shaders toon_shaders edge_shaders bloom_shaders debug_grid_shaders stats_overlay_shaders debug_bbox_shaders)
+add_dependencies(${PROJECT_NAME} embedded_shaders toon_shaders edge_shaders bloom_shaders debug_grid_shaders stats_overlay_shaders debug_bbox_shaders terrain_shaders water_shaders terrain_debug_shaders)
 
 # Include directories
 target_include_directories(${PROJECT_NAME}
@@ -466,11 +612,11 @@ if(nlohmann_json_FOUND)
     target_compile_definitions(${PROJECT_NAME} PRIVATE SIMS3000_HAS_JSON=1)
 endif()
 
-# Compiler warnings
+# Compiler warnings and strict FP for cross-platform determinism
 if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX-)
+    target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX- /fp:strict)
 else()
-    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -ffp-contract=off)
 endif()
 
 # Debug/Release definitions

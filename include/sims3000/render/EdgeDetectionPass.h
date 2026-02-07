@@ -74,6 +74,136 @@ struct EdgeDetectionConfig {
 };
 
 /**
+ * @struct TerrainEdgeConfig
+ * @brief Terrain-specific edge detection parameters.
+ *
+ * Tuned parameters for terrain rendering:
+ * - Cliff edges: Bold outlines from strong normal discontinuities
+ * - Water shorelines: Visible outlines at water/land transitions
+ * - Gentle slopes: No excessive edge noise
+ * - Terrain type boundaries: Visual separation via color (edge detection bonus)
+ *
+ * These values are tuned for terrain distances and camera angles typical
+ * of city builder games (35-80 degree pitch, distance 5-250 units).
+ */
+struct TerrainEdgeConfig {
+    /**
+     * @brief Normal threshold for terrain.
+     *
+     * Lower than building threshold (0.3) to catch more subtle terrain features.
+     * Cliffs naturally produce strong normal discontinuities (>0.5 gradient).
+     * Water shorelines have moderate discontinuity where water meets land.
+     *
+     * Value: 0.15 catches cliffs and shorelines without noise on gentle slopes.
+     */
+    static constexpr float NORMAL_THRESHOLD = 0.15f;
+
+    /**
+     * @brief Depth threshold for terrain.
+     *
+     * Higher than building threshold (0.1) to avoid artifacts on gentle slopes.
+     * Terrain has gradual depth changes; we only want silhouette edges.
+     * At terrain distances (50-250 units), depth gradients are smaller.
+     *
+     * Value: 0.25 avoids slope noise while catching terrain silhouettes.
+     */
+    static constexpr float DEPTH_THRESHOLD = 0.25f;
+
+    /**
+     * @brief Edge thickness for terrain outlines.
+     *
+     * Slightly thicker than buildings (1.0) for visibility at distance.
+     * Cliffs should have bold outlines; shorelines should be visible.
+     *
+     * Value: 1.5 provides good visibility without overwhelming detail.
+     */
+    static constexpr float EDGE_THICKNESS = 1.5f;
+
+    /**
+     * @brief Cliff normal discontinuity threshold.
+     *
+     * Cliffs are defined by steep normal changes (horizontal vs vertical).
+     * A normal.y < 0.5 indicates a cliff face (>60 degree slope).
+     * The edge detection naturally catches this as a normal discontinuity.
+     *
+     * Value: 0.5 - used by shader to identify cliff regions for bold edges.
+     */
+    static constexpr float CLIFF_NORMAL_Y_THRESHOLD = 0.5f;
+
+    /**
+     * @brief Minimum slope angle (radians) for edge detection suppression.
+     *
+     * Gentle slopes below this angle should not produce edge lines.
+     * 0.35 radians = ~20 degrees, which covers typical rolling terrain.
+     *
+     * Value: Used to suppress depth edges on gentle slopes.
+     */
+    static constexpr float GENTLE_SLOPE_ANGLE = 0.35f;
+
+    /**
+     * @brief Edge weight multiplier for cliff edges.
+     *
+     * Cliff edges are multiplied by this factor for bolder appearance.
+     * Applied when normal.y is below CLIFF_NORMAL_Y_THRESHOLD.
+     *
+     * Value: 1.5 makes cliff edges ~50% bolder than standard edges.
+     */
+    static constexpr float CLIFF_EDGE_WEIGHT = 1.5f;
+
+    /**
+     * @brief Edge weight multiplier for shoreline edges.
+     *
+     * Water/land boundaries receive this weight multiplier.
+     * Detected by checking for water terrain type transitions.
+     *
+     * Value: 1.25 makes shorelines visible but not overwhelming.
+     */
+    static constexpr float SHORELINE_EDGE_WEIGHT = 1.25f;
+
+    /**
+     * @brief Depth linearization scale factor for terrain distances.
+     *
+     * Terrain is viewed at greater distances than buildings.
+     * This scales the depth threshold based on camera distance.
+     *
+     * Value: 0.8 reduces depth sensitivity at far distances.
+     */
+    static constexpr float DISTANCE_SCALE_FACTOR = 0.8f;
+
+    /**
+     * @brief Create EdgeDetectionConfig with terrain-tuned values.
+     *
+     * @param outlineColor Edge outline color (default: dark purple)
+     * @param nearPlane Camera near plane distance
+     * @param farPlane Camera far plane distance
+     * @return EdgeDetectionConfig tuned for terrain
+     */
+    static EdgeDetectionConfig createConfig(
+        const glm::vec4& outlineColor = glm::vec4(0.165f, 0.106f, 0.239f, 1.0f),
+        float nearPlane = 0.1f,
+        float farPlane = 1000.0f)
+    {
+        EdgeDetectionConfig config;
+        config.outlineColor = outlineColor;
+        config.normalThreshold = NORMAL_THRESHOLD;
+        config.depthThreshold = DEPTH_THRESHOLD;
+        config.edgeThickness = EDGE_THICKNESS;
+        config.nearPlane = nearPlane;
+        config.farPlane = farPlane;
+        return config;
+    }
+
+    /**
+     * @brief Get terrain config values as a struct for reference.
+     * @return EdgeDetectionConfig with terrain values
+     */
+    static EdgeDetectionConfig getDefaults()
+    {
+        return createConfig();
+    }
+};
+
+/**
  * @struct EdgeDetectionStats
  * @brief Statistics about edge detection pass execution.
  */
@@ -205,6 +335,33 @@ public:
     void setDepthThreshold(float threshold);
 
     /**
+     * Apply terrain-specific edge detection configuration.
+     *
+     * Configures edge detection for terrain rendering:
+     * - Lower normal threshold for cliffs and shorelines
+     * - Higher depth threshold to avoid gentle slope noise
+     * - Thicker edges for visibility at distance
+     *
+     * Call this before rendering terrain, or use setConfig() to switch
+     * back to building configuration.
+     */
+    void applyTerrainConfig();
+
+    /**
+     * Apply building/default edge detection configuration.
+     *
+     * Restores edge detection to default values suitable for buildings
+     * and other non-terrain geometry.
+     */
+    void applyBuildingConfig();
+
+    /**
+     * Check if currently using terrain configuration.
+     * @return true if terrain config is active
+     */
+    bool isTerrainConfigActive() const { return m_terrainConfigActive; }
+
+    /**
      * Get execution statistics from last execute() call.
      * @return Edge detection statistics
      */
@@ -250,6 +407,12 @@ private:
 
     // Statistics
     EdgeDetectionStats m_stats;
+
+    // Configuration mode tracking
+    bool m_terrainConfigActive = false;
+
+    // Stored building config for switching back
+    EdgeDetectionConfig m_buildingConfig;
 
     std::string m_lastError;
 };

@@ -1,0 +1,112 @@
+# ============================================================================
+# TERRAIN COLOR TOKENS
+# ============================================================================
+# User-editable color definitions for all terrain types.
+# Edit the hex values below to change terrain colors.
+#
+# These values are manually synced to:
+#   - include/sims3000/terrain/TerrainTypeInfo.h (TERRAIN_INFO array)
+#   - docs/canon/terrain-visuals.yaml (full visual spec)
+#
+# After editing this file, update TerrainTypeInfo.h with the new RGB values.
+# Use a hex-to-RGB converter: hex #RRGGBB -> rgb(R, G, B)
+#
+# ============================================================================
+
+terrain_colors:
+
+  # --------------------------------------------------------------------------
+  # SUBSTRATE (0) - Standard buildable terrain (flat ground)
+  # --------------------------------------------------------------------------
+  substrate:
+    base_color: "#0a0a0f"      # Near-black with blue undertone
+    emissive_color: "#1a1a2e"  # Very subtle deep blue-purple
+    emissive_intensity: 0.05   # Barely visible - background terrain
+
+  # --------------------------------------------------------------------------
+  # RIDGE (1) - Elevated terrain / hills
+  # --------------------------------------------------------------------------
+  ridge:
+    base_color: "#12101a"      # Dark grey-purple rock
+    emissive_color: "#3d2d5c"  # Deep purple with magenta undertone
+    emissive_intensity: 0.10   # Subtle glow in crevices
+
+  # --------------------------------------------------------------------------
+  # DEEP_VOID (2) - Ocean / map-edge water
+  # --------------------------------------------------------------------------
+  deep_void:
+    base_color: "#050510"      # Near-black deep blue
+    emissive_color: "#0066aa"  # Deep ocean blue
+    emissive_intensity: 0.10   # Slow pulse effect
+    shoreline_color: "#33ccff" # Bright cyan-white shoreline
+
+  # --------------------------------------------------------------------------
+  # FLOW_CHANNEL (3) - Rivers / flowing water
+  # --------------------------------------------------------------------------
+  flow_channel:
+    base_color: "#061015"      # Dark blue-green
+    emissive_color: "#00aaaa"  # Bright teal-cyan
+    emissive_intensity: 0.12   # Visible flow effect
+
+  # --------------------------------------------------------------------------
+  # STILL_BASIN (4) - Lakes / ponds
+  # --------------------------------------------------------------------------
+  still_basin:
+    base_color: "#081018"      # Dark blue-grey
+    emissive_color: "#4488cc"  # Soft blue glow
+    emissive_intensity: 0.10   # Calm, gentle reflection
+
+  # --------------------------------------------------------------------------
+  # BIOLUME_GROVE (5) - Alien vegetation (forest equivalent)
+  # --------------------------------------------------------------------------
+  biolume_grove:
+    base_color: "#0a1510"      # Dark green-black
+    emissive_color: "#00ff88"  # Bright bioluminescent green-cyan
+    emissive_intensity: 0.25   # Notable biome glow
+
+  # --------------------------------------------------------------------------
+  # PRISMA_FIELDS (6) - Luminous crystal formations
+  # --------------------------------------------------------------------------
+  prisma_fields:
+    base_color: "#150a15"      # Dark magenta-black
+    emissive_color: "#ff00ff"  # Bright magenta (MAXIMUM terrain glow)
+    emissive_intensity: 0.60   # Landmark intensity
+
+  # --------------------------------------------------------------------------
+  # SPORE_FLATS (7) - Bioluminescent spore plains
+  # --------------------------------------------------------------------------
+  spore_flats:
+    base_color: "#101508"      # Dark yellow-green
+    emissive_color: "#88ff44"  # Bright lime-yellow glow
+    emissive_intensity: 0.30   # Vibrant biome
+
+  # --------------------------------------------------------------------------
+  # BLIGHT_MIRES (8) - Toxic marshes / chemical pools
+  # --------------------------------------------------------------------------
+  blight_mires:
+    base_color: "#121508"      # Dark yellow-olive
+    emissive_color: "#aaff00"  # Toxic yellow-green
+    emissive_intensity: 0.30   # Hazard warning glow
+
+  # --------------------------------------------------------------------------
+  # EMBER_CRUST (9) - Volcanic / geothermal terrain
+  # --------------------------------------------------------------------------
+  ember_crust:
+    base_color: "#150a05"      # Dark red-brown
+    emissive_color: "#ff4400"  # Hot orange-red
+    emissive_intensity: 0.35   # Warm glow with veining
+
+# ============================================================================
+# INTENSITY HIERARCHY REFERENCE
+# ============================================================================
+# Terrain glow should never exceed building glow (0.5-1.0).
+#
+# 0.05  Substrate      - Nearly invisible background
+# 0.10  Ridge/Water    - Subtle environmental features
+# 0.12  FlowChannel    - Active water effect
+# 0.25  BiolumeGrove   - Notable biome
+# 0.30  Spore/Blight   - Vibrant/hazard biomes
+# 0.35  EmberCrust     - Warm glow feature
+# 0.60  PrismaFields   - Maximum terrain (landmark)
+# 0.50+ Buildings      - Always dominant over terrain
+# ============================================================================

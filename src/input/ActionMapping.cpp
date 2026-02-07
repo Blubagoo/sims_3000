@@ -91,6 +91,15 @@ void ActionMapping::resetToDefaults() {
     bind(Action::DEBUG_STATS, SDL_SCANCODE_F3);  // Render stats overlay
     bind(Action::DEBUG_BOUNDING_BOX, SDL_SCANCODE_B);  // Bounding box visualization
 
+    // Terrain debug modes (F5-F12)
+    bind(Action::DEBUG_TERRAIN_ELEVATION, SDL_SCANCODE_F5);
+    bind(Action::DEBUG_TERRAIN_TYPE, SDL_SCANCODE_F6);
+    bind(Action::DEBUG_TERRAIN_CHUNK, SDL_SCANCODE_F7);
+    bind(Action::DEBUG_TERRAIN_LOD, SDL_SCANCODE_F8);
+    bind(Action::DEBUG_TERRAIN_NORMALS, SDL_SCANCODE_F9);
+    bind(Action::DEBUG_TERRAIN_WATER, SDL_SCANCODE_F10);
+    bind(Action::DEBUG_TERRAIN_BUILDABILITY, SDL_SCANCODE_F12);
+
     // View modes
     bind(Action::TOGGLE_UNDERGROUND, SDL_SCANCODE_U);
 
@@ -122,6 +131,13 @@ const char* ActionMapping::getActionName(Action action) {
         case Action::DEBUG_WIREFRAME: return "Debug Wireframe";
         case Action::DEBUG_STATS: return "Debug Stats";
         case Action::DEBUG_BOUNDING_BOX: return "Debug Bounding Box";
+        case Action::DEBUG_TERRAIN_ELEVATION: return "Terrain Elevation Heatmap";
+        case Action::DEBUG_TERRAIN_TYPE: return "Terrain Type Colormap";
+        case Action::DEBUG_TERRAIN_CHUNK: return "Terrain Chunk Boundaries";
+        case Action::DEBUG_TERRAIN_LOD: return "Terrain LOD Level";
+        case Action::DEBUG_TERRAIN_NORMALS: return "Terrain Normals";
+        case Action::DEBUG_TERRAIN_WATER: return "Terrain Water Body ID";
+        case Action::DEBUG_TERRAIN_BUILDABILITY: return "Terrain Buildability";
         case Action::TOGGLE_UNDERGROUND: return "Toggle Underground";
         case Action::FULLSCREEN:   return "Fullscreen";
         case Action::QUIT:         return "Quit";

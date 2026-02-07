@@ -5,10 +5,18 @@
 
 #include "sims3000/app/Application.h"
 #include "sims3000/net/ENetTransport.h"
+#include "sims3000/render/ViewMatrix.h"
+#include "sims3000/render/ProjectionMatrix.h"
+#include "sims3000/terrain/ElevationGenerator.h"
+#include "sims3000/terrain/BiomeGenerator.h"
+#include "sims3000/terrain/WaterDistanceField.h"
+#include "sims3000/terrain/TerrainTypeInfo.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_log.h>
+#include <glm/gtc/type_ptr.hpp>
 #include <chrono>
 #include <thread>
+#include <cmath>
 
 namespace sims3000 {
 
@@ -85,6 +93,15 @@ Application::Application(const ApplicationConfig& config)
         // Note: Pipeline creation requires shaders - will be fully initialized
         // when MainRenderPass and shader loading are connected
         m_toonPipeline = std::make_unique<ToonPipeline>(*m_gpuDevice);
+
+        // Initialize terrain rendering (Epic 3)
+        if (!initTerrain()) {
+            SDL_Log("Warning: Terrain rendering failed to initialize, falling back to demo");
+            // Fallback to demo rendering if terrain fails
+            if (!initDemo()) {
+                SDL_Log("Warning: Demo rendering also failed to initialize");
+            }
+        }
     }
 
     // Create ECS (both client and server)
@@ -185,8 +202,9 @@ int Application::run() {
             generateAndSendDeltas();
         }
 
-        // 5. Render (client only)
+        // 5. Update demo camera and render (client only)
         if (!m_serverMode) {
+            updateDemoCamera(deltaTime);
             render();
             m_assets->checkHotReload();
         } else {
@@ -443,20 +461,17 @@ void Application::render() {
     }
 
     if (swapchainTexture) {
-        // Begin render pass
-        SDL_GPUColorTargetInfo colorTarget = {};
-        colorTarget.texture = swapchainTexture;
-        colorTarget.clear_color = {0.1f, 0.1f, 0.15f, 1.0f};  // Dark blue-gray
-        colorTarget.load_op = SDL_GPU_LOADOP_CLEAR;
-        colorTarget.store_op = SDL_GPU_STOREOP_STORE;
-
-        SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(
-            cmdBuffer, &colorTarget, 1, nullptr);
-
-        // TODO: Render scene here
-        // For now just clear to show we're working
-
-        SDL_EndGPURenderPass(renderPass);
+        // Render terrain if available, otherwise fall back to demo
+        if (m_terrainInitialized) {
+            renderTerrain(cmdBuffer, swapchainTexture);
+        } else {
+            renderDemo(cmdBuffer, swapchainTexture);
+        }
+    } else {
+        static int nullCount = 0;
+        if (++nullCount % 60 == 1) {
+            SDL_Log("render: null swapchain texture (count: %d)", nullCount);
+        }
     }
 
     m_gpuDevice->submit(cmdBuffer);
@@ -487,6 +502,12 @@ void Application::shutdown() {
     if (m_assets) {
         m_assets->clearAll();
     }
+
+    // Cleanup terrain resources
+    cleanupTerrain();
+
+    // Cleanup demo resources
+    cleanupDemo();
 
     // Destroy systems in reverse order of creation
     m_systems.reset();
@@ -687,6 +708,849 @@ SyncSystem& Application::getSyncSystem() {
 
 SimulationTick Application::getCurrentTick() const {
     return m_clock.getCurrentTick();
+}
+
+// =============================================================================
+// Demo Rendering (for manual testing Epic 2)
+// =============================================================================
+
+bool Application::initDemo() {
+    if (!m_gpuDevice || !m_gpuDevice->isValid()) {
+        return false;
+    }
+
+    SDL_Log("Initializing demo rendering...");
+
+    // Create shader compiler
+    m_shaderCompiler = std::make_unique<ShaderCompiler>(*m_gpuDevice);
+    m_shaderCompiler->setAssetPath(".");  // Load shaders relative to exe
+
+    // Load debug_bbox shaders
+    ShaderResources vertResources{};
+    vertResources.numUniformBuffers = 1;  // viewProjection
+
+    ShaderResources fragResources{};
+
+    auto vertResult = m_shaderCompiler->loadShader(
+        "shaders/debug_bbox.vert",
+        ShaderStage::Vertex,
+        "main",
+        vertResources
+    );
+
+    if (!vertResult.isValid()) {
+        SDL_Log("Failed to load demo vertex shader: %s", vertResult.error.message.c_str());
+        return false;
+    }
+    m_demoVertShader = vertResult.shader;
+
+    auto fragResult = m_shaderCompiler->loadShader(
+        "shaders/debug_bbox.frag",
+        ShaderStage::Fragment,
+        "main",
+        fragResources
+    );
+
+    if (!fragResult.isValid()) {
+        SDL_Log("Failed to load demo fragment shader: %s", fragResult.error.message.c_str());
+        return false;
+    }
+    m_demoFragShader = fragResult.shader;
+
+    SDL_Log("Demo shaders loaded successfully");
+
+    // Create graphics pipeline
+    SDL_GPUDevice* device = m_gpuDevice->getHandle();
+
+    // Vertex attributes: position (vec3) + color (vec4)
+    SDL_GPUVertexBufferDescription vertexBufferDesc{};
+    vertexBufferDesc.slot = 0;
+    vertexBufferDesc.pitch = sizeof(float) * 7;  // 3 floats pos + 4 floats color
+    vertexBufferDesc.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX;
+    vertexBufferDesc.instance_step_rate = 0;
+
+    SDL_GPUVertexAttribute vertexAttributes[2] = {};
+    // Position
+    vertexAttributes[0].location = 0;
+    vertexAttributes[0].buffer_slot = 0;
+    vertexAttributes[0].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
+    vertexAttributes[0].offset = 0;
+    // Color
+    vertexAttributes[1].location = 1;
+    vertexAttributes[1].buffer_slot = 0;
+    vertexAttributes[1].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4;
+    vertexAttributes[1].offset = sizeof(float) * 3;
+
+    SDL_GPUVertexInputState vertexInputState{};
+    vertexInputState.vertex_buffer_descriptions = &vertexBufferDesc;
+    vertexInputState.num_vertex_buffers = 1;
+    vertexInputState.vertex_attributes = vertexAttributes;
+    vertexInputState.num_vertex_attributes = 2;
+
+    SDL_GPUColorTargetDescription colorTarget{};
+    colorTarget.format = SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM;
+
+    SDL_GPUGraphicsPipelineCreateInfo pipelineInfo{};
+    pipelineInfo.vertex_shader = m_demoVertShader;
+    pipelineInfo.fragment_shader = m_demoFragShader;
+    pipelineInfo.vertex_input_state = vertexInputState;
+    pipelineInfo.primitive_type = SDL_GPU_PRIMITIVETYPE_LINELIST;
+    pipelineInfo.target_info.num_color_targets = 1;
+    pipelineInfo.target_info.color_target_descriptions = &colorTarget;
+
+    // Rasterizer state
+    pipelineInfo.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
+    pipelineInfo.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE;
+    pipelineInfo.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
+
+    m_demoPipeline = SDL_CreateGPUGraphicsPipeline(device, &pipelineInfo);
+    if (!m_demoPipeline) {
+        SDL_Log("Failed to create demo pipeline: %s", SDL_GetError());
+        return false;
+    }
+
+    SDL_Log("Demo pipeline created");
+
+    // Create cube vertices (8 corners with colors)
+    // Cube centered at origin, size 2x2x2
+    struct DemoVertex {
+        float x, y, z;      // position
+        float r, g, b, a;   // color
+    };
+
+    // 8 corners of cube with distinct colors
+    DemoVertex cubeVertices[8] = {
+        // Front face (z = 1)
+        {-1.0f, -1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 1.0f},  // 0: red
+        { 1.0f, -1.0f,  1.0f,  0.0f, 1.0f, 0.0f, 1.0f},  // 1: green
+        { 1.0f,  1.0f,  1.0f,  0.0f, 0.0f, 1.0f, 1.0f},  // 2: blue
+        {-1.0f,  1.0f,  1.0f,  1.0f, 1.0f, 0.0f, 1.0f},  // 3: yellow
+        // Back face (z = -1)
+        {-1.0f, -1.0f, -1.0f,  1.0f, 0.0f, 1.0f, 1.0f},  // 4: magenta
+        { 1.0f, -1.0f, -1.0f,  0.0f, 1.0f, 1.0f, 1.0f},  // 5: cyan
+        { 1.0f,  1.0f, -1.0f,  1.0f, 1.0f, 1.0f, 1.0f},  // 6: white
+        {-1.0f,  1.0f, -1.0f,  0.5f, 0.5f, 0.5f, 1.0f},  // 7: gray
+    };
+
+    // 12 edges (24 indices for LINE_LIST)
+    uint16_t cubeIndices[24] = {
+        // Front face
+        0, 1,  1, 2,  2, 3,  3, 0,
+        // Back face
+        4, 5,  5, 6,  6, 7,  7, 4,
+        // Connecting edges
+        0, 4,  1, 5,  2, 6,  3, 7
+    };
+
+    // Create vertex buffer
+    SDL_GPUBufferCreateInfo vbInfo{};
+    vbInfo.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
+    vbInfo.size = sizeof(cubeVertices);
+
+    m_demoVertexBuffer = SDL_CreateGPUBuffer(device, &vbInfo);
+    if (!m_demoVertexBuffer) {
+        SDL_Log("Failed to create demo vertex buffer");
+        return false;
+    }
+
+    // Create index buffer
+    SDL_GPUBufferCreateInfo ibInfo{};
+    ibInfo.usage = SDL_GPU_BUFFERUSAGE_INDEX;
+    ibInfo.size = sizeof(cubeIndices);
+
+    m_demoIndexBuffer = SDL_CreateGPUBuffer(device, &ibInfo);
+    if (!m_demoIndexBuffer) {
+        SDL_Log("Failed to create demo index buffer");
+        return false;
+    }
+
+    // Create uniform buffer for viewProjection matrix
+    SDL_GPUBufferCreateInfo ubInfo{};
+    ubInfo.usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ;
+    ubInfo.size = sizeof(glm::mat4);
+
+    m_demoUniformBuffer = SDL_CreateGPUBuffer(device, &ubInfo);
+    if (!m_demoUniformBuffer) {
+        SDL_Log("Failed to create demo uniform buffer");
+        return false;
+    }
+
+    // Upload vertex and index data via transfer buffer
+    SDL_GPUTransferBufferCreateInfo transferInfo{};
+    transferInfo.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+    transferInfo.size = sizeof(cubeVertices) + sizeof(cubeIndices);
+
+    SDL_GPUTransferBuffer* transferBuffer = SDL_CreateGPUTransferBuffer(device, &transferInfo);
+    if (!transferBuffer) {
+        SDL_Log("Failed to create transfer buffer");
+        return false;
+    }
+
+    // Map and copy data
+    void* mapped = SDL_MapGPUTransferBuffer(device, transferBuffer, false);
+    std::memcpy(mapped, cubeVertices, sizeof(cubeVertices));
+    std::memcpy(static_cast<char*>(mapped) + sizeof(cubeVertices), cubeIndices, sizeof(cubeIndices));
+    SDL_UnmapGPUTransferBuffer(device, transferBuffer);
+
+    // Upload via copy pass
+    SDL_GPUCommandBuffer* uploadCmd = SDL_AcquireGPUCommandBuffer(device);
+    SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(uploadCmd);
+
+    SDL_GPUTransferBufferLocation srcVertex{};
+    srcVertex.transfer_buffer = transferBuffer;
+    srcVertex.offset = 0;
+
+    SDL_GPUBufferRegion dstVertex{};
+    dstVertex.buffer = m_demoVertexBuffer;
+    dstVertex.offset = 0;
+    dstVertex.size = sizeof(cubeVertices);
+
+    SDL_UploadToGPUBuffer(copyPass, &srcVertex, &dstVertex, false);
+
+    SDL_GPUTransferBufferLocation srcIndex{};
+    srcIndex.transfer_buffer = transferBuffer;
+    srcIndex.offset = sizeof(cubeVertices);
+
+    SDL_GPUBufferRegion dstIndex{};
+    dstIndex.buffer = m_demoIndexBuffer;
+    dstIndex.offset = 0;
+    dstIndex.size = sizeof(cubeIndices);
+
+    SDL_UploadToGPUBuffer(copyPass, &srcIndex, &dstIndex, false);
+
+    SDL_EndGPUCopyPass(copyPass);
+    SDL_SubmitGPUCommandBuffer(uploadCmd);
+
+    SDL_ReleaseGPUTransferBuffer(device, transferBuffer);
+
+    // Initialize camera state
+    m_demoCamera.focus_point = glm::vec3(0.0f, 0.0f, 0.0f);
+    m_demoCamera.distance = 8.0f;
+    m_demoCamera.pitch = 35.0f;
+    m_demoCamera.yaw = 45.0f;
+    m_demoCamera.mode = CameraMode::Free;
+
+    m_demoInitialized = true;
+    SDL_Log("Demo rendering initialized - use WASD to pan, QE to rotate, +/- to zoom");
+
+    return true;
+}
+
+void Application::updateDemoCamera(float deltaTime) {
+    if ((!m_demoInitialized && !m_terrainInitialized) || !m_input) return;
+
+    const float panSpeed = 100.0f * deltaTime;
+    const float rotateSpeed = 180.0f * deltaTime;
+    const float zoomSpeed = 100.0f * deltaTime;
+
+    // Calculate camera forward and right vectors in world space
+    float yawRad = m_demoCamera.yaw * 3.14159f / 180.0f;
+    glm::vec3 forward(-sinf(yawRad), 0.0f, -cosf(yawRad));
+    glm::vec3 right(cosf(yawRad), 0.0f, -sinf(yawRad));
+
+    // Pan with WASD
+    if (m_input->isActionDown(Action::PAN_UP)) {
+        m_demoCamera.focus_point += forward * panSpeed;
+    }
+    if (m_input->isActionDown(Action::PAN_DOWN)) {
+        m_demoCamera.focus_point -= forward * panSpeed;
+    }
+    if (m_input->isActionDown(Action::PAN_LEFT)) {
+        m_demoCamera.focus_point -= right * panSpeed;
+    }
+    if (m_input->isActionDown(Action::PAN_RIGHT)) {
+        m_demoCamera.focus_point += right * panSpeed;
+    }
+
+    // Rotate with Q/E
+    if (m_input->isActionDown(Action::ROTATE_CCW)) {
+        m_demoCamera.yaw -= rotateSpeed;
+    }
+    if (m_input->isActionDown(Action::ROTATE_CW)) {
+        m_demoCamera.yaw += rotateSpeed;
+    }
+
+    // Zoom with +/- keys
+    if (m_input->isActionDown(Action::ZOOM_IN)) {
+        m_demoCamera.distance -= zoomSpeed;
+    }
+    if (m_input->isActionDown(Action::ZOOM_OUT)) {
+        m_demoCamera.distance += zoomSpeed;
+    }
+
+    // Zoom with mouse scroll wheel
+    const auto& mouse = m_input->getMouse();
+    if (std::fabs(mouse.wheelY) > 0.001f) {
+        m_demoCamera.distance -= mouse.wheelY * 10.0f;  // Scroll up = zoom in
+    }
+
+    // Apply constraints
+    m_demoCamera.applyConstraints();
+}
+
+void Application::renderDemo(SDL_GPUCommandBuffer* cmdBuffer, SDL_GPUTexture* swapchain) {
+    if (!m_demoInitialized) {
+        // Just clear if demo not initialized
+        SDL_GPUColorTargetInfo colorTarget = {};
+        colorTarget.texture = swapchain;
+        colorTarget.clear_color = {0.1f, 0.1f, 0.15f, 1.0f};
+        colorTarget.load_op = SDL_GPU_LOADOP_CLEAR;
+        colorTarget.store_op = SDL_GPU_STOREOP_STORE;
+
+        SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(cmdBuffer, &colorTarget, 1, nullptr);
+        SDL_EndGPURenderPass(renderPass);
+        return;
+    }
+
+    // Calculate camera position from CameraState (orbital camera)
+    float pitchRad = glm::radians(m_demoCamera.pitch);
+    float yawRad = glm::radians(m_demoCamera.yaw);
+
+    // Camera orbits around focus_point at distance
+    glm::vec3 offset;
+    offset.x = m_demoCamera.distance * cos(pitchRad) * sin(yawRad);
+    offset.y = m_demoCamera.distance * sin(pitchRad);
+    offset.z = m_demoCamera.distance * cos(pitchRad) * cos(yawRad);
+
+    glm::vec3 cameraPos = m_demoCamera.focus_point + offset;
+    glm::vec3 target = m_demoCamera.focus_point;
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::mat4 view = glm::lookAt(cameraPos, target, up);
+
+    float aspectRatio = static_cast<float>(m_window->getWidth()) /
+                        static_cast<float>(m_window->getHeight());
+    glm::mat4 projection = glm::perspectiveRH_ZO(
+        glm::radians(45.0f),
+        aspectRatio,
+        0.1f,
+        100.0f
+    );
+
+    glm::mat4 viewProjection = projection * view;
+
+    // Begin render pass with clear
+    SDL_GPUColorTargetInfo colorTarget = {};
+    colorTarget.texture = swapchain;
+    colorTarget.clear_color = {0.02f, 0.02f, 0.05f, 1.0f};  // Dark bioluminescent
+    colorTarget.load_op = SDL_GPU_LOADOP_CLEAR;
+    colorTarget.store_op = SDL_GPU_STOREOP_STORE;
+
+    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(cmdBuffer, &colorTarget, 1, nullptr);
+
+    // Bind pipeline
+    SDL_BindGPUGraphicsPipeline(renderPass, m_demoPipeline);
+
+    // Bind vertex buffer
+    SDL_GPUBufferBinding vertexBinding{};
+    vertexBinding.buffer = m_demoVertexBuffer;
+    vertexBinding.offset = 0;
+    SDL_BindGPUVertexBuffers(renderPass, 0, &vertexBinding, 1);
+
+    // Bind index buffer
+    SDL_GPUBufferBinding indexBinding{};
+    indexBinding.buffer = m_demoIndexBuffer;
+    indexBinding.offset = 0;
+    SDL_BindGPUIndexBuffer(renderPass, &indexBinding, SDL_GPU_INDEXELEMENTSIZE_16BIT);
+
+    // Push uniform data (viewProjection matrix)
+    SDL_PushGPUVertexUniformData(cmdBuffer, 0, glm::value_ptr(viewProjection), sizeof(glm::mat4));
+
+    // Draw the cube (24 indices = 12 edges)
+    SDL_DrawGPUIndexedPrimitives(renderPass, 24, 1, 0, 0, 0);
+
+    SDL_EndGPURenderPass(renderPass);
+}
+
+void Application::cleanupDemo() {
+    if (!m_gpuDevice) return;
+
+    SDL_GPUDevice* device = m_gpuDevice->getHandle();
+    if (!device) return;
+
+    // Wait for GPU to finish before releasing resources
+    SDL_WaitForGPUIdle(device);
+
+    if (m_demoPipeline) {
+        SDL_ReleaseGPUGraphicsPipeline(device, m_demoPipeline);
+        m_demoPipeline = nullptr;
+    }
+
+    if (m_demoVertexBuffer) {
+        SDL_ReleaseGPUBuffer(device, m_demoVertexBuffer);
+        m_demoVertexBuffer = nullptr;
+    }
+
+    if (m_demoIndexBuffer) {
+        SDL_ReleaseGPUBuffer(device, m_demoIndexBuffer);
+        m_demoIndexBuffer = nullptr;
+    }
+
+    if (m_demoUniformBuffer) {
+        SDL_ReleaseGPUBuffer(device, m_demoUniformBuffer);
+        m_demoUniformBuffer = nullptr;
+    }
+
+    if (m_demoVertShader) {
+        SDL_ReleaseGPUShader(device, m_demoVertShader);
+        m_demoVertShader = nullptr;
+    }
+
+    if (m_demoFragShader) {
+        SDL_ReleaseGPUShader(device, m_demoFragShader);
+        m_demoFragShader = nullptr;
+    }
+
+    m_shaderCompiler.reset();
+    m_demoInitialized = false;
+}
+
+// =============================================================================
+// Terrain Rendering (Epic 3)
+// =============================================================================
+
+bool Application::initTerrain() {
+    if (!m_gpuDevice || !m_gpuDevice->isValid()) {
+        return false;
+    }
+
+    SDL_Log("Initializing terrain rendering...");
+
+    // Create shader compiler if not already created
+    if (!m_shaderCompiler) {
+        m_shaderCompiler = std::make_unique<ShaderCompiler>(*m_gpuDevice);
+        m_shaderCompiler->setAssetPath(".");
+    }
+
+    // Load terrain shaders
+    ShaderResources vertResources{};
+    vertResources.numUniformBuffers = 1;  // ViewProjection + LightViewProjection
+
+    ShaderResources fragResources{};
+    fragResources.numUniformBuffers = 2;  // Lighting + TerrainVisuals
+    fragResources.numSamplers = 1;        // Shadow map + sampler (combined in SDL_GPU)
+
+    auto vertResult = m_shaderCompiler->loadShader(
+        "shaders/terrain.vert",
+        ShaderStage::Vertex,
+        "main",
+        vertResources
+    );
+
+    if (!vertResult.isValid()) {
+        SDL_Log("Failed to load terrain vertex shader: %s", vertResult.error.message.c_str());
+        return false;
+    }
+    m_terrainVertShader = vertResult.shader;
+
+    auto fragResult = m_shaderCompiler->loadShader(
+        "shaders/terrain.frag",
+        ShaderStage::Fragment,
+        "main",
+        fragResources
+    );
+
+    if (!fragResult.isValid()) {
+        SDL_Log("Failed to load terrain fragment shader: %s", fragResult.error.message.c_str());
+        return false;
+    }
+    m_terrainFragShader = fragResult.shader;
+
+    SDL_Log("Terrain shaders loaded successfully");
+
+    // Create terrain graphics pipeline
+    SDL_GPUDevice* device = m_gpuDevice->getHandle();
+
+    // Get terrain vertex attributes
+    SDL_GPUVertexBufferDescription vertexBufferDesc = terrain::getTerrainVertexBufferDescription(0);
+
+    SDL_GPUVertexAttribute vertexAttributes[terrain::TERRAIN_VERTEX_ATTRIBUTE_COUNT];
+    std::uint32_t attrCount = 0;
+    terrain::getTerrainVertexAttributes(0, vertexAttributes, &attrCount);
+
+    SDL_GPUVertexInputState vertexInputState{};
+    vertexInputState.vertex_buffer_descriptions = &vertexBufferDesc;
+    vertexInputState.num_vertex_buffers = 1;
+    vertexInputState.vertex_attributes = vertexAttributes;
+    vertexInputState.num_vertex_attributes = attrCount;
+
+    SDL_GPUColorTargetDescription colorTarget{};
+    colorTarget.format = SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM;
+
+    // Depth-stencil state
+    SDL_GPUDepthStencilState depthState{};
+    depthState.compare_op = SDL_GPU_COMPAREOP_LESS_OR_EQUAL;
+    depthState.enable_depth_test = true;
+    depthState.enable_depth_write = true;
+
+    SDL_GPUGraphicsPipelineCreateInfo pipelineInfo{};
+    pipelineInfo.vertex_shader = m_terrainVertShader;
+    pipelineInfo.fragment_shader = m_terrainFragShader;
+    pipelineInfo.vertex_input_state = vertexInputState;
+    pipelineInfo.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
+    pipelineInfo.target_info.num_color_targets = 1;
+    pipelineInfo.target_info.color_target_descriptions = &colorTarget;
+    pipelineInfo.target_info.depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D24_UNORM;
+    pipelineInfo.target_info.has_depth_stencil_target = true;
+    pipelineInfo.depth_stencil_state = depthState;
+
+    // Rasterizer state
+    pipelineInfo.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
+    pipelineInfo.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE;  // DEBUG: disabled to test winding order
+    pipelineInfo.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
+
+    m_terrainPipeline = SDL_CreateGPUGraphicsPipeline(device, &pipelineInfo);
+    if (!m_terrainPipeline) {
+        SDL_Log("Failed to create terrain pipeline: %s", SDL_GetError());
+        return false;
+    }
+
+    SDL_Log("Terrain pipeline created");
+
+    // Initialize terrain grid with procedural generation
+    using namespace terrain;
+
+    // Use medium map size (256x256)
+    m_terrainGrid.initialize(MapSize::Medium);
+
+    // Generate elevation using a random seed based on time
+    std::uint64_t seed = static_cast<std::uint64_t>(SDL_GetTicks());
+    SDL_Log("Generating terrain with seed: %llu", static_cast<unsigned long long>(seed));
+
+    ElevationConfig elevConfig = ElevationConfig::defaultConfig();
+    ElevationResult elevResult = ElevationGenerator::generate(m_terrainGrid, seed, elevConfig);
+
+    SDL_Log("Elevation generated: min=%u, max=%u, ridges=%u tiles, time=%.2fms",
+            elevResult.minElevation, elevResult.maxElevation,
+            elevResult.ridgeTileCount, elevResult.generationTimeMs);
+
+    // Compute water distance field (required for biome generation)
+    WaterDistanceField waterDist(MapSize::Medium);
+    waterDist.compute(m_terrainGrid);
+
+    // Generate biomes
+    BiomeConfig biomeConfig;
+    BiomeResult biomeResult = BiomeGenerator::generate(m_terrainGrid, waterDist, seed + 1, biomeConfig);
+
+    SDL_Log("Biomes generated: grove=%u, prisma=%u, spore=%u, mire=%u, ember=%u, time=%.2fms",
+            biomeResult.groveCount, biomeResult.prismaCount,
+            biomeResult.sporeCount, biomeResult.mireCount,
+            biomeResult.emberCount, biomeResult.generationTimeMs);
+
+    // Initialize mesh generator
+    m_terrainMeshGenerator.initialize(m_terrainGrid.width, m_terrainGrid.height);
+
+    // Calculate number of chunks
+    std::uint16_t chunksX = m_terrainGrid.width / CHUNK_SIZE;
+    std::uint16_t chunksY = m_terrainGrid.height / CHUNK_SIZE;
+    std::uint32_t totalChunks = static_cast<std::uint32_t>(chunksX) * chunksY;
+
+    SDL_Log("Creating %u terrain chunks (%ux%u)", totalChunks, chunksX, chunksY);
+
+    // Create chunks
+    m_terrainChunks.clear();
+    m_terrainChunks.reserve(totalChunks);
+    for (std::uint16_t cy = 0; cy < chunksY; ++cy) {
+        for (std::uint16_t cx = 0; cx < chunksX; ++cx) {
+            m_terrainChunks.emplace_back(cx, cy);
+        }
+    }
+
+    // Build all chunk meshes
+    if (!m_terrainMeshGenerator.buildAllChunks(device, m_terrainGrid, m_terrainChunks)) {
+        SDL_Log("Failed to build terrain chunk meshes");
+        return false;
+    }
+
+    // Wait for GPU uploads to complete before rendering
+    // Fixes race condition where first frames render before chunk data is uploaded
+    SDL_WaitForGPUIdle(device);
+
+    // Initialize camera to look at terrain center
+    float centerX = static_cast<float>(m_terrainGrid.width) / 2.0f;
+    float centerZ = static_cast<float>(m_terrainGrid.height) / 2.0f;
+    m_demoCamera.focus_point = glm::vec3(centerX, 0.0f, centerZ);
+    m_demoCamera.distance = 100.0f;  // Zoom out to see more terrain
+    m_demoCamera.pitch = 45.0f;      // Look down at terrain
+    m_demoCamera.yaw = 45.0f;
+    m_demoCamera.mode = CameraMode::Free;
+
+    m_terrainInitialized = true;
+    SDL_Log("Terrain rendering initialized - %u chunks, %zu tiles",
+            totalChunks, m_terrainGrid.tile_count());
+    SDL_Log("Use WASD to pan, QE to rotate, +/- to zoom");
+
+    return true;
+}
+
+void Application::renderTerrain(SDL_GPUCommandBuffer* cmdBuffer, SDL_GPUTexture* swapchain) {
+    if (!m_terrainInitialized) {
+        SDL_Log("renderTerrain: not initialized");
+        return;
+    }
+    if (!swapchain) {
+        SDL_Log("renderTerrain: null swapchain");
+        return;
+    }
+    if (!m_terrainPipeline) {
+        SDL_Log("renderTerrain: null pipeline");
+        return;
+    }
+
+    SDL_GPUDevice* device = m_gpuDevice->getHandle();
+
+    // Calculate camera matrices (same as demo camera)
+    float pitchRad = glm::radians(m_demoCamera.pitch);
+    float yawRad = glm::radians(m_demoCamera.yaw);
+
+    glm::vec3 offset;
+    offset.x = m_demoCamera.distance * cos(pitchRad) * sin(yawRad);
+    offset.y = m_demoCamera.distance * sin(pitchRad);
+    offset.z = m_demoCamera.distance * cos(pitchRad) * cos(yawRad);
+
+    glm::vec3 cameraPos = m_demoCamera.focus_point + offset;
+    glm::vec3 target = m_demoCamera.focus_point;
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::mat4 view = glm::lookAt(cameraPos, target, up);
+
+
+    float aspectRatio = static_cast<float>(m_window->getWidth()) /
+                        static_cast<float>(m_window->getHeight());
+    glm::mat4 projection = glm::perspectiveRH_ZO(
+        glm::radians(45.0f),
+        aspectRatio,
+        0.1f,
+        1000.0f  // Larger far plane for terrain
+    );
+
+    // ViewProjection uniform data
+    struct ViewProjectionUBO {
+        glm::mat4 viewProjection;
+        glm::mat4 lightViewProjection;
+    };
+
+    ViewProjectionUBO vpUbo;
+    vpUbo.viewProjection = projection * view;
+    // Light from above-front for good terrain lighting
+    glm::vec3 lightDir = glm::normalize(glm::vec3(0.5f, 1.0f, 0.5f));
+    glm::mat4 lightView = glm::lookAt(
+        target + lightDir * 200.0f,
+        target,
+        glm::vec3(0.0f, 1.0f, 0.0f)
+    );
+    float mapSize = static_cast<float>(m_terrainGrid.width);
+    glm::mat4 lightProj = glm::orthoRH_ZO(-mapSize/2, mapSize/2, -mapSize/2, mapSize/2, 0.1f, 500.0f);
+    vpUbo.lightViewProjection = lightProj * lightView;
+
+    // Lighting uniform data
+    struct LightingUBO {
+        glm::vec3 sunDirection;
+        float globalAmbient;
+        glm::vec3 ambientColor;
+        float shadowEnabled;
+        glm::vec3 deepShadowColor;
+        float shadowIntensity;
+        glm::vec3 shadowTintColor;
+        float shadowBias;
+        glm::vec3 shadowColor;
+        float shadowSoftness;
+    };
+
+    LightingUBO lightUbo;
+    lightUbo.sunDirection = lightDir;
+    lightUbo.globalAmbient = 0.3f;
+    lightUbo.ambientColor = glm::vec3(0.2f, 0.15f, 0.25f);  // Purple-ish ambient
+    lightUbo.shadowEnabled = 0.0f;  // No shadow map yet
+    lightUbo.deepShadowColor = glm::vec3(0.05f, 0.02f, 0.1f);
+    lightUbo.shadowIntensity = 0.5f;
+    lightUbo.shadowTintColor = glm::vec3(0.1f, 0.15f, 0.2f);
+    lightUbo.shadowBias = 0.001f;
+    lightUbo.shadowColor = glm::vec3(0.1f, 0.1f, 0.15f);
+    lightUbo.shadowSoftness = 0.5f;
+
+    // Terrain visuals uniform data (palette)
+    struct TerrainVisualsUBO {
+        glm::vec4 base_colors[10];
+        glm::vec4 emissive_colors[10];
+        float glow_time;
+        float sea_level;
+        float _padding[2];
+    };
+
+    TerrainVisualsUBO terrainUbo;
+
+    // Fill palette from TerrainTypeInfo
+    for (int i = 0; i < 10; ++i) {
+        const auto& info = terrain::getTerrainInfo(static_cast<terrain::TerrainType>(i));
+        // Use emissive_color as base color (terrain has no separate base color in this version)
+        terrainUbo.base_colors[i] = glm::vec4(
+            info.emissive_color.x,
+            info.emissive_color.y,
+            info.emissive_color.z,
+            1.0f
+        );
+        terrainUbo.emissive_colors[i] = glm::vec4(
+            info.emissive_color.x,
+            info.emissive_color.y,
+            info.emissive_color.z,
+            info.emissive_intensity
+        );
+    }
+
+    // Animate glow
+    static float glowTime = 0.0f;
+    glowTime += 0.016f;  // ~60fps
+    terrainUbo.glow_time = glowTime;
+    terrainUbo.sea_level = static_cast<float>(m_terrainGrid.sea_level);
+    terrainUbo._padding[0] = 0.0f;
+    terrainUbo._padding[1] = 0.0f;
+
+    // Create depth texture for this frame
+    SDL_GPUTextureCreateInfo depthTextureInfo{};
+    depthTextureInfo.type = SDL_GPU_TEXTURETYPE_2D;
+    depthTextureInfo.format = SDL_GPU_TEXTUREFORMAT_D24_UNORM;
+    depthTextureInfo.width = m_window->getWidth();
+    depthTextureInfo.height = m_window->getHeight();
+    depthTextureInfo.layer_count_or_depth = 1;
+    depthTextureInfo.num_levels = 1;
+    depthTextureInfo.sample_count = SDL_GPU_SAMPLECOUNT_1;  // Required for valid texture
+    depthTextureInfo.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
+
+    SDL_GPUTexture* depthTexture = SDL_CreateGPUTexture(device, &depthTextureInfo);
+    if (!depthTexture) {
+        SDL_Log("Failed to create depth texture: %s", SDL_GetError());
+        return;
+    }
+
+    // Begin render pass with depth buffer
+    SDL_GPUColorTargetInfo colorTarget{};
+    colorTarget.texture = swapchain;
+    colorTarget.clear_color = {0.02f, 0.02f, 0.05f, 1.0f};  // Dark bioluminescent
+    colorTarget.load_op = SDL_GPU_LOADOP_CLEAR;
+    colorTarget.store_op = SDL_GPU_STOREOP_STORE;
+
+    SDL_GPUDepthStencilTargetInfo depthTarget{};
+    depthTarget.texture = depthTexture;
+    depthTarget.clear_depth = 1.0f;
+    depthTarget.load_op = SDL_GPU_LOADOP_CLEAR;
+    depthTarget.store_op = SDL_GPU_STOREOP_DONT_CARE;
+
+    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(cmdBuffer, &colorTarget, 1, &depthTarget);
+
+    // Bind terrain pipeline
+    SDL_BindGPUGraphicsPipeline(renderPass, m_terrainPipeline);
+
+    // Create dummy shadow map texture (1x1 depth texture)
+    SDL_GPUTextureCreateInfo dummyShadowInfo{};
+    dummyShadowInfo.type = SDL_GPU_TEXTURETYPE_2D;
+    dummyShadowInfo.format = SDL_GPU_TEXTUREFORMAT_D16_UNORM;
+    dummyShadowInfo.width = 1;
+    dummyShadowInfo.height = 1;
+    dummyShadowInfo.layer_count_or_depth = 1;
+    dummyShadowInfo.num_levels = 1;
+    dummyShadowInfo.sample_count = SDL_GPU_SAMPLECOUNT_1;
+    dummyShadowInfo.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+
+    SDL_GPUTexture* dummyShadowMap = SDL_CreateGPUTexture(device, &dummyShadowInfo);
+
+    // Create shadow sampler (comparison sampler for shadow mapping)
+    SDL_GPUSamplerCreateInfo shadowSamplerInfo{};
+    shadowSamplerInfo.min_filter = SDL_GPU_FILTER_LINEAR;
+    shadowSamplerInfo.mag_filter = SDL_GPU_FILTER_LINEAR;
+    shadowSamplerInfo.mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_NEAREST;
+    shadowSamplerInfo.address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
+    shadowSamplerInfo.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
+    shadowSamplerInfo.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
+    shadowSamplerInfo.compare_op = SDL_GPU_COMPAREOP_LESS_OR_EQUAL;
+    shadowSamplerInfo.enable_compare = true;
+
+    SDL_GPUSampler* shadowSampler = SDL_CreateGPUSampler(device, &shadowSamplerInfo);
+
+    // Bind shadow map texture and sampler (slot 0)
+    SDL_GPUTextureSamplerBinding shadowBinding{};
+    shadowBinding.texture = dummyShadowMap;
+    shadowBinding.sampler = shadowSampler;
+    SDL_BindGPUFragmentSamplers(renderPass, 0, &shadowBinding, 1);
+
+    // Push uniform data
+    SDL_PushGPUVertexUniformData(cmdBuffer, 0, &vpUbo, sizeof(ViewProjectionUBO));
+    SDL_PushGPUFragmentUniformData(cmdBuffer, 0, &lightUbo, sizeof(LightingUBO));
+    SDL_PushGPUFragmentUniformData(cmdBuffer, 1, &terrainUbo, sizeof(TerrainVisualsUBO));
+
+    // Render each chunk
+    static bool loggedOnce = false;
+    int renderedChunks = 0;
+    int skippedChunks = 0;
+    for (const auto& chunk : m_terrainChunks) {
+        if (!chunk.hasGPUResources() || chunk.index_count == 0) {
+            skippedChunks++;
+            continue;
+        }
+        renderedChunks++;
+
+        // Bind vertex buffer
+        SDL_GPUBufferBinding vertexBinding{};
+        vertexBinding.buffer = chunk.vertex_buffer;
+        vertexBinding.offset = 0;
+        SDL_BindGPUVertexBuffers(renderPass, 0, &vertexBinding, 1);
+
+        // Bind index buffer
+        SDL_GPUBufferBinding indexBinding{};
+        indexBinding.buffer = chunk.index_buffer;
+        indexBinding.offset = 0;
+        SDL_BindGPUIndexBuffer(renderPass, &indexBinding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+
+        // Draw chunk
+        SDL_DrawGPUIndexedPrimitives(renderPass, chunk.index_count, 1, 0, 0, 0);
+    }
+
+    if (!loggedOnce) {
+        SDL_Log("Terrain render: %d chunks rendered, %d skipped", renderedChunks, skippedChunks);
+        loggedOnce = true;
+    }
+
+    SDL_EndGPURenderPass(renderPass);
+
+    // Release depth texture
+    SDL_ReleaseGPUTexture(device, depthTexture);
+
+    // Release dummy shadow resources
+    SDL_ReleaseGPUSampler(device, shadowSampler);
+    SDL_ReleaseGPUTexture(device, dummyShadowMap);
+}
+
+void Application::cleanupTerrain() {
+    if (!m_gpuDevice) return;
+
+    SDL_GPUDevice* device = m_gpuDevice->getHandle();
+    if (!device) return;
+
+    // Wait for GPU to finish
+    SDL_WaitForGPUIdle(device);
+
+    // Release chunk GPU resources
+    for (auto& chunk : m_terrainChunks) {
+        chunk.releaseGPUResources(device);
+    }
+    m_terrainChunks.clear();
+
+    // Release pipeline
+    if (m_terrainPipeline) {
+        SDL_ReleaseGPUGraphicsPipeline(device, m_terrainPipeline);
+        m_terrainPipeline = nullptr;
+    }
+
+    // Release shaders
+    if (m_terrainVertShader) {
+        SDL_ReleaseGPUShader(device, m_terrainVertShader);
+        m_terrainVertShader = nullptr;
+    }
+
+    if (m_terrainFragShader) {
+        SDL_ReleaseGPUShader(device, m_terrainFragShader);
+        m_terrainFragShader = nullptr;
+    }
+
+    m_terrainInitialized = false;
 }
 
 } // namespace sims3000

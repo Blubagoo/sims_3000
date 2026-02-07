@@ -1470,3 +1470,698 @@ target_link_libraries(test_lod_system PRIVATE
 
 # LODSystem tests do NOT require GPU - pure logic tests
 add_test(NAME LODSystem COMMAND test_lod_system)
+
+# Test executable for TerrainTypes (Ticket 3-001)
+add_executable(test_terrain_types
+    terrain/test_terrain_types.cpp
+)
+
+target_include_directories(test_terrain_types PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# TerrainTypes tests do NOT require external libraries - pure data structure tests
+add_test(NAME TerrainTypes COMMAND test_terrain_types)
+
+# Test executable for TerrainTypeInfo (Ticket 3-003)
+add_executable(test_terrain_type_info
+    terrain/test_terrain_type_info.cpp
+)
+
+target_include_directories(test_terrain_type_info PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# TerrainTypeInfo tests do NOT require external libraries - pure data structure tests
+add_test(NAME TerrainTypeInfo COMMAND test_terrain_type_info)
+
+# Test executable for TerrainGrid (Ticket 3-002)
+add_executable(test_terrain_grid
+    terrain/test_terrain_grid.cpp
+)
+
+target_include_directories(test_terrain_grid PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# TerrainGrid tests do NOT require external libraries - pure data structure tests
+add_test(NAME TerrainGrid COMMAND test_terrain_grid)
+
+# Test executable for TerrainEvents and ChunkDirtyTracker (Ticket 3-004)
+add_executable(test_terrain_events
+    terrain/test_terrain_events.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ChunkDirtyTracker.cpp
+)
+
+target_include_directories(test_terrain_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# TerrainEvents tests do NOT require external libraries - pure data structure tests
+add_test(NAME TerrainEvents COMMAND test_terrain_events)
+
+# Test executable for WaterData (Ticket 3-005)
+add_executable(test_water_data
+    terrain/test_water_data.cpp
+)
+
+target_include_directories(test_water_data PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# WaterData tests do NOT require external libraries - pure data structure tests
+add_test(NAME WaterData COMMAND test_water_data)
+
+# Test executable for ProceduralNoise (Ticket 3-007)
+add_executable(test_procedural_noise
+    terrain/test_procedural_noise.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ProceduralNoise.cpp
+)
+
+target_include_directories(test_procedural_noise PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Use strict FP semantics for cross-platform determinism
+if(MSVC)
+    target_compile_options(test_procedural_noise PRIVATE /fp:strict)
+else()
+    target_compile_options(test_procedural_noise PRIVATE -ffp-contract=off)
+endif()
+
+# ProceduralNoise tests do NOT require external libraries - pure algorithm tests
+add_test(NAME ProceduralNoise COMMAND test_procedural_noise)
+
+# Test executable for ITerrainModifier interface (Ticket 3-017)
+add_executable(test_terrain_modifier
+    terrain/test_terrain_modifier.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ChunkDirtyTracker.cpp
+)
+
+target_include_directories(test_terrain_modifier PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# TerrainModifier tests do NOT require external libraries - pure interface tests
+add_test(NAME TerrainModifier COMMAND test_terrain_modifier)
+
+# Test executable for WaterDistanceField (Ticket 3-006)
+add_executable(test_water_distance_field
+    terrain/test_water_distance_field.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterDistanceField.cpp
+)
+
+target_include_directories(test_water_distance_field PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# WaterDistanceField tests do NOT require external libraries - pure data structure tests
+add_test(NAME WaterDistanceField COMMAND test_water_distance_field)
+
+# Test executable for ContaminationSourceQuery (Ticket 3-018)
+add_executable(test_contamination_source_query
+    terrain/test_contamination_source_query.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ContaminationSourceQuery.cpp
+)
+
+target_include_directories(test_contamination_source_query PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# ContaminationSourceQuery tests do NOT require external libraries - pure data structure tests
+add_test(NAME ContaminationSourceQuery COMMAND test_contamination_source_query)
+
+# Test executable for ITerrainQueryable interface (Ticket 3-014)
+add_executable(test_terrain_queryable
+    terrain/test_terrain_queryable.cpp
+)
+
+target_include_directories(test_terrain_queryable PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# ITerrainQueryable tests do NOT require external libraries - pure interface tests
+add_test(NAME TerrainQueryable COMMAND test_terrain_queryable)
+
+# Test executable for ElevationGenerator (Ticket 3-008)
+add_executable(test_elevation_generator
+    terrain/test_elevation_generator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ElevationGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ProceduralNoise.cpp
+)
+
+target_include_directories(test_elevation_generator PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Use strict FP semantics for cross-platform determinism
+if(MSVC)
+    target_compile_options(test_elevation_generator PRIVATE /fp:strict)
+else()
+    target_compile_options(test_elevation_generator PRIVATE -ffp-contract=off)
+endif()
+
+# ElevationGenerator tests do NOT require external libraries - pure algorithm tests
+add_test(NAME ElevationGenerator COMMAND test_elevation_generator)
+
+# Test executable for BiomeGenerator (Ticket 3-010)
+add_executable(test_biome_generator
+    terrain/test_biome_generator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/BiomeGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ElevationGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ProceduralNoise.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterDistanceField.cpp
+)
+
+target_include_directories(test_biome_generator PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Use strict FP semantics for cross-platform determinism
+if(MSVC)
+    target_compile_options(test_biome_generator PRIVATE /fp:strict)
+else()
+    target_compile_options(test_biome_generator PRIVATE -ffp-contract=off)
+endif()
+
+# BiomeGenerator tests do NOT require external libraries - pure algorithm tests
+add_test(NAME BiomeGenerator COMMAND test_biome_generator)
+
+# Test executable for ITerrainRenderData interface (Ticket 3-016)
+add_executable(test_terrain_render_data
+    terrain/test_terrain_render_data.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ChunkDirtyTracker.cpp
+)
+
+target_include_directories(test_terrain_render_data PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# ITerrainRenderData tests do NOT require external libraries - pure interface tests
+add_test(NAME TerrainRenderData COMMAND test_terrain_render_data)
+
+# Test executable for WaterBodyGenerator (Ticket 3-009)
+add_executable(test_water_body_generator
+    terrain/test_water_body_generator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterBodyGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ElevationGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ProceduralNoise.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterDistanceField.cpp
+)
+
+target_include_directories(test_water_body_generator PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Use strict FP semantics for cross-platform determinism
+if(MSVC)
+    target_compile_options(test_water_body_generator PRIVATE /fp:strict)
+else()
+    target_compile_options(test_water_body_generator PRIVATE -ffp-contract=off)
+endif()
+
+# WaterBodyGenerator tests do NOT require external libraries - pure algorithm tests
+add_test(NAME WaterBodyGenerator COMMAND test_water_body_generator)
+
+# Test executable for MapSizeScaling (Ticket 3-011)
+add_executable(test_map_size_scaling
+    terrain/test_map_size_scaling.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ElevationGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterBodyGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/BiomeGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ProceduralNoise.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterDistanceField.cpp
+)
+
+target_include_directories(test_map_size_scaling PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Use strict FP semantics for cross-platform determinism
+if(MSVC)
+    target_compile_options(test_map_size_scaling PRIVATE /fp:strict)
+else()
+    target_compile_options(test_map_size_scaling PRIVATE -ffp-contract=off)
+endif()
+
+# MapSizeScaling tests do NOT require external libraries - pure algorithm tests
+add_test(NAME MapSizeScaling COMMAND test_map_size_scaling)
+
+# Test executable for SpawnPointGenerator (Ticket 3-012)
+add_executable(test_spawn_point_generator
+    terrain/test_spawn_point_generator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/SpawnPointGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ElevationGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterBodyGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/BiomeGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ProceduralNoise.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterDistanceField.cpp
+)
+
+target_include_directories(test_spawn_point_generator PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Use strict FP semantics for cross-platform determinism
+if(MSVC)
+    target_compile_options(test_spawn_point_generator PRIVATE /fp:strict)
+else()
+    target_compile_options(test_spawn_point_generator PRIVATE -ffp-contract=off)
+endif()
+
+# SpawnPointGenerator tests do NOT require external libraries - pure algorithm tests
+add_test(NAME SpawnPointGenerator COMMAND test_spawn_point_generator)
+
+# Test executable for MapValidator (Ticket 3-013)
+add_executable(test_map_validator
+    terrain/test_map_validator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/MapValidator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/SpawnPointGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ElevationGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterBodyGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/BiomeGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ProceduralNoise.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterDistanceField.cpp
+)
+
+target_include_directories(test_map_validator PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Use strict FP semantics for cross-platform determinism
+if(MSVC)
+    target_compile_options(test_map_validator PRIVATE /fp:strict)
+else()
+    target_compile_options(test_map_validator PRIVATE -ffp-contract=off)
+endif()
+
+# MapValidator tests do NOT require external libraries - pure algorithm tests
+add_test(NAME MapValidator COMMAND test_map_validator)
+
+# Test executable for TerrainModificationSystem (Ticket 3-019)
+add_executable(test_terrain_modification_system
+    terrain/test_terrain_modification_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainModificationSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ChunkDirtyTracker.cpp
+)
+
+target_include_directories(test_terrain_modification_system PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# TerrainModificationSystem tests do NOT require external libraries - pure data structure tests
+add_test(NAME TerrainModificationSystem COMMAND test_terrain_modification_system)
+
+# Test executable for GradeTerrainOperation (Ticket 3-020)
+add_executable(test_grade_terrain
+    terrain/test_grade_terrain.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/GradeTerrainOperation.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ChunkDirtyTracker.cpp
+)
+
+target_include_directories(test_grade_terrain PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_grade_terrain PRIVATE
+    EnTT::EnTT
+)
+
+# GradeTerrainOperation tests require EnTT for ECS registry
+add_test(NAME GradeTerrainOperation COMMAND test_grade_terrain)
+
+# Test executable for TerraformOperation (Ticket 3-021)
+add_executable(test_terraform_operation
+    terrain/test_terraform_operation.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerraformOperation.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/GradeTerrainOperation.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ChunkDirtyTracker.cpp
+)
+
+target_include_directories(test_terraform_operation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_terraform_operation PRIVATE
+    EnTT::EnTT
+)
+
+# TerraformOperation tests require EnTT for ECS registry
+add_test(NAME TerraformOperation COMMAND test_terraform_operation)
+
+# Test executable for TerrainNetworkMessages (Ticket 3-022)
+add_executable(test_terrain_network
+    terrain/test_terrain_network.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainNetworkMessages.cpp
+    ${CMAKE_SOURCE_DIR}/src/net/NetworkMessage.cpp
+    ${CMAKE_SOURCE_DIR}/src/net/NetworkBuffer.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/Logger.cpp
+)
+
+target_include_directories(test_terrain_network PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_terrain_network PRIVATE
+    SDL3::SDL3
+)
+
+# TerrainNetwork tests do NOT require external libraries - pure message serialization tests
+add_test(NAME TerrainNetwork COMMAND test_terrain_network)
+
+# Test executable for TerrainVertex (Ticket 3-023)
+add_executable(test_terrain_vertex
+    terrain/test_terrain_vertex.cpp
+)
+
+target_include_directories(test_terrain_vertex PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_terrain_vertex PRIVATE
+    SDL3::SDL3
+)
+
+# TerrainVertex tests do NOT require GPU - pure data structure tests
+add_test(NAME TerrainVertex COMMAND test_terrain_vertex)
+
+# Test executable for TerrainChunk (Ticket 3-023)
+add_executable(test_terrain_chunk
+    terrain/test_terrain_chunk.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ChunkDirtyTracker.cpp
+)
+
+target_include_directories(test_terrain_chunk PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_terrain_chunk PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+# TerrainChunk tests do NOT require GPU - pure data structure tests
+add_test(NAME TerrainChunk COMMAND test_terrain_chunk)
+
+# Test executable for TerrainNormals (Ticket 3-024)
+add_executable(test_terrain_normals
+    terrain/test_terrain_normals.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainNormals.cpp
+)
+
+target_include_directories(test_terrain_normals PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_terrain_normals PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+# TerrainNormals tests do NOT require GPU - pure algorithm tests
+add_test(NAME TerrainNormals COMMAND test_terrain_normals)
+
+# Test executable for TerrainVisualConfig (Ticket 3-026)
+add_executable(test_terrain_visual_config
+    render/test_terrain_visual_config.cpp
+)
+
+target_include_directories(test_terrain_visual_config PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_terrain_visual_config PRIVATE
+    glm::glm
+)
+
+# TerrainVisualConfig tests do NOT require GPU - pure data structure tests
+add_test(NAME TerrainVisualConfig COMMAND test_terrain_visual_config)
+
+# Test executable for TerrainVisualConfig Integration (Ticket 3-039)
+add_executable(test_terrain_visual_config_integration
+    render/test_terrain_visual_config_integration.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ToonShaderConfig.cpp
+)
+
+target_include_directories(test_terrain_visual_config_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_terrain_visual_config_integration PRIVATE
+    glm::glm
+)
+
+if(nlohmann_json_FOUND)
+    target_link_libraries(test_terrain_visual_config_integration PRIVATE nlohmann_json::nlohmann_json)
+    target_compile_definitions(test_terrain_visual_config_integration PRIVATE SIMS3000_HAS_JSON=1)
+endif()
+
+# TerrainVisualConfig integration tests do NOT require GPU - pure data structure tests
+add_test(NAME TerrainVisualConfigIntegration COMMAND test_terrain_visual_config_integration)
+
+# Test executable for WaterMesh (Ticket 3-027)
+add_executable(test_water_mesh
+    terrain/test_water_mesh.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterMeshGenerator.cpp
+)
+
+target_include_directories(test_water_mesh PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_water_mesh PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+# WaterMesh tests do NOT require GPU - pure data structure and algorithm tests
+add_test(NAME WaterMesh COMMAND test_water_mesh)
+
+# Test executable for WaterVisualConfig (Ticket 3-028)
+add_executable(test_water_visual_config
+    render/test_water_visual_config.cpp
+)
+
+target_include_directories(test_water_visual_config PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_water_visual_config PRIVATE
+    glm::glm
+)
+
+# WaterVisualConfig tests do NOT require GPU - pure data structure tests
+add_test(NAME WaterVisualConfig COMMAND test_water_visual_config)
+
+# Test executable for TerrainChunkMeshGenerator (Ticket 3-025)
+add_executable(test_terrain_chunk_mesh_generator
+    terrain/test_terrain_chunk_mesh_generator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainChunkMeshGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainNormals.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ChunkDirtyTracker.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/Logger.cpp
+)
+
+target_include_directories(test_terrain_chunk_mesh_generator PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_terrain_chunk_mesh_generator PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+# TerrainChunkMeshGenerator tests do NOT require GPU - CPU-side mesh generation tests
+add_test(NAME TerrainChunkMeshGenerator COMMAND test_terrain_chunk_mesh_generator)
+
+# Test executable for VegetationPlacementGenerator (Ticket 3-029)
+add_executable(test_vegetation_placement
+    render/test_vegetation_placement.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/VegetationPlacementGenerator.cpp
+)
+
+target_include_directories(test_vegetation_placement PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_vegetation_placement PRIVATE
+    glm::glm
+)
+
+# VegetationPlacement tests do NOT require GPU - pure algorithm tests
+add_test(NAME VegetationPlacement COMMAND test_vegetation_placement)
+
+# Test executable for TerrainModificationVisualPipeline (Ticket 3-031)
+add_executable(test_terrain_modification_visual_pipeline
+    terrain/test_terrain_modification_visual_pipeline.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainModificationVisualPipeline.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainChunkMeshGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainNormals.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ChunkDirtyTracker.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterMeshGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/VegetationPlacementGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/Logger.cpp
+)
+
+target_include_directories(test_terrain_modification_visual_pipeline PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_terrain_modification_visual_pipeline PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+# TerrainModificationVisualPipeline tests do NOT require GPU - CPU-side logic tests
+add_test(NAME TerrainModificationVisualPipeline COMMAND test_terrain_modification_visual_pipeline)
+
+# Test executable for TerrainLODMesh (Ticket 3-032)
+add_executable(test_terrain_lod_mesh
+    terrain/test_terrain_lod_mesh.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainChunkMeshGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainNormals.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ChunkDirtyTracker.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/Logger.cpp
+)
+
+target_include_directories(test_terrain_lod_mesh PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_terrain_lod_mesh PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+# TerrainLODMesh tests do NOT require GPU - CPU-side mesh generation tests
+add_test(NAME TerrainLODMesh COMMAND test_terrain_lod_mesh)
+
+# Test executable for Terrain Skirt Geometry (Ticket 3-033)
+add_executable(test_terrain_skirt
+    terrain/test_terrain_skirt.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainChunkMeshGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainNormals.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ChunkDirtyTracker.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/Logger.cpp
+)
+
+target_include_directories(test_terrain_skirt PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_terrain_skirt PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+# TerrainSkirt tests do NOT require GPU - CPU-side mesh generation tests
+add_test(NAME TerrainSkirt COMMAND test_terrain_skirt)
+
+# Test executable for TerrainChunkCuller (Ticket 3-034)
+add_executable(test_terrain_chunk_culler
+    terrain/test_terrain_chunk_culler.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainChunkCuller.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/FrustumCuller.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ViewMatrix.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ProjectionMatrix.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/Logger.cpp
+)
+
+target_include_directories(test_terrain_chunk_culler PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_terrain_chunk_culler PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+# TerrainChunkCuller tests do NOT require GPU - CPU-side culling tests
+add_test(NAME TerrainChunkCuller COMMAND test_terrain_chunk_culler)
+
+# Test executable for VegetationRenderer (Ticket 3-030)
+add_executable(test_vegetation_renderer
+    render/test_vegetation_renderer.cpp
+    ${CMAKE_SOURCE_DIR}/src/ecs/Components.cpp
+    ${CMAKE_SOURCE_DIR}/src/net/NetworkBuffer.cpp
+)
+
+target_include_directories(test_vegetation_renderer PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_vegetation_renderer PRIVATE
+    glm::glm
+)
+
+# VegetationRenderer tests do NOT require GPU - CPU-side data structure tests
+add_test(NAME VegetationRenderer COMMAND test_vegetation_renderer)
+
+# Test executable for TerrainGridSerializer (Ticket 3-036)
+add_executable(test_terrain_grid_serialization
+    terrain/test_terrain_grid_serialization.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainGridSerializer.cpp
+)
+
+target_include_directories(test_terrain_grid_serialization PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# TerrainGridSerializer tests do NOT require external libraries - pure serialization tests
+add_test(NAME TerrainGridSerialization COMMAND test_terrain_grid_serialization)
+
+# Test executable for TerrainDebugOverlay (Ticket 3-038)
+# Tests config defaults and utility functions without GPU rendering
+# Also tests key bindings (Criterion 8) via ActionMapping
+add_executable(test_terrain_debug_overlay
+    render/test_terrain_debug_overlay.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/ActionMapping.cpp
+)
+
+target_include_directories(test_terrain_debug_overlay PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# TerrainDebugOverlay tests need ActionMapping for key binding verification
+target_link_libraries(test_terrain_debug_overlay PRIVATE
+    glm::glm
+    SDL3::SDL3
+)
+
+# TerrainDebugOverlay config tests do NOT require GPU
+add_test(NAME TerrainDebugOverlay COMMAND test_terrain_debug_overlay)
+
+# Test executable for TerrainNetworkSync (Ticket 3-037)
+add_executable(test_terrain_network_sync
+    terrain/test_terrain_network_sync.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainNetworkSync.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainClientHandler.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ChunkDirtyTracker.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ElevationGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/BiomeGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterBodyGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/WaterDistanceField.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/ProceduralNoise.cpp
+    ${CMAKE_SOURCE_DIR}/src/terrain/TerrainNetworkMessages.cpp
+    ${CMAKE_SOURCE_DIR}/src/net/NetworkBuffer.cpp
+    ${CMAKE_SOURCE_DIR}/src/net/NetworkMessage.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/Logger.cpp
+)
+
+target_include_directories(test_terrain_network_sync PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_terrain_network_sync PRIVATE
+    SDL3::SDL3
+)
+
+# Use strict FP semantics for cross-platform determinism
+if(MSVC)
+    target_compile_options(test_terrain_network_sync PRIVATE /fp:strict)
+else()
+    target_compile_options(test_terrain_network_sync PRIVATE -ffp-contract=off)
+endif()
+
+# TerrainNetworkSync tests do NOT require GPU - pure network/sync logic tests
+add_test(NAME TerrainNetworkSync COMMAND test_terrain_network_sync)

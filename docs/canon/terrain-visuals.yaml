@@ -1,0 +1,775 @@
+# ============================================================================
+# TERRAIN VISUAL SPECIFICATION
+# ============================================================================
+# Design specification for terrain glow colors, patterns, and animation
+# parameters for all 10 terrain types in ZergCity.
+#
+# This document feeds into:
+#   - TerrainTypeInfo (ticket 3-003) - emissive_color, emissive_intensity
+#   - TerrainVisualConfig (ticket 3-039) - base_colors[], emissive_colors[]
+#
+# Version: 1.0.0
+# Created: 2026-02-06
+# Ticket: 3-040
+# ============================================================================
+
+version: "1.0.0"
+
+# ============================================================================
+# DESIGN PRINCIPLES
+# ============================================================================
+
+design_principles:
+  visual_hierarchy:
+    description: |
+      Terrain glow intensity establishes a clear visual hierarchy:
+      - Substrate/Ridge: Nearly invisible (background terrain)
+      - Water types: Gentle ambient glow (environmental features)
+      - Biomes: Moderate to strong glow (gameplay-relevant terrain)
+      - PrismaFields: Maximum terrain glow (landmarks, rare)
+
+      Building glow (0.5-1.0) intentionally exceeds all terrain glow
+      to ensure structures remain visually dominant.
+
+  readability_rule:
+    name: "2-Second Identification Rule"
+    description: |
+      Any terrain type must be identifiable within 2 seconds from
+      any camera angle at any zoom level. This is achieved through:
+      - Unique emissive hue per terrain type
+      - Distinct glow behavior patterns (static/pulse/shimmer/flow/irregular)
+      - Consistent color language across terrain, minimap, and overlays
+
+  accessibility:
+    color_impaired_support: |
+      Pattern differentiation ensures terrain types remain distinguishable
+      for color-impaired players:
+      - Substrate/Ridge: Static (no animation)
+      - Water types: Slow flowing/wave motion
+      - BiolumeGrove: Organic pulsing (veining pattern)
+      - PrismaFields: Sharp geometric shimmer
+      - SporeFlats: Rhythmic rhythmic pulse (particle release)
+      - BlightMires: Irregular bubbling pattern
+      - EmberCrust: Slow throb with veining
+
+      Visual pattern + hue combination provides redundant differentiation.
+
+  dark_base_environment:
+    description: |
+      All terrain renders on a dark base (near-black environment).
+      Base colors are intentionally very dark so the emissive glow
+      creates the visual impression. Without glow, terrain would be
+      nearly invisible - this is intentional for the bioluminescent
+      aesthetic.
+
+# ============================================================================
+# TERRAIN TYPE VISUAL SPECIFICATIONS
+# ============================================================================
+
+terrain_types:
+
+  # --------------------------------------------------------------------------
+  # SUBSTRATE (0) - Standard buildable terrain
+  # --------------------------------------------------------------------------
+  substrate:
+    enum_value: 0
+    canonical_name: substrate
+    human_equivalent: flat_ground
+
+    colors:
+      base_color:
+        hex: "#0a0a0f"
+        rgb: [10, 10, 15]
+        description: "Near-black with slight blue undertone"
+      emissive_color:
+        hex: "#1a1a2e"
+        rgb: [26, 26, 46]
+        description: "Very subtle deep blue-purple"
+
+    glow:
+      emissive_intensity: 0.05
+      behavior: static
+      pulse_period_seconds: null
+      description: |
+        Barely perceptible ambient glow. Substrate should recede into
+        the background, serving as neutral canvas for buildings and
+        more dramatic terrain features.
+
+    bloom:
+      contribution: none
+      description: "No bloom bleed - substrate is visually neutral"
+
+    visual_notes: |
+      The most common terrain type (35-45% of map). Must be unobtrusive
+      while still reading as "alive" at close zoom. Dark soil/rock with
+      the faintest hint of bioluminescent moss in crevices.
+
+  # --------------------------------------------------------------------------
+  # RIDGE (1) - Elevated terrain / hills
+  # --------------------------------------------------------------------------
+  ridge:
+    enum_value: 1
+    canonical_name: ridge
+    human_equivalent: hills
+
+    colors:
+      base_color:
+        hex: "#12101a"
+        rgb: [18, 16, 26]
+        description: "Dark grey-purple rock"
+      emissive_color:
+        hex: "#3d2d5c"
+        rgb: [61, 45, 92]
+        description: "Deep purple with magenta undertone"
+
+    glow:
+      emissive_intensity: 0.10
+      behavior: static
+      pulse_period_seconds: null
+      crevice_glow: true
+      crevice_description: |
+        Normal-based crevice enhancement - glow increases where surface
+        normal deviates from vertical. Creates glowing vein patterns
+        along cliff faces and ridgelines.
+
+    bloom:
+      contribution: minimal
+      description: "Subtle bloom at cliff edges only"
+
+    visual_notes: |
+      Layered rock formations with glowing vein patterns. The crevice
+      glow effect makes elevation changes readable through lighting
+      without explicit edge rendering. Purple hue distinguishes from
+      blue water and cyan biomes.
+
+  # --------------------------------------------------------------------------
+  # DEEP_VOID (2) - Ocean / map-edge water
+  # --------------------------------------------------------------------------
+  deep_void:
+    enum_value: 2
+    canonical_name: deep_void
+    human_equivalent: ocean
+
+    colors:
+      base_color:
+        hex: "#050510"
+        rgb: [5, 5, 16]
+        description: "Near-black deep blue"
+      emissive_color:
+        hex: "#0066aa"
+        rgb: [0, 102, 170]
+        description: "Deep ocean blue"
+      shoreline_emissive:
+        hex: "#33ccff"
+        rgb: [51, 204, 255]
+        description: "Bright cyan-white shoreline glow"
+
+    glow:
+      emissive_intensity: 0.10
+      behavior: pulse
+      pulse_period_seconds: 6.0
+      pulse_range: [0.08, 0.12]
+      shoreline_intensity_boost: 2.0
+      description: |
+        Slow, gentle pulse like deep breathing. The ocean surface
+        is mostly dark void with bioluminescent particles suspended
+        in the depths. Shoreline glow is bright and constant.
+
+    bloom:
+      contribution: low
+      description: "Shoreline produces visible bloom fringe"
+
+    visual_notes: |
+      Semi-transparent water reveals dark depths below. The surface
+      has subtle sine-wave normal perturbation for gentle highlights.
+      Shoreline is the primary visual feature - bright cyan-white
+      fringe where water meets land.
+
+  # --------------------------------------------------------------------------
+  # FLOW_CHANNEL (3) - Rivers
+  # --------------------------------------------------------------------------
+  flow_channel:
+    enum_value: 3
+    canonical_name: flow_channel
+    human_equivalent: river
+
+    colors:
+      base_color:
+        hex: "#061015"
+        rgb: [6, 16, 21]
+        description: "Dark blue-green"
+      emissive_color:
+        hex: "#00aaaa"
+        rgb: [0, 170, 170]
+        description: "Teal / cyan-green"
+      shoreline_emissive:
+        hex: "#66ffff"
+        rgb: [102, 255, 255]
+        description: "Bright teal shoreline glow"
+
+    glow:
+      emissive_intensity: 0.12
+      behavior: flow
+      flow_speed: 0.3
+      uv_scroll_direction: "per-tile from FlowDirection data"
+      shoreline_intensity_boost: 1.8
+      description: |
+        Flowing UV animation creates visual river movement. Teal
+        distinguishes from ocean blue. Flow direction matches
+        terrain generation gradient descent (high to low elevation).
+
+    bloom:
+      contribution: low
+      description: "Subtle bloom along banks and rapids"
+
+    visual_notes: |
+      Rivers are defined by their flow - the UV scroll animation is
+      the key differentiator from static water. Brighter at banks
+      where turbulence/oxygenation would cause more bioluminescence.
+
+  # --------------------------------------------------------------------------
+  # STILL_BASIN (4) - Lakes
+  # --------------------------------------------------------------------------
+  still_basin:
+    enum_value: 4
+    canonical_name: still_basin
+    human_equivalent: lake
+
+    colors:
+      base_color:
+        hex: "#080812"
+        rgb: [8, 8, 18]
+        description: "Dark purple-blue"
+      emissive_color:
+        hex: "#4488cc"
+        rgb: [68, 136, 204]
+        description: "Soft blue-purple"
+      shoreline_emissive:
+        hex: "#88ccff"
+        rgb: [136, 204, 255]
+        description: "Soft blue-white shoreline"
+
+    glow:
+      emissive_intensity: 0.10
+      behavior: pulse
+      pulse_period_seconds: 8.0
+      pulse_range: [0.08, 0.12]
+      shoreline_intensity_boost: 1.5
+      description: |
+        Gentle pulse slower than ocean. The calm surface has subtle
+        distortion but no directional flow. Purple undertone distinguishes
+        from rivers (teal) and ocean (blue).
+
+    bloom:
+      contribution: minimal
+      description: "Gentle shoreline bloom"
+
+    visual_notes: |
+      Lakes are tranquil - slow pulse, soft colors. They occupy terrain
+      depressions and often have BiolumeGrove growing along their banks.
+      The purple undertone creates a mystical quality.
+
+  # --------------------------------------------------------------------------
+  # BIOLUME_GROVE (5) - Alien forest / vegetation
+  # --------------------------------------------------------------------------
+  biolume_grove:
+    enum_value: 5
+    canonical_name: biolume_grove
+    human_equivalent: forest
+
+    colors:
+      base_color:
+        hex: "#0a1510"
+        rgb: [10, 21, 16]
+        description: "Very dark green"
+      emissive_color:
+        hex: "#00ff88"
+        rgb: [0, 255, 136]
+        description: "Bright green-cyan bioluminescence"
+
+    glow:
+      emissive_intensity: 0.25
+      behavior: pulse
+      pulse_period_seconds: 4.0
+      pulse_range: [0.20, 0.30]
+      veining_pattern: true
+      description: |
+        Organic pulsing like breathing. The pulse propagates through
+        veining patterns in the vegetation - synchronized but with
+        slight phase variation between instances for natural feel.
+
+    bloom:
+      contribution: medium
+      description: "Visible bloom halo around grove clusters"
+
+    visual_notes: |
+      BiolumeGroves are the most visually striking natural terrain.
+      3D vegetation models (glowing mushroom trees, alien flora)
+      rendered via instancing. When cleared, the glow fades over 0.5s.
+
+      The bright green-cyan distinguishes from teal water. Veining
+      pattern visible at close zoom creates organic texture.
+
+  # --------------------------------------------------------------------------
+  # PRISMA_FIELDS (6) - Crystal formations
+  # --------------------------------------------------------------------------
+  prisma_fields:
+    enum_value: 6
+    canonical_name: prisma_fields
+    human_equivalent: crystal_fields
+
+    colors:
+      base_color:
+        hex: "#12081a"
+        rgb: [18, 8, 26]
+        description: "Dark purple-black"
+      emissive_color:
+        hex: "#ff00ff"
+        rgb: [255, 0, 255]
+        description: "Bright magenta / hot pink"
+      secondary_emissive:
+        hex: "#00ffff"
+        rgb: [0, 255, 255]
+        description: "Cyan refraction highlights"
+
+    glow:
+      emissive_intensity: 0.60
+      behavior: shimmer
+      shimmer_frequency: 0.1
+      shimmer_variance: 0.15
+      description: |
+        Random shimmer like light refracting through crystal facets.
+        Highest terrain emissive intensity - crystals are landmarks
+        visible from maximum zoom-out. Magenta is unique in the palette.
+
+    bloom:
+      contribution: high
+      description: "Strong bloom halo (1-2px radius). Landmark visibility."
+
+    visual_notes: |
+      PrismaFields are rare (2-4% of map) and dramatic. Large crystal
+      spire models (1-3 per tile) create vertical landmarks. The
+      geometric shimmer pattern is sharply different from organic
+      pulsing of other biomes.
+
+      Magenta/pink is reserved exclusively for crystals - no other
+      terrain type uses this hue range. Secondary cyan highlights
+      on facet edges create prismatic effect.
+
+  # --------------------------------------------------------------------------
+  # SPORE_FLATS (7) - Spore-producing flora
+  # --------------------------------------------------------------------------
+  spore_flats:
+    enum_value: 7
+    canonical_name: spore_flats
+    human_equivalent: spore_plains
+
+    colors:
+      base_color:
+        hex: "#0a0f0a"
+        rgb: [10, 15, 10]
+        description: "Dark grey-green"
+      emissive_color:
+        hex: "#88ff44"
+        rgb: [136, 255, 68]
+        description: "Bright yellow-green (chartreuse)"
+
+    glow:
+      emissive_intensity: 0.30
+      behavior: pulse
+      pulse_period_seconds: 3.0
+      pulse_range: [0.25, 0.35]
+      particle_sync: true
+      description: |
+        Rhythmic pulse synchronized with spore release particle effect.
+        Yellow-green distinguishes from cyan-green BiolumeGroves.
+        Faster pulse than groves - energetic, active.
+
+    bloom:
+      contribution: medium
+      description: "Moderate bloom, especially during pulse peak"
+
+    visual_notes: |
+      SporeFlats represent transitional zones. Small spore emitter
+      models (4-6 per tile) create dense ground cover. The pulse
+      is sharper/more rhythmic than the organic BiolumeGrove pulse.
+
+      Chartreuse (yellow-green) is distinct from cyan-green groves.
+      Harmony bonus for nearby habitation reflects the pleasing
+      visual effect.
+
+  # --------------------------------------------------------------------------
+  # BLIGHT_MIRES (8) - Toxic marshes
+  # --------------------------------------------------------------------------
+  blight_mires:
+    enum_value: 8
+    canonical_name: blight_mires
+    human_equivalent: toxic_marshes
+
+    colors:
+      base_color:
+        hex: "#0f0f05"
+        rgb: [15, 15, 5]
+        description: "Sickly dark olive"
+      emissive_color:
+        hex: "#aaff00"
+        rgb: [170, 255, 0]
+        description: "Toxic yellow-green"
+      bubble_emissive:
+        hex: "#ccff33"
+        rgb: [204, 255, 51]
+        description: "Bright yellow bubble highlights"
+
+    glow:
+      emissive_intensity: 0.30
+      behavior: irregular
+      base_period_seconds: 4.0
+      irregularity: 0.4
+      bubble_events: true
+      description: |
+        Irregular bubbling pattern - base pulse with random bright
+        flares as toxic gas escapes. Visually unsettling and distinct
+        from regular pulsing terrain. The irregularity signals danger.
+
+    bloom:
+      contribution: medium
+      description: "Bloom spikes during bubble events"
+
+    visual_notes: |
+      BlightMires are toxic and dangerous. Yellow-green (lime) is
+      shifted toward yellow compared to SporeFlats chartreuse,
+      creating a sickly, toxic association.
+
+      The irregular bubbling animation is the key differentiator -
+      no other terrain type has this unpredictable pattern. Dark
+      fog layer (deferred to polish epic) would enhance the effect.
+
+  # --------------------------------------------------------------------------
+  # EMBER_CRUST (9) - Volcanic rock
+  # --------------------------------------------------------------------------
+  ember_crust:
+    enum_value: 9
+    canonical_name: ember_crust
+    human_equivalent: volcanic_rock
+
+    colors:
+      base_color:
+        hex: "#0f0808"
+        rgb: [15, 8, 8]
+        description: "Dark obsidian with red undertone"
+      emissive_color:
+        hex: "#ff4400"
+        rgb: [255, 68, 0]
+        description: "Bright orange-red (lava)"
+
+    glow:
+      emissive_intensity: 0.35
+      behavior: pulse
+      pulse_period_seconds: 5.0
+      pulse_range: [0.30, 0.40]
+      crevice_glow: true
+      crevice_description: |
+        Normal-based crevice enhancement like Ridge, but with orange
+        glow instead of purple. Lava glow emanates from cracks in
+        dark obsidian-like rock surface.
+
+    bloom:
+      contribution: medium
+      description: "Warm bloom from lava crevices"
+
+    visual_notes: |
+      EmberCrust occupies high elevation volcanic ridges. The orange-red
+      is unique in the palette (only warm color). Slow throb suggests
+      geothermal activity beneath the surface.
+
+      Crevice glow pattern (shared with Ridge) but orange creates
+      visual impression of cooling lava. Geothermal energy bonus
+      reflected in the visible heat signature.
+
+# ============================================================================
+# COLOR PALETTE SUMMARY
+# ============================================================================
+# Organized by hue for quick reference and collision checking
+
+color_palette_summary:
+  description: |
+    Each terrain type occupies a unique hue band in the emissive color
+    space. This ensures no two types share the same primary color.
+
+  hue_assignments:
+    - terrain: substrate
+      hue_range: "240-270 (deep blue-purple)"
+      emissive_hex: "#1a1a2e"
+      intensity: 0.05
+
+    - terrain: ridge
+      hue_range: "270-285 (purple-magenta)"
+      emissive_hex: "#3d2d5c"
+      intensity: 0.10
+
+    - terrain: deep_void
+      hue_range: "200-210 (ocean blue)"
+      emissive_hex: "#0066aa"
+      intensity: 0.10
+
+    - terrain: flow_channel
+      hue_range: "180-190 (teal/cyan-green)"
+      emissive_hex: "#00aaaa"
+      intensity: 0.12
+
+    - terrain: still_basin
+      hue_range: "210-220 (soft blue-purple)"
+      emissive_hex: "#4488cc"
+      intensity: 0.10
+
+    - terrain: biolume_grove
+      hue_range: "150-165 (green-cyan)"
+      emissive_hex: "#00ff88"
+      intensity: 0.25
+
+    - terrain: prisma_fields
+      hue_range: "300-320 (magenta/hot pink)"
+      emissive_hex: "#ff00ff"
+      intensity: 0.60
+
+    - terrain: spore_flats
+      hue_range: "80-95 (chartreuse/yellow-green)"
+      emissive_hex: "#88ff44"
+      intensity: 0.30
+
+    - terrain: blight_mires
+      hue_range: "70-80 (toxic lime/yellow-green)"
+      emissive_hex: "#aaff00"
+      intensity: 0.30
+
+    - terrain: ember_crust
+      hue_range: "15-25 (orange-red)"
+      emissive_hex: "#ff4400"
+      intensity: 0.35
+
+# ============================================================================
+# INTENSITY HIERARCHY VALIDATION
+# ============================================================================
+
+intensity_hierarchy:
+  description: |
+    Emissive intensity establishes visual priority. Values validated
+    against ticket 3-040 acceptance criteria.
+
+  ordered_by_intensity:
+    - terrain: substrate
+      intensity: 0.05
+      role: "Background - nearly invisible"
+
+    - terrain: ridge
+      intensity: 0.10
+      role: "Terrain feature - subtle"
+
+    - terrain: deep_void
+      intensity: 0.10
+      role: "Environmental - ambient"
+
+    - terrain: still_basin
+      intensity: 0.10
+      role: "Environmental - calm"
+
+    - terrain: flow_channel
+      intensity: 0.12
+      role: "Environmental - active"
+
+    - terrain: biolume_grove
+      intensity: 0.25
+      role: "Biome - notable"
+
+    - terrain: spore_flats
+      intensity: 0.30
+      role: "Biome - vibrant"
+
+    - terrain: blight_mires
+      intensity: 0.30
+      role: "Hazard - warning"
+
+    - terrain: ember_crust
+      intensity: 0.35
+      role: "Feature - warm glow"
+
+    - terrain: prisma_fields
+      intensity: 0.60
+      role: "Landmark - dramatic"
+
+  validation:
+    hierarchy_check: "substrate(0.05) < ridge(0.10) < water(0.10-0.12) < grove(0.25) < spore(0.30) = blight(0.30) < ember(0.35) < prisma(0.60)"
+    building_separation: "All terrain <= 0.60, buildings use 0.5-1.0 (overlap is intentional for building on terrain)"
+
+# ============================================================================
+# GLOW BEHAVIOR PATTERNS
+# ============================================================================
+
+glow_behaviors:
+  static:
+    description: "No animation - constant glow intensity"
+    applies_to: [substrate, ridge]
+    shader_implementation: "return base_intensity;"
+
+  pulse:
+    description: "Smooth sinusoidal intensity variation"
+    applies_to: [deep_void, still_basin, biolume_grove, spore_flats, ember_crust]
+    shader_implementation: |
+      float phase = glow_time / pulse_period;
+      float pulse = 0.5 + 0.5 * sin(phase * 2.0 * PI);
+      return mix(pulse_min, pulse_max, pulse);
+    parameters:
+      - pulse_period_seconds: "Time for one complete cycle"
+      - pulse_range: "[min, max] intensity values"
+
+  shimmer:
+    description: "Random intensity flicker (crystal refraction)"
+    applies_to: [prisma_fields]
+    shader_implementation: |
+      float noise = hash(floor(glow_time * shimmer_frequency) + vertex_position);
+      return base_intensity * (1.0 + shimmer_variance * (noise - 0.5));
+    parameters:
+      - shimmer_frequency: "Flicker rate in Hz"
+      - shimmer_variance: "Maximum deviation from base"
+
+  flow:
+    description: "UV-scrolling animation for directional movement"
+    applies_to: [flow_channel]
+    shader_implementation: |
+      vec2 scroll_uv = uv + flow_direction * glow_time * flow_speed;
+      return sample_emissive_pattern(scroll_uv);
+    parameters:
+      - flow_speed: "UV scroll rate"
+      - flow_direction: "Per-tile from FlowDirection data"
+
+  irregular:
+    description: "Base pulse with random bright flares"
+    applies_to: [blight_mires]
+    shader_implementation: |
+      float base_pulse = pulse(glow_time, base_period);
+      float bubble = step(0.95, hash(floor(glow_time * 2.0) + tile_coord));
+      return base_pulse + bubble * bubble_boost;
+    parameters:
+      - base_period_seconds: "Underlying pulse period"
+      - irregularity: "Probability of bubble events"
+
+# ============================================================================
+# DISTANCE READABILITY
+# ============================================================================
+
+distance_readability:
+  description: |
+    At maximum zoom-out, terrain types must remain distinguishable
+    by color alone (glow patterns not visible at distance).
+
+  zoom_levels:
+    close:
+      description: "Full detail - patterns visible"
+      features: [glow_patterns, vegetation_models, texture_detail]
+
+    medium:
+      description: "Patterns simplified, colors dominate"
+      features: [simplified_pulse, color_distinction]
+      lod_level: 1
+
+    far:
+      description: "Color patches only"
+      features: [flat_color, boosted_emissive]
+      lod_level: 2
+      notes: "LOD 2 boosts terrain emissive to compensate for vegetation hiding"
+
+  color_distinction_at_max_zoom:
+    - pair: [substrate, deep_void]
+      distinction: "Purple-grey vs ocean blue"
+
+    - pair: [deep_void, flow_channel]
+      distinction: "Deep blue vs teal"
+
+    - pair: [flow_channel, still_basin]
+      distinction: "Teal vs purple-blue"
+
+    - pair: [biolume_grove, spore_flats]
+      distinction: "Cyan-green vs chartreuse"
+
+    - pair: [spore_flats, blight_mires]
+      distinction: "Yellow-green vs toxic lime (+ irregular glow)"
+
+    - pair: [prisma_fields, ridge]
+      distinction: "Bright magenta vs dark purple"
+
+    - pair: [ember_crust, all_others]
+      distinction: "Orange-red (only warm color)"
+
+# ============================================================================
+# ACCESSIBILITY - COLOR IMPAIRMENT SUPPORT
+# ============================================================================
+
+accessibility:
+  pattern_differentiation:
+    description: |
+      Each terrain type has a unique glow behavior pattern that provides
+      differentiation independent of color perception.
+
+    pattern_to_terrain_map:
+      static: "Substrate (background), Ridge (geological)"
+      slow_pulse_6s: "Deep Void (ocean breathing)"
+      slow_pulse_8s: "Still Basin (calm lakes)"
+      flow_scroll: "Flow Channel (directional river)"
+      organic_pulse_4s: "BiolumeGrove (living vegetation)"
+      rhythmic_pulse_3s: "SporeFlats (spore release)"
+      geometric_shimmer: "PrismaFields (crystal refraction)"
+      irregular_bubble: "BlightMires (toxic bubbling)"
+      slow_throb_5s_crevice: "EmberCrust (volcanic heat)"
+
+  high_contrast_mode:
+    description: "Future feature - boost intensity separation"
+    notes: "Deferred to accessibility epic"
+
+# ============================================================================
+# SHADER UNIFORM BUFFER LAYOUT
+# ============================================================================
+
+shader_uniforms:
+  description: |
+    Data layout for TerrainVisualConfig shader uniform buffer.
+    Fed to fragment shader for per-terrain-type visual selection.
+
+  cbuffer_layout:
+    name: TerrainVisuals
+    size_bytes: 416
+    contents:
+      - field: base_colors
+        type: "vec4[10]"
+        offset: 0
+        size: 160
+        description: "RGBA base colors per terrain type"
+
+      - field: emissive_colors
+        type: "vec4[10]"
+        offset: 160
+        size: 160
+        description: "RGB emissive color + intensity in alpha"
+
+      - field: glow_params
+        type: "vec4[10]"
+        offset: 320
+        size: 80
+        description: "x=period, y=range_min, z=range_max, w=behavior_type"
+
+      - field: glow_time
+        type: float
+        offset: 400
+        size: 4
+        description: "Global animation time in seconds"
+
+      - field: sea_level
+        type: float
+        offset: 404
+        size: 4
+        description: "Current sea level for water rendering"
+
+      - field: padding
+        type: "float[2]"
+        offset: 408
+        size: 8
+        description: "16-byte alignment padding"

@@ -46,6 +46,15 @@ enum class Action {
     DEBUG_STATS,  // Toggle render statistics overlay (F3)
     DEBUG_BOUNDING_BOX,  // Toggle bounding box visualization (B)
 
+    // Terrain debug modes (F5-F12 range)
+    DEBUG_TERRAIN_ELEVATION,   // Toggle elevation heatmap (F5)
+    DEBUG_TERRAIN_TYPE,        // Toggle terrain type colormap (F6)
+    DEBUG_TERRAIN_CHUNK,       // Toggle chunk boundary visualization (F7)
+    DEBUG_TERRAIN_LOD,         // Toggle LOD level visualization (F8)
+    DEBUG_TERRAIN_NORMALS,     // Toggle normals visualization (F9)
+    DEBUG_TERRAIN_WATER,       // Toggle water body ID visualization (F10)
+    DEBUG_TERRAIN_BUILDABILITY, // Toggle buildability overlay (F12)
+
     // View modes
     TOGGLE_UNDERGROUND,
 

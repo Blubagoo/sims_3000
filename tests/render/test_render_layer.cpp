@@ -57,24 +57,26 @@ TEST(layer_values_are_sequential) {
     // Verify all layers have sequential values starting from 0
     ASSERT_EQ(0, static_cast<int>(RenderLayer::Underground));
     ASSERT_EQ(1, static_cast<int>(RenderLayer::Terrain));
-    ASSERT_EQ(2, static_cast<int>(RenderLayer::Water));
-    ASSERT_EQ(3, static_cast<int>(RenderLayer::Roads));
-    ASSERT_EQ(4, static_cast<int>(RenderLayer::Buildings));
-    ASSERT_EQ(5, static_cast<int>(RenderLayer::Units));
-    ASSERT_EQ(6, static_cast<int>(RenderLayer::Effects));
-    ASSERT_EQ(7, static_cast<int>(RenderLayer::DataOverlay));
-    ASSERT_EQ(8, static_cast<int>(RenderLayer::UIWorld));
+    ASSERT_EQ(2, static_cast<int>(RenderLayer::Vegetation));
+    ASSERT_EQ(3, static_cast<int>(RenderLayer::Water));
+    ASSERT_EQ(4, static_cast<int>(RenderLayer::Roads));
+    ASSERT_EQ(5, static_cast<int>(RenderLayer::Buildings));
+    ASSERT_EQ(6, static_cast<int>(RenderLayer::Units));
+    ASSERT_EQ(7, static_cast<int>(RenderLayer::Effects));
+    ASSERT_EQ(8, static_cast<int>(RenderLayer::DataOverlay));
+    ASSERT_EQ(9, static_cast<int>(RenderLayer::UIWorld));
 }
 
 TEST(layer_count_is_correct) {
-    // RENDER_LAYER_COUNT should equal the number of layers (9)
-    ASSERT_EQ(9u, RENDER_LAYER_COUNT);
+    // RENDER_LAYER_COUNT should equal the number of layers (10)
+    ASSERT_EQ(10u, RENDER_LAYER_COUNT);
 }
 
 TEST(layer_ordering_is_correct) {
     // Layers should be ordered for correct rendering (lower first, higher on top)
     ASSERT(RenderLayer::Underground < RenderLayer::Terrain);
-    ASSERT(RenderLayer::Terrain < RenderLayer::Water);
+    ASSERT(RenderLayer::Terrain < RenderLayer::Vegetation);
+    ASSERT(RenderLayer::Vegetation < RenderLayer::Water);
     ASSERT(RenderLayer::Water < RenderLayer::Roads);
     ASSERT(RenderLayer::Roads < RenderLayer::Buildings);
     ASSERT(RenderLayer::Buildings < RenderLayer::Units);
@@ -93,6 +95,10 @@ TEST(get_layer_name_underground) {
 
 TEST(get_layer_name_terrain) {
     ASSERT_STREQ("Terrain", getRenderLayerName(RenderLayer::Terrain));
+}
+
+TEST(get_layer_name_vegetation) {
+    ASSERT_STREQ("Vegetation", getRenderLayerName(RenderLayer::Vegetation));
 }
 
 TEST(get_layer_name_water) {
@@ -135,6 +141,7 @@ TEST(get_layer_name_unknown) {
 TEST(valid_layers_are_valid) {
     ASSERT(isValidRenderLayer(RenderLayer::Underground));
     ASSERT(isValidRenderLayer(RenderLayer::Terrain));
+    ASSERT(isValidRenderLayer(RenderLayer::Vegetation));
     ASSERT(isValidRenderLayer(RenderLayer::Water));
     ASSERT(isValidRenderLayer(RenderLayer::Roads));
     ASSERT(isValidRenderLayer(RenderLayer::Buildings));
@@ -146,8 +153,8 @@ TEST(valid_layers_are_valid) {
 
 TEST(invalid_layers_are_invalid) {
     // Values >= RENDER_LAYER_COUNT should be invalid
-    ASSERT(!isValidRenderLayer(static_cast<RenderLayer>(9)));
     ASSERT(!isValidRenderLayer(static_cast<RenderLayer>(10)));
+    ASSERT(!isValidRenderLayer(static_cast<RenderLayer>(11)));
     ASSERT(!isValidRenderLayer(static_cast<RenderLayer>(255)));
 }
 
@@ -159,6 +166,7 @@ TEST(opaque_layers_are_opaque) {
     // Scene geometry layers are opaque
     ASSERT(isOpaqueLayer(RenderLayer::Underground));
     ASSERT(isOpaqueLayer(RenderLayer::Terrain));
+    ASSERT(isOpaqueLayer(RenderLayer::Vegetation));
     ASSERT(isOpaqueLayer(RenderLayer::Roads));
     ASSERT(isOpaqueLayer(RenderLayer::Buildings));
     ASSERT(isOpaqueLayer(RenderLayer::Units));
@@ -180,6 +188,7 @@ TEST(lit_layers_use_lighting) {
     // 3D scene layers use world lighting
     ASSERT(isLitLayer(RenderLayer::Underground));
     ASSERT(isLitLayer(RenderLayer::Terrain));
+    ASSERT(isLitLayer(RenderLayer::Vegetation));
     ASSERT(isLitLayer(RenderLayer::Water));
     ASSERT(isLitLayer(RenderLayer::Roads));
     ASSERT(isLitLayer(RenderLayer::Buildings));
@@ -213,6 +222,9 @@ TEST(render_component_layer_assignment) {
     comp.layer = RenderLayer::Terrain;
     ASSERT_EQ(RenderLayer::Terrain, comp.layer);
 
+    comp.layer = RenderLayer::Vegetation;
+    ASSERT_EQ(RenderLayer::Vegetation, comp.layer);
+
     comp.layer = RenderLayer::Water;
     ASSERT_EQ(RenderLayer::Water, comp.layer);
 
@@ -245,7 +257,7 @@ TEST(render_component_size_unchanged) {
 TEST(constexpr_layer_count) {
     // These should all be constexpr-evaluable
     constexpr std::size_t count = RENDER_LAYER_COUNT;
-    ASSERT_EQ(9u, count);
+    ASSERT_EQ(10u, count);
 }
 
 TEST(constexpr_layer_name) {
@@ -292,6 +304,7 @@ int main() {
     printf("\ngetRenderLayerName() Tests:\n");
     RUN_TEST(get_layer_name_underground);
     RUN_TEST(get_layer_name_terrain);
+    RUN_TEST(get_layer_name_vegetation);
     RUN_TEST(get_layer_name_water);
     RUN_TEST(get_layer_name_roads);
     RUN_TEST(get_layer_name_buildings);

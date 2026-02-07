@@ -1,0 +1,478 @@
+# Epic 3 Execution Queue
+# Generated: 2026-02-06T12:00:00Z
+# Last Updated: 2026-02-06T12:00:00Z
+
+epic: 3
+name: "Terrain System"
+status: complete
+
+# Current position in queue
+current_index: 37
+current_ticket: "3-037"
+
+# Execution queue (dependency-ordered)
+queue:
+  # Wave 1: Foundation (no dependencies)
+  - id: "3-001"
+    title: "TerrainType Enum and TerrainComponent Structure"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-06T12:15:00Z"
+    sa_verified_at: "2026-02-06T12:25:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All criteria satisfied"
+
+  - id: "3-040"
+    title: "Glow Color Specification and Tuning Data"
+    system: "Cross-System"
+    agent: "graphics-engineer"
+    status: complete
+    implemented_at: "2026-02-06T12:15:00Z"
+    sa_verified_at: "2026-02-06T12:25:00Z"
+    clickup_updated: false
+    notes: "SA PASS with notes - Spec complete; code integration deferred to 3-003/3-039 as intended"
+
+  # Wave 2: Core data structures (depend on 3-001)
+  - id: "3-002"
+    title: "TerrainGrid Dense Array Storage"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-001"]
+    implemented_at: "2026-02-06T12:35:00Z"
+    sa_verified_at: "2026-02-06T12:45:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 7 criteria satisfied"
+
+  - id: "3-003"
+    title: "TerrainTypeInfo Static Lookup Table"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-001", "3-040"]
+    implemented_at: "2026-02-06T12:35:00Z"
+    sa_verified_at: "2026-02-06T12:45:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 5 criteria satisfied"
+
+  - id: "3-004"
+    title: "TerrainModifiedEvent and Dirty Flag System"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-001"]
+    implemented_at: "2026-02-06T12:35:00Z"
+    sa_verified_at: "2026-02-06T12:45:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 8 criteria satisfied"
+
+  - id: "3-005"
+    title: "Water Body Identification and Flow Direction Storage"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-001"]
+    implemented_at: "2026-02-06T12:50:00Z"
+    sa_verified_at: "2026-02-06T12:55:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 8 criteria satisfied"
+
+  # Wave 3: Derived data and interfaces
+  - id: "3-006"
+    title: "Water Distance Field Pre-computation"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-002"]
+    implemented_at: "2026-02-06T13:00:00Z"
+    sa_verified_at: "2026-02-06T13:10:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 9 criteria satisfied, BFS <5ms"
+
+  - id: "3-007"
+    title: "Seeded RNG and Noise Infrastructure"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-002"]
+    implemented_at: "2026-02-06T13:00:00Z"
+    sa_verified_at: "2026-02-06T13:10:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 8 criteria satisfied, golden output tests"
+
+  - id: "3-014"
+    title: "ITerrainQueryable Interface Definition"
+    system: "Cross-System"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-001", "3-002", "3-003"]
+    implemented_at: "2026-02-06T13:30:00Z"
+    sa_verified_at: "2026-02-06T14:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 6 criteria satisfied, 12 O(1 benchmarks added"
+
+  - id: "3-017"
+    title: "ITerrainModifier Interface"
+    system: "Cross-System"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-002"]
+    implemented_at: "2026-02-06T13:00:00Z"
+    sa_verified_at: "2026-02-06T13:10:00Z"
+    clickup_updated: false
+    notes: "SA PASS - Interface defined, registered in interfaces.yaml, TerrainSystem impl in 3-019/3-020"
+
+  - id: "3-018"
+    title: "Terrain Contamination Source Queries"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-002", "3-003"]
+    implemented_at: "2026-02-06T13:30:00Z"
+    sa_verified_at: "2026-02-06T14:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 5 criteria satisfied, contamination_per_tick from TerrainTypeInfo"
+
+  # Wave 4: Procedural generation
+  - id: "3-008"
+    title: "Elevation Heightmap Generation"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-007", "3-002"]
+    implemented_at: "2026-02-06T13:30:00Z"
+    sa_verified_at: "2026-02-06T13:45:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 10 criteria satisfied, <50ms performance verified"
+
+  - id: "3-015"
+    title: "ITerrainQueryable Batch Query Support"
+    system: "Cross-System"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-014"]
+    implemented_at: "2026-02-06T15:00:00Z"
+    sa_verified_at: "2026-02-06T15:15:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 6 criteria satisfied, <10us benchmark verified"
+
+  - id: "3-016"
+    title: "ITerrainRenderData Interface for Rendering"
+    system: "Cross-System"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-002", "3-003", "3-004", "3-006"]
+    implemented_at: "2026-02-06T14:30:00Z"
+    sa_verified_at: "2026-02-06T14:45:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 5 criteria satisfied, 7 methods defined, const-correct"
+
+  # Wave 5: Water and biomes
+  - id: "3-009"
+    title: "Water Body Generation (Deep Void, Flow Channels, Still Basins)"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-008", "3-005", "3-007", "3-002"]
+    implemented_at: "2026-02-06T14:30:00Z"
+    sa_verified_at: "2026-02-06T14:45:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 12 criteria satisfied, 28 tests, deterministic generation"
+
+  - id: "3-010"
+    title: "Alien Biome Distribution"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-008", "3-007", "3-001"]
+    implemented_at: "2026-02-06T14:30:00Z"
+    sa_verified_at: "2026-02-06T14:45:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 11 criteria satisfied, 18 tests, elevation-based biome rules"
+
+  # Wave 6: Spawn and validation
+  - id: "3-011"
+    title: "Generation Parameter Scaling Across Map Sizes"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-008", "3-009", "3-010"]
+    implemented_at: "2026-02-06T15:00:00Z"
+    sa_verified_at: "2026-02-06T15:15:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 8 criteria satisfied, scaling table documented"
+
+  - id: "3-012"
+    title: "Multiplayer Spawn Point Selection and Fairness"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-008", "3-009", "3-010"]
+    implemented_at: "2026-02-06T15:00:00Z"
+    sa_verified_at: "2026-02-06T15:15:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 10 criteria satisfied, 44 tests, rotational symmetry"
+
+  - id: "3-013"
+    title: "Post-Generation Map Validation"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-008", "3-009", "3-010", "3-012"]
+    implemented_at: "2026-02-06T15:30:00Z"
+    sa_verified_at: "2026-02-06T15:45:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 10 criteria satisfied, 76 tests, <10ms validation"
+
+  # Wave 7: Modification operations
+  - id: "3-019"
+    title: "Purge Terrain Operation (Instant Clear)"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-017", "3-004"]
+    implemented_at: "2026-02-06T15:30:00Z"
+    sa_verified_at: "2026-02-06T15:45:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 8 criteria satisfied, 37 tests"
+
+  - id: "3-020"
+    title: "Grade Terrain Operation (Multi-Tick Leveling)"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-017", "3-004"]
+    implemented_at: "2026-02-06T15:30:00Z"
+    sa_verified_at: "2026-02-06T15:45:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 9 criteria satisfied, 40 tests, multi-tick ECS"
+
+  - id: "3-021"
+    title: "Terraform Operation (Multi-Tick Type Conversion)"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-017", "3-004", "3-019"]
+    implemented_at: "2026-02-06T16:30:00Z"
+    sa_verified_at: "2026-02-06T17:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 9 criteria satisfied, 54 tests, authority+cost validation added"
+
+  - id: "3-022"
+    title: "Terrain Modification Authority and Network Messages"
+    system: "Cross-System"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-019", "3-020"]
+    implemented_at: "2026-02-06T16:30:00Z"
+    sa_verified_at: "2026-02-06T17:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 8 criteria satisfied, 34 tests, client handler added"
+
+  # Wave 8: Rendering infrastructure (depends on Epic 2)
+  - id: "3-023"
+    title: "Terrain Vertex Format and Chunk Data Structure"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: []  # Epic 2 deps: 2-003, 2-010
+    implemented_at: "2026-02-06T16:30:00Z"
+    sa_verified_at: "2026-02-06T17:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 7 criteria satisfied, 240 tests, tile_coord+AABB added"
+
+  - id: "3-024"
+    title: "Terrain Normal Calculation"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-023"]
+    implemented_at: "2026-02-06T17:30:00Z"
+    sa_verified_at: "2026-02-06T18:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 7 criteria satisfied, 63 tests, central differences formula"
+
+  - id: "3-025"
+    title: "Terrain Chunk Mesh Generator"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-023", "3-024", "3-016", "3-003", "3-004"]
+    implemented_at: "2026-02-06T18:30:00Z"
+    sa_verified_at: "2026-02-06T19:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 12 criteria satisfied, 17 tests, 0.05ms chunk rebuild"
+
+  - id: "3-026"
+    title: "Terrain Fragment Shader Variant"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-023"]  # Epic 2 deps: 2-005, 2-037, 2-004
+    implemented_at: "2026-02-06T17:30:00Z"
+    sa_verified_at: "2026-02-06T18:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 9 criteria satisfied, 15 tests, HLSL shader with 10 glow behaviors"
+
+  # Wave 9: Water rendering
+  - id: "3-027"
+    title: "Water Surface Mesh Generation"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-005", "3-016", "3-009"]
+    implemented_at: "2026-02-06T17:30:00Z"
+    sa_verified_at: "2026-02-06T18:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 10 criteria satisfied, 743 tests, per-body mesh with shore_factor"
+
+  - id: "3-028"
+    title: "Water Fragment Shader and Rendering"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-027", "3-005"]  # Epic 2 deps: 2-005, 2-016
+    implemented_at: "2026-02-06T18:30:00Z"
+    sa_verified_at: "2026-02-06T19:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 13 criteria satisfied, 24 tests, HLSL shaders with UV scroll and shoreline glow"
+
+  # Wave 10: Vegetation
+  - id: "3-029"
+    title: "Vegetation Instance Placement Generator"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-016", "3-003"]
+    implemented_at: "2026-02-06T18:30:00Z"
+    sa_verified_at: "2026-02-06T19:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 11 criteria satisfied, 26 tests, deterministic FNV-1a hash"
+
+  - id: "3-030"
+    title: "Vegetation and Decoration Instanced Rendering"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-029", "3-003"]  # Epic 2 deps: 2-009, 2-012
+    implemented_at: "2026-02-06T19:30:00Z"
+    sa_verified_at: "2026-02-06T20:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 11 criteria satisfied, 19 tests, RenderLayer::Vegetation added, instanced draw calls"
+
+  # Wave 11: Performance
+  - id: "3-031"
+    title: "Terrain Modification Visual Update Pipeline"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-025", "3-004", "3-026", "3-016"]
+    implemented_at: "2026-02-06T19:30:00Z"
+    sa_verified_at: "2026-02-06T20:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 9 criteria satisfied, rate-limited updates, double-buffered rendering"
+
+  - id: "3-032"
+    title: "Terrain LOD Mesh Generation (3 Levels)"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-025"]  # Epic 2 dep: 2-049
+    implemented_at: "2026-02-06T19:30:00Z"
+    sa_verified_at: "2026-02-06T20:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 10 criteria satisfied, 3 LOD levels, 64.5% triangle reduction"
+
+  - id: "3-033"
+    title: "Terrain Chunk LOD Seam Mitigation"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-025", "3-032"]
+    implemented_at: "2026-02-06T20:30:00Z"
+    sa_verified_at: "2026-02-06T21:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 7 criteria satisfied, 25 tests, skirt geometry for all LOD levels"
+
+  - id: "3-034"
+    title: "Terrain Chunk Frustum Culling Integration"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-025"]  # Epic 2 deps: 2-026, 2-050
+    implemented_at: "2026-02-06T20:30:00Z"
+    sa_verified_at: "2026-02-06T21:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 8 criteria satisfied, 15 tests, 89.4% culled on 512x512"
+
+  - id: "3-035"
+    title: "Terrain Edge Detection Tuning"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-025"]  # Epic 2 dep: 2-006
+    implemented_at: "2026-02-06T20:30:00Z"
+    sa_verified_at: "2026-02-06T21:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 7 criteria satisfied, 8 tests, terrain-specific edge config"
+
+  # Wave 12: Serialization
+  - id: "3-036"
+    title: "Terrain Grid Serialization (Save/Load)"
+    system: "TerrainSystem"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-002", "3-005"]  # Epic 1 dep: ISerializable
+    implemented_at: "2026-02-06T22:00:00Z"
+    sa_verified_at: "2026-02-06T22:30:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 7 criteria satisfied, 28 tests, ISerializable interface added"
+
+  - id: "3-037"
+    title: "Terrain Network Sync (Seed + Modifications)"
+    system: "Cross-System"
+    agent: "engine-developer"
+    status: complete
+    blocked_by: ["3-036", "3-022", "3-007"]
+    implemented_at: "2026-02-06T23:00:00Z"
+    sa_verified_at: "2026-02-06T23:30:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 9 criteria satisfied, 31 tests, CRC32 checksum, seed+mods < 1KB"
+
+  # Wave 13: Debug and polish
+  - id: "3-038"
+    title: "Terrain Debug Visualizations"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-025"]  # Epic 2 dep: 2-040
+    implemented_at: "2026-02-06T22:00:00Z"
+    sa_verified_at: "2026-02-06T22:30:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 10 criteria satisfied, 111 tests, RGB normals viz, F5-F12 keybindings"
+
+  - id: "3-039"
+    title: "TerrainVisualConfig Integration with ToonShaderConfig"
+    system: "RenderingSystem"
+    agent: "graphics-engineer"
+    status: complete
+    blocked_by: ["3-026"]  # Epic 2 dep: 2-008
+    implemented_at: "2026-02-06T21:30:00Z"
+    sa_verified_at: "2026-02-06T22:00:00Z"
+    clickup_updated: false
+    notes: "SA PASS - All 7 criteria satisfied, 84 tests, glow behavior params, JSON file I/O"
+
+# Summary stats
+stats:
+  total: 40
+  complete: 40
+  in_progress: 0
+  pending: 0
+  failed: 0
+
+# ClickUp sync
+clickup:
+  list_id: "901710170045"
+  synced: true
+  synced_at: "2026-02-06T12:05:00Z"

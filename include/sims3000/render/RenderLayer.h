@@ -34,13 +34,14 @@ namespace sims3000 {
  * Layer ordering rationale:
  * - Underground (0): Subsurface infrastructure always at bottom
  * - Terrain (1): Base terrain mesh forms the ground
- * - Water (2): Water surfaces sit on terrain with transparency
- * - Roads (3): Roads are on terrain surface, under buildings
- * - Buildings (4): Main structures visible above roads
- * - Units (5): Cosmetic beings and vehicles move on roads/terrain
- * - Effects (6): Particle effects, construction animations overlay scene
- * - DataOverlay (7): Heat maps, coverage zones overlay everything
- * - UIWorld (8): World-space UI (selection boxes) always on top
+ * - Vegetation (2): Trees, crystals, flora on top of terrain
+ * - Water (3): Water surfaces sit on terrain/vegetation with transparency
+ * - Roads (4): Roads are on terrain surface, under buildings
+ * - Buildings (5): Main structures visible above roads
+ * - Units (6): Cosmetic beings and vehicles move on roads/terrain
+ * - Effects (7): Particle effects, construction animations overlay scene
+ * - DataOverlay (8): Heat maps, coverage zones overlay everything
+ * - UIWorld (9): World-space UI (selection boxes) always on top
  */
 enum class RenderLayer : std::uint8_t {
     /// Pipes, tunnels, subsurface infrastructure.
@@ -51,33 +52,37 @@ enum class RenderLayer : std::uint8_t {
     /// Forms the foundational ground layer of the scene.
     Terrain = 1,
 
+    /// Vegetation instances (trees, crystals, flora).
+    /// Rendered after terrain but before water for proper occlusion.
+    Vegetation = 2,
+
     /// Water surfaces, rivers, lakes, and water effects.
-    /// Rendered with transparency over terrain.
-    Water = 2,
+    /// Rendered with transparency over terrain and vegetation.
+    Water = 3,
 
     /// Road network, pathways, and transportation infrastructure.
     /// Rendered on terrain surface, under buildings.
-    Roads = 3,
+    Roads = 4,
 
     /// All building structures (residential, commercial, industrial, services).
     /// Main visual elements of the city.
-    Buildings = 4,
+    Buildings = 5,
 
     /// Cosmetic beings (citizens) and vehicles.
     /// Animated entities that move along roads and pathways.
-    Units = 5,
+    Units = 6,
 
     /// Particle effects, construction animations, visual feedback.
     /// Overlays the scene for dynamic visual effects.
-    Effects = 6,
+    Effects = 7,
 
     /// Data visualization overlays (heat maps, power coverage, pollution).
     /// Semi-transparent overlays for data inspection modes.
-    DataOverlay = 7,
+    DataOverlay = 8,
 
     /// World-space UI elements (selection boxes, placement previews, indicators).
     /// Always rendered on top of all 3D scene elements.
-    UIWorld = 8
+    UIWorld = 9
 };
 
 /**
@@ -86,7 +91,7 @@ enum class RenderLayer : std::uint8_t {
  * Useful for creating layer-indexed arrays or iterating over all layers.
  * Example: std::array<RenderQueue, RENDER_LAYER_COUNT> layerQueues;
  */
-constexpr std::size_t RENDER_LAYER_COUNT = 9;
+constexpr std::size_t RENDER_LAYER_COUNT = 10;
 
 /**
  * @brief Get the string name of a render layer (for debugging/logging).
@@ -97,6 +102,7 @@ constexpr const char* getRenderLayerName(RenderLayer layer) {
     switch (layer) {
         case RenderLayer::Underground: return "Underground";
         case RenderLayer::Terrain:     return "Terrain";
+        case RenderLayer::Vegetation:  return "Vegetation";
         case RenderLayer::Water:       return "Water";
         case RenderLayer::Roads:       return "Roads";
         case RenderLayer::Buildings:   return "Buildings";
@@ -129,6 +135,7 @@ constexpr bool isOpaqueLayer(RenderLayer layer) {
     switch (layer) {
         case RenderLayer::Underground:
         case RenderLayer::Terrain:
+        case RenderLayer::Vegetation:
         case RenderLayer::Roads:
         case RenderLayer::Buildings:
         case RenderLayer::Units:

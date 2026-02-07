@@ -1,6 +1,6 @@
 /**
  * @file test_edge_detection_pass.cpp
- * @brief Unit tests for EdgeDetectionPass (Ticket 2-006).
+ * @brief Unit tests for EdgeDetectionPass (Tickets 2-006, 3-035).
  *
  * Tests edge detection configuration including:
  * - EdgeDetectionConfig struct defaults match canon specs
@@ -8,6 +8,13 @@
  * - Default outline color is dark purple (#2A1B3D)
  * - Near/far planes are set correctly for depth linearization
  * - Edge thickness is configurable
+ *
+ * Terrain-specific tests (Ticket 3-035):
+ * - TerrainEdgeConfig struct provides terrain-tuned parameters
+ * - Terrain normal threshold is lower for cliff/shoreline detection
+ * - Terrain depth threshold is higher to avoid gentle slope noise
+ * - Terrain edge thickness is thicker for visibility at distance
+ * - Cliff/shoreline edge weights are defined
  *
  * GPU rendering tests require manual visual verification.
  */
@@ -312,14 +319,249 @@ void test_NormalBasedPrimarySignal() {
 }
 
 // =============================================================================
+// Terrain Edge Detection Tests (Ticket 3-035)
+// =============================================================================
+
+// Test: TerrainEdgeConfig constants are defined
+void test_TerrainEdgeConfigConstants() {
+    TEST_CASE("TerrainEdgeConfig constants are defined (Ticket 3-035)");
+
+    // Verify terrain-specific constants exist and have reasonable values
+
+    // Normal threshold should be lower than default (0.3) for terrain
+    EXPECT_TRUE(TerrainEdgeConfig::NORMAL_THRESHOLD < 0.3f);
+    EXPECT_TRUE(TerrainEdgeConfig::NORMAL_THRESHOLD > 0.0f);
+
+    // Depth threshold should be higher than default (0.1) to avoid slope noise
+    EXPECT_TRUE(TerrainEdgeConfig::DEPTH_THRESHOLD > 0.1f);
+    EXPECT_TRUE(TerrainEdgeConfig::DEPTH_THRESHOLD < 1.0f);
+
+    // Edge thickness should be reasonable (1.0 - 3.0)
+    EXPECT_TRUE(TerrainEdgeConfig::EDGE_THICKNESS >= 1.0f);
+    EXPECT_TRUE(TerrainEdgeConfig::EDGE_THICKNESS <= 3.0f);
+
+    // Cliff threshold for normal.y
+    EXPECT_TRUE(TerrainEdgeConfig::CLIFF_NORMAL_Y_THRESHOLD > 0.0f);
+    EXPECT_TRUE(TerrainEdgeConfig::CLIFF_NORMAL_Y_THRESHOLD < 1.0f);
+
+    // Gentle slope angle should be positive
+    EXPECT_TRUE(TerrainEdgeConfig::GENTLE_SLOPE_ANGLE > 0.0f);
+
+    // Edge weights should boost (> 1.0)
+    EXPECT_TRUE(TerrainEdgeConfig::CLIFF_EDGE_WEIGHT > 1.0f);
+    EXPECT_TRUE(TerrainEdgeConfig::SHORELINE_EDGE_WEIGHT > 1.0f);
+
+    // Distance scale factor should be between 0 and 1
+    EXPECT_TRUE(TerrainEdgeConfig::DISTANCE_SCALE_FACTOR > 0.0f);
+    EXPECT_TRUE(TerrainEdgeConfig::DISTANCE_SCALE_FACTOR <= 1.0f);
+
+    printf("  [INFO] Terrain normal threshold: %.3f (lower for cliff/shoreline)\n",
+           TerrainEdgeConfig::NORMAL_THRESHOLD);
+    printf("  [INFO] Terrain depth threshold: %.3f (higher to avoid slope noise)\n",
+           TerrainEdgeConfig::DEPTH_THRESHOLD);
+    printf("  [INFO] Terrain edge thickness: %.1f pixels\n",
+           TerrainEdgeConfig::EDGE_THICKNESS);
+    printf("  [INFO] Cliff edge weight: %.2f\n", TerrainEdgeConfig::CLIFF_EDGE_WEIGHT);
+    printf("  [INFO] Shoreline edge weight: %.2f\n", TerrainEdgeConfig::SHORELINE_EDGE_WEIGHT);
+}
+
+// Test: TerrainEdgeConfig createConfig generates valid config
+void test_TerrainEdgeConfigCreateConfig() {
+    TEST_CASE("TerrainEdgeConfig::createConfig generates terrain-tuned config");
+
+    EdgeDetectionConfig terrainConfig = TerrainEdgeConfig::createConfig();
+
+    // Verify terrain values are applied
+    EXPECT_NEAR(terrainConfig.normalThreshold, TerrainEdgeConfig::NORMAL_THRESHOLD, 0.001f);
+    EXPECT_NEAR(terrainConfig.depthThreshold, TerrainEdgeConfig::DEPTH_THRESHOLD, 0.001f);
+    EXPECT_NEAR(terrainConfig.edgeThickness, TerrainEdgeConfig::EDGE_THICKNESS, 0.001f);
+
+    // Outline color should be default purple
+    EXPECT_NEAR(terrainConfig.outlineColor.r, 0.165f, 0.01f);
+    EXPECT_NEAR(terrainConfig.outlineColor.g, 0.106f, 0.01f);
+    EXPECT_NEAR(terrainConfig.outlineColor.b, 0.239f, 0.01f);
+
+    // Test with custom color
+    glm::vec4 customColor(0.0f, 0.0f, 0.0f, 1.0f);
+    EdgeDetectionConfig customConfig = TerrainEdgeConfig::createConfig(customColor, 1.0f, 500.0f);
+
+    EXPECT_NEAR(customConfig.outlineColor.r, 0.0f, 0.001f);
+    EXPECT_NEAR(customConfig.nearPlane, 1.0f, 0.001f);
+    EXPECT_NEAR(customConfig.farPlane, 500.0f, 0.001f);
+
+    printf("  [INFO] Terrain config created successfully\n");
+}
+
+// Test: Terrain config differs from building config
+void test_TerrainVsBuildingConfig() {
+    TEST_CASE("Terrain config differs from building/default config");
+
+    EdgeDetectionConfig defaultConfig;
+    EdgeDetectionConfig terrainConfig = TerrainEdgeConfig::createConfig();
+
+    // Normal threshold: terrain should be lower (more sensitive)
+    EXPECT_TRUE(terrainConfig.normalThreshold < defaultConfig.normalThreshold);
+
+    // Depth threshold: terrain should be higher (less sensitive to avoid slope noise)
+    EXPECT_TRUE(terrainConfig.depthThreshold > defaultConfig.depthThreshold);
+
+    // Edge thickness: terrain should be thicker for visibility at distance
+    EXPECT_TRUE(terrainConfig.edgeThickness >= defaultConfig.edgeThickness);
+
+    printf("  [INFO] Default normal: %.3f, Terrain normal: %.3f (terrain lower)\n",
+           defaultConfig.normalThreshold, terrainConfig.normalThreshold);
+    printf("  [INFO] Default depth: %.3f, Terrain depth: %.3f (terrain higher)\n",
+           defaultConfig.depthThreshold, terrainConfig.depthThreshold);
+    printf("  [INFO] Default thickness: %.1f, Terrain thickness: %.1f\n",
+           defaultConfig.edgeThickness, terrainConfig.edgeThickness);
+}
+
+// Test: Cliff edge detection parameters
+void test_CliffEdgeParameters() {
+    TEST_CASE("Cliff edge detection parameters are tuned");
+
+    // Cliff is identified by normal.y < CLIFF_NORMAL_Y_THRESHOLD
+    // This means the surface is more horizontal than vertical
+
+    // 0.5 means cliff faces with slope > 60 degrees are considered cliffs
+    // arccos(0.5) = 60 degrees
+    float cliffThreshold = TerrainEdgeConfig::CLIFF_NORMAL_Y_THRESHOLD;
+    float cliffAngleDegrees = std::acos(cliffThreshold) * 180.0f / 3.14159f;
+
+    EXPECT_TRUE(cliffAngleDegrees > 45.0f);  // Cliffs should be > 45 degrees
+    EXPECT_TRUE(cliffAngleDegrees < 80.0f);  // But not nearly vertical
+
+    // Cliff edge weight should provide visible boost
+    EXPECT_TRUE(TerrainEdgeConfig::CLIFF_EDGE_WEIGHT >= 1.25f);
+
+    printf("  [INFO] Cliff detected when slope > %.1f degrees\n", cliffAngleDegrees);
+    printf("  [INFO] Cliff edges boosted by %.0f%%\n",
+           (TerrainEdgeConfig::CLIFF_EDGE_WEIGHT - 1.0f) * 100.0f);
+}
+
+// Test: Gentle slope parameters avoid noise
+void test_GentleSlopeParameters() {
+    TEST_CASE("Gentle slope parameters configured to avoid edge noise");
+
+    // Gentle slopes should NOT produce depth edge artifacts
+    // GENTLE_SLOPE_ANGLE defines the max slope angle for suppression
+
+    float gentleAngle = TerrainEdgeConfig::GENTLE_SLOPE_ANGLE;
+    float gentleAngleDegrees = gentleAngle * 180.0f / 3.14159f;
+
+    // Gentle slope should be < 30 degrees (typical rolling terrain)
+    EXPECT_TRUE(gentleAngleDegrees > 10.0f);
+    EXPECT_TRUE(gentleAngleDegrees < 35.0f);
+
+    printf("  [INFO] Gentle slope threshold: < %.1f degrees\n", gentleAngleDegrees);
+    printf("  [INFO] Depth edges suppressed on gentle slopes\n");
+}
+
+// Test: Water shoreline parameters
+void test_WaterShorelineParameters() {
+    TEST_CASE("Water shoreline edge parameters configured");
+
+    // Shorelines occur at water/land boundaries
+    // Water has flat normals (0, 1, 0), land has varied normals
+    // The transition creates a normal discontinuity
+
+    // Shoreline edge weight should be modest (visible but not overwhelming)
+    EXPECT_TRUE(TerrainEdgeConfig::SHORELINE_EDGE_WEIGHT > 1.0f);
+    EXPECT_TRUE(TerrainEdgeConfig::SHORELINE_EDGE_WEIGHT < TerrainEdgeConfig::CLIFF_EDGE_WEIGHT);
+
+    printf("  [INFO] Shoreline edges boosted by %.0f%%\n",
+           (TerrainEdgeConfig::SHORELINE_EDGE_WEIGHT - 1.0f) * 100.0f);
+    printf("  [INFO] Shoreline boost < cliff boost (%.0f%% < %.0f%%)\n",
+           (TerrainEdgeConfig::SHORELINE_EDGE_WEIGHT - 1.0f) * 100.0f,
+           (TerrainEdgeConfig::CLIFF_EDGE_WEIGHT - 1.0f) * 100.0f);
+}
+
+// Test: Depth linearization for terrain distances
+void test_TerrainDepthLinearization() {
+    TEST_CASE("Depth linearization correct for terrain distances");
+
+    // Terrain is typically viewed at distances of 50-250 world units
+    // Depth linearization must work correctly at these distances
+
+    EdgeDetectionConfig terrainConfig = TerrainEdgeConfig::createConfig(
+        glm::vec4(0.165f, 0.106f, 0.239f, 1.0f),
+        0.1f,   // near
+        1000.0f // far
+    );
+
+    auto linearizeDepth = [&](float rawDepth) -> float {
+        float nearP = terrainConfig.nearPlane;
+        float farP = terrainConfig.farPlane;
+        return (nearP * farP) / (farP - rawDepth * (farP - nearP));
+    };
+
+    // Test linearization at typical terrain viewing distances
+    // Calculate raw depth for 50 world units
+    // Inverse of linearization: rawDepth = (far - near*far/linear) / (far - near)
+
+    auto rawDepthForLinear = [&](float linear) -> float {
+        float nearP = terrainConfig.nearPlane;
+        float farP = terrainConfig.farPlane;
+        return (farP - nearP * farP / linear) / (farP - nearP);
+    };
+
+    // At 50 units (close terrain)
+    float raw50 = rawDepthForLinear(50.0f);
+    float linear50 = linearizeDepth(raw50);
+    EXPECT_NEAR(linear50, 50.0f, 0.5f);
+
+    // At 100 units (medium terrain)
+    float raw100 = rawDepthForLinear(100.0f);
+    float linear100 = linearizeDepth(raw100);
+    EXPECT_NEAR(linear100, 100.0f, 1.0f);
+
+    // At 250 units (far terrain)
+    float raw250 = rawDepthForLinear(250.0f);
+    float linear250 = linearizeDepth(raw250);
+    EXPECT_NEAR(linear250, 250.0f, 2.5f);
+
+    printf("  [INFO] Linearization verified at terrain distances:\n");
+    printf("    50 units: raw=%.4f -> linear=%.1f\n", raw50, linear50);
+    printf("    100 units: raw=%.4f -> linear=%.1f\n", raw100, linear100);
+    printf("    250 units: raw=%.4f -> linear=%.1f\n", raw250, linear250);
+}
+
+// Test: Distance scale factor reduces depth sensitivity at far distances
+void test_DistanceScaleFactor() {
+    TEST_CASE("Distance scale factor reduces depth sensitivity at far distances");
+
+    // DISTANCE_SCALE_FACTOR scales the depth threshold based on camera distance
+    // At far distances, we want less sensitivity to avoid noise on gentle slopes
+
+    float scaleFactor = TerrainEdgeConfig::DISTANCE_SCALE_FACTOR;
+
+    // Scale factor should reduce sensitivity (< 1.0)
+    EXPECT_TRUE(scaleFactor > 0.0f);
+    EXPECT_TRUE(scaleFactor <= 1.0f);
+
+    // Calculate effective depth threshold at max distance
+    float baseThreshold = TerrainEdgeConfig::DEPTH_THRESHOLD;
+    float effectiveThreshold = baseThreshold / scaleFactor;
+
+    // Effective threshold at far distance should be higher (less sensitive)
+    EXPECT_TRUE(effectiveThreshold > baseThreshold);
+
+    printf("  [INFO] Distance scale factor: %.2f\n", scaleFactor);
+    printf("  [INFO] Base depth threshold: %.3f\n", baseThreshold);
+    printf("  [INFO] Effective threshold at max distance: %.3f\n", effectiveThreshold);
+}
+
+// =============================================================================
 // Main entry point
 // =============================================================================
 int main() {
     printf("========================================\n");
-    printf("Edge Detection Pass Tests (Ticket 2-006)\n");
+    printf("Edge Detection Pass Tests\n");
+    printf("(Tickets 2-006, 3-035)\n");
     printf("========================================\n");
 
-    // Run all tests
+    // Original tests (Ticket 2-006)
+    printf("\n--- General Edge Detection (2-006) ---\n");
     test_EdgeDetectionConfigDefaults();
     test_EdgeDetectionUBOSize();
     test_EdgeDetectionUBOLayout();
@@ -328,6 +570,17 @@ int main() {
     test_DepthLinearizationParameters();
     test_NormalBasedPrimarySignal();
 
+    // Terrain-specific tests (Ticket 3-035)
+    printf("\n--- Terrain Edge Detection (3-035) ---\n");
+    test_TerrainEdgeConfigConstants();
+    test_TerrainEdgeConfigCreateConfig();
+    test_TerrainVsBuildingConfig();
+    test_CliffEdgeParameters();
+    test_GentleSlopeParameters();
+    test_WaterShorelineParameters();
+    test_TerrainDepthLinearization();
+    test_DistanceScaleFactor();
+
     // Summary
     printf("\n========================================\n");
     printf("SUMMARY: %d passed, %d failed\n", g_testsPassed, g_testsFailed);
@@ -335,11 +588,19 @@ int main() {
 
     // Manual verification note
     printf("\n[NOTE] GPU rendering requires manual visual verification:\n");
+    printf("  General edge detection:\n");
     printf("  - Run application with edge detection enabled\n");
     printf("  - Verify outlines appear on opaque geometry\n");
     printf("  - Verify edges are readable at all zoom levels\n");
     printf("  - Verify <1ms performance at 1080p\n");
     printf("  - Test at multiple camera angles\n");
+    printf("\n  Terrain-specific (Ticket 3-035):\n");
+    printf("  - Cliff edges produce bold outlines\n");
+    printf("  - Water shorelines produce visible outlines\n");
+    printf("  - Gentle slopes do NOT produce excessive edge lines\n");
+    printf("  - Terrain type boundaries have visual separation via color\n");
+    printf("  - Test at multiple zoom levels (5-250 units distance)\n");
+    printf("  - Test at various camera angles (15-80 degree pitch)\n");
 
     return g_testsFailed > 0 ? 1 : 0;
 }

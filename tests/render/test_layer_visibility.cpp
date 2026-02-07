@@ -539,8 +539,8 @@ TEST(count_states_default) {
     std::size_t visible, hidden, ghost;
     visibility.countStates(visible, hidden, ghost);
 
-    // Default: 8 visible, 1 hidden (Underground), 0 ghost
-    ASSERT_EQ(8u, visible);
+    // Default: 9 visible, 1 hidden (Underground), 0 ghost
+    ASSERT_EQ(9u, visible);
     ASSERT_EQ(1u, hidden);
     ASSERT_EQ(0u, ghost);
 }
@@ -553,7 +553,7 @@ TEST(count_states_all_hidden) {
     visibility.countStates(visible, hidden, ghost);
 
     ASSERT_EQ(0u, visible);
-    ASSERT_EQ(9u, hidden);
+    ASSERT_EQ(10u, hidden);
     ASSERT_EQ(0u, ghost);
 }
 
@@ -566,7 +566,7 @@ TEST(count_states_all_ghost) {
 
     ASSERT_EQ(0u, visible);
     ASSERT_EQ(0u, hidden);
-    ASSERT_EQ(9u, ghost);
+    ASSERT_EQ(10u, ghost);
 }
 
 TEST(count_states_mixed) {
@@ -579,9 +579,9 @@ TEST(count_states_mixed) {
     std::size_t visible, hidden, ghost;
     visibility.countStates(visible, hidden, ghost);
 
-    // Underground(hidden), Terrain(ghost), Water(hidden), Roads(visible),
+    // Underground(hidden), Terrain(ghost), Vegetation(visible), Water(hidden), Roads(visible),
     // Buildings(ghost), Units(visible), Effects(visible), DataOverlay(visible), UIWorld(visible)
-    ASSERT_EQ(5u, visible);
+    ASSERT_EQ(6u, visible);
     ASSERT_EQ(2u, hidden);
     ASSERT_EQ(2u, ghost);
 }
