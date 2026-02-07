@@ -762,7 +762,13 @@ void test_all_component_serialization() {
     // Add all syncable components
     serverRegistry.emplace<PositionComponent>(e1, PositionComponent{{100, 200}, 10});
     serverRegistry.emplace<OwnershipComponent>(e1, OwnershipComponent{3, OwnershipState::Abandoned, {}, 999});
-    serverRegistry.emplace<TransformComponent>(e1, TransformComponent{{1.5f, 2.5f, 3.5f}, 1.234f});
+    // TransformComponent: position, rotation (quat), scale, dirty, padding, model_matrix
+    TransformComponent tc1;
+    tc1.position = {1.5f, 2.5f, 3.5f};
+    tc1.rotation = glm::angleAxis(1.234f, glm::vec3(0.0f, 1.0f, 0.0f));  // Y-axis rotation
+    tc1.scale = {1.0f, 1.0f, 1.0f};
+    tc1.recompute_matrix();
+    serverRegistry.emplace<TransformComponent>(e1, tc1);
     serverRegistry.emplace<BuildingComponent>(e1, BuildingComponent{12345, 5, 75, 3, 0});
     serverRegistry.emplace<EnergyComponent>(e1, EnergyComponent{-500, 1000, 1, {}});
     serverRegistry.emplace<PopulationComponent>(e1, PopulationComponent{150, 200, 80, 90, {}});
@@ -1405,7 +1411,11 @@ void test_complete_snapshot_flow() {
     for (int i = 0; i < 50; ++i) {
         EntityID e = serverRegistry.create();
         serverRegistry.emplace<PositionComponent>(e, PositionComponent{{static_cast<std::int16_t>(i * 10), static_cast<std::int16_t>(i * 20)}, static_cast<std::int16_t>(i)});
-        serverRegistry.emplace<TransformComponent>(e, TransformComponent{{static_cast<float>(i), static_cast<float>(i * 2), 0.0f}, static_cast<float>(i) * 0.1f});
+        TransformComponent tc;
+        tc.position = {static_cast<float>(i), static_cast<float>(i * 2), 0.0f};
+        tc.rotation = glm::angleAxis(static_cast<float>(i) * 0.1f, glm::vec3(0.0f, 1.0f, 0.0f));
+        tc.recompute_matrix();
+        serverRegistry.emplace<TransformComponent>(e, tc);
 
         if (i % 2 == 0) {
             serverRegistry.emplace<BuildingComponent>(e, BuildingComponent{static_cast<std::uint32_t>(i), 1, 100, 0, 0});

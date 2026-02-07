@@ -1,0 +1,641 @@
+# Epic 2 Execution Queue
+# Generated: 2026-02-05T22:40:00Z
+# Last Updated: 2026-02-06T08:30:00Z
+
+epic: 2
+name: "Core Rendering Engine (3D)"
+status: complete
+clickup_list_id: "901710170043"
+
+# Current position in queue
+current_index: 50
+current_ticket: null
+
+# Execution queue (dependency-ordered)
+# 50 tickets total
+queue:
+  # Wave 1: Foundation (no Epic 2 deps) - COMPLETE
+  - id: "2-001"
+    title: "SDL_GPU Device Creation"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: []
+    blocks: ["2-002", "2-003", "2-004"]
+    implemented_at: "2026-02-05T22:50:00Z"
+    sa_verified_at: "2026-02-05T23:10:00Z"
+    clickup_id: "86dznn5fq"
+    clickup_updated: true
+
+  # Wave 1b: Components and Camera State (no deps) - COMPLETE
+  - id: "2-017"
+    title: "Camera State and Configuration"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: []
+    blocks: ["2-020", "2-021", "2-022", "2-023", "2-046", "2-047", "2-048"]
+    implemented_at: "2026-02-05T22:55:00Z"
+    sa_verified_at: "2026-02-05T23:10:00Z"
+    clickup_id: "86dznn5fw"
+    clickup_updated: true
+
+  - id: "2-031"
+    title: "RenderComponent Definition"
+    system: "ECS"
+    agent: "systems-architect"
+    status: complete
+    depends_on: []
+    blocks: ["2-033"]
+    implemented_at: "2026-02-05T22:55:00Z"
+    sa_verified_at: "2026-02-05T23:10:00Z"
+    clickup_id: "86dznn5g1"
+    clickup_updated: true
+
+  - id: "2-032"
+    title: "TransformComponent Definition"
+    system: "ECS"
+    agent: "systems-architect"
+    status: complete
+    depends_on: []
+    blocks: ["2-033", "2-044"]
+    implemented_at: "2026-02-05T23:00:00Z"
+    sa_verified_at: "2026-02-05T23:10:00Z"
+    clickup_id: "86dznn5g4"
+    clickup_updated: true
+
+  - id: "2-034"
+    title: "Render Layer Definitions"
+    system: "Rendering"
+    agent: "systems-architect"
+    status: complete
+    depends_on: []
+    blocks: ["2-035"]
+    implemented_at: "2026-02-05T23:00:00Z"
+    sa_verified_at: "2026-02-05T23:10:00Z"
+    clickup_id: "86dznn5g8"
+    clickup_updated: true
+
+  # Wave 2: GPU Foundation (depends on 2-001) - 2-002 COMPLETE
+  - id: "2-002"
+    title: "Window Integration and Swap Chain"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-001"]
+    blocks: ["2-014", "2-018"]
+    implemented_at: "2026-02-05T23:05:00Z"
+    sa_verified_at: "2026-02-05T23:10:00Z"
+    clickup_id: "86dznn5gc"
+    clickup_updated: true
+
+  - id: "2-003"
+    title: "GPU Resource Management Infrastructure"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-001"]
+    blocks: ["2-009", "2-010"]
+    implemented_at: "2026-02-05T23:20:00Z"
+    sa_verified_at: "2026-02-05T23:35:00Z"
+    clickup_id: "86dznn9pv"
+    clickup_updated: true
+
+  - id: "2-004"
+    title: "Shader Compilation Pipeline"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-001"]
+    blocks: ["2-005", "2-007"]
+    implemented_at: "2026-02-05T23:20:00Z"
+    sa_verified_at: "2026-02-05T23:35:00Z"
+    clickup_id: "86dznn9q0"
+    clickup_updated: true
+
+  # Wave 3: Shader and Depth (depends on Wave 2)
+  - id: "2-005"
+    title: "Toon Shader Implementation (Stepped Lighting)"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-004"]
+    blocks: ["2-006", "2-007", "2-008", "2-037"]
+    implemented_at: "2026-02-05T23:45:00Z"
+    sa_verified_at: "2026-02-05T23:55:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-014"
+    title: "Depth Buffer Setup"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-002"]
+    blocks: ["2-015", "2-018"]
+    implemented_at: "2026-02-05T23:20:00Z"
+    sa_verified_at: "2026-02-05T23:35:00Z"
+    clickup_id: "86dznn9q2"
+    clickup_updated: true
+
+  - id: "2-009"
+    title: "glTF Model Loading"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-003"]
+    blocks: ["2-010", "2-011", "2-013"]
+    implemented_at: "2026-02-05T23:45:00Z"
+    sa_verified_at: "2026-02-05T23:55:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  # Wave 4: Pipeline and Mesh
+  - id: "2-007"
+    title: "Graphics Pipeline Creation"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-004", "2-005"]
+    blocks: ["2-010", "2-018", "2-041"]
+    implemented_at: "2026-02-06T00:05:00Z"
+    sa_verified_at: "2026-02-06T00:15:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-008"
+    title: "ToonShaderConfig Runtime Resource"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-005"]
+    blocks: ["2-019"]
+    implemented_at: "2026-02-06T00:30:00Z"
+    sa_verified_at: "2026-02-06T01:00:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-015"
+    title: "Depth State Configuration"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-014"]
+    blocks: ["2-007", "2-016"]
+    implemented_at: "2026-02-05T23:45:00Z"
+    sa_verified_at: "2026-02-05T23:55:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-010"
+    title: "GPU Mesh Representation"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-003", "2-009"]
+    blocks: ["2-011", "2-012", "2-013", "2-043", "2-049"]
+    implemented_at: "2026-02-06T00:00:00Z"
+    sa_verified_at: "2026-02-06T00:15:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  # Wave 5: Render Commands and Camera Matrices
+  - id: "2-011"
+    title: "Render Command Recording"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-010"]
+    blocks: ["2-018"]
+    implemented_at: "2026-02-06T00:30:00Z"
+    sa_verified_at: "2026-02-06T01:00:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-012"
+    title: "GPU Instancing for Repeated Models"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-010"]
+    blocks: ["2-018"]
+    implemented_at: "2026-02-06T01:20:00Z"
+    sa_verified_at: "2026-02-06T01:45:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-013"
+    title: "Placeholder Model for Missing Assets"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-009", "2-010"]
+    blocks: []
+    implemented_at: "2026-02-06T01:20:00Z"
+    sa_verified_at: "2026-02-06T01:45:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-020"
+    title: "View Matrix Calculation"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-017"]
+    blocks: ["2-022", "2-024"]
+    implemented_at: "2026-02-06T00:05:00Z"
+    sa_verified_at: "2026-02-06T00:15:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-021"
+    title: "Projection Matrix Calculation (Perspective)"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-017"]
+    blocks: ["2-022", "2-024"]
+    implemented_at: "2026-02-06T00:30:00Z"
+    sa_verified_at: "2026-02-06T01:00:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  # Wave 6: VP Integration and Main Render Pass
+  - id: "2-022"
+    title: "View-Projection Matrix Integration"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-020", "2-021"]
+    blocks: ["2-018", "2-024", "2-026", "2-029"]
+    implemented_at: "2026-02-06T01:20:00Z"
+    sa_verified_at: "2026-02-06T01:45:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-018"
+    title: "Main Render Pass Structure"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-002", "2-007", "2-011", "2-014"]
+    blocks: ["2-006", "2-016", "2-019", "2-028", "2-039", "2-040", "2-042", "2-043", "2-045"]
+    implemented_at: "2026-02-06T02:00:00Z"
+    sa_verified_at: "2026-02-06T02:30:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  # Wave 7: Post-Processing and Transparency
+  - id: "2-006"
+    title: "Screen-Space Edge Detection (Post-Process)"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-005", "2-018"]
+    blocks: ["2-019"]
+    implemented_at: "2026-02-06T02:45:00Z"
+    sa_verified_at: "2026-02-06T03:15:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-016"
+    title: "Transparent Object Handling"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-015", "2-018"]
+    blocks: ["2-019", "2-036"]
+    implemented_at: "2026-02-06T02:45:00Z"
+    sa_verified_at: "2026-02-06T03:15:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-037"
+    title: "Emissive Material Support"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-005"]
+    blocks: ["2-038"]
+    implemented_at: "2026-02-06T02:00:00Z"
+    sa_verified_at: "2026-02-06T02:30:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  # Wave 8: Complete Render Frame and Bloom
+  - id: "2-019"
+    title: "Complete Render Frame Flow"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-006", "2-016", "2-018"]
+    blocks: ["2-028", "2-038"]
+    implemented_at: "2026-02-06T03:45:00Z"
+    sa_verified_at: "2026-02-06T04:00:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-038"
+    title: "Bloom Post-Process"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-037", "2-019"]
+    blocks: []
+    implemented_at: "2026-02-06T04:15:00Z"
+    sa_verified_at: "2026-02-06T04:30:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  # Wave 9: Camera Controls
+  - id: "2-023"
+    title: "Pan Controls (Focus Point Movement)"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-017"]
+    blocks: ["2-025"]
+    implemented_at: "2026-02-06T03:50:00Z"
+    sa_verified_at: "2026-02-06T04:00:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-024"
+    title: "Zoom Controls (Camera Distance)"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-020", "2-021"]
+    blocks: ["2-025"]
+    implemented_at: "2026-02-06T02:00:00Z"
+    sa_verified_at: "2026-02-06T02:30:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-046"
+    title: "Free Camera Orbit and Tilt Controls"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-017"]
+    blocks: ["2-025", "2-048"]
+    implemented_at: "2026-02-06T04:25:00Z"
+    sa_verified_at: "2026-02-06T04:30:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-027"
+    title: "Camera Animation"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-017"]
+    blocks: ["2-047"]
+    implemented_at: "2026-02-06T04:20:00Z"
+    sa_verified_at: "2026-02-06T04:30:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-047"
+    title: "Isometric Preset Snap System"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-017", "2-027"]
+    blocks: ["2-048"]
+    implemented_at: "2026-02-06T04:45:00Z"
+    sa_verified_at: "2026-02-06T05:05:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-048"
+    title: "Camera Mode Management"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-017", "2-046", "2-047"]
+    blocks: []
+    implemented_at: "2026-02-06T05:25:00Z"
+    sa_verified_at: "2026-02-06T05:45:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  # Wave 10: Viewport and Culling
+  - id: "2-025"
+    title: "Viewport Bounds and Map Clamping"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-023", "2-024", "2-046"]
+    blocks: ["2-026"]
+    implemented_at: "2026-02-06T04:50:00Z"
+    sa_verified_at: "2026-02-06T05:00:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-026"
+    title: "Frustum Culling"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-025", "2-022"]
+    blocks: ["2-049", "2-050"]
+    implemented_at: "2026-02-06T05:15:00Z"
+    sa_verified_at: "2026-02-06T05:45:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  # Wave 11: Coordinate Conversion
+  - id: "2-028"
+    title: "World-to-Screen Transformation"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-019", "2-022"]
+    blocks: ["2-045"]
+    implemented_at: "2026-02-06T04:55:00Z"
+    sa_verified_at: "2026-02-06T05:00:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-029"
+    title: "Screen-to-World Ray Casting"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-022"]
+    blocks: ["2-030"]
+    implemented_at: "2026-02-06T02:45:00Z"
+    sa_verified_at: "2026-02-06T03:15:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-030"
+    title: "Tile Picking (3D Ray Cast)"
+    system: "Camera"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-029"]
+    blocks: []
+    implemented_at: "2026-02-06T03:55:00Z"
+    sa_verified_at: "2026-02-06T04:00:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  # Wave 12: Components Sync and Layers
+  - id: "2-033"
+    title: "Position-to-Transform Synchronization"
+    system: "ECS"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-031", "2-032"]
+    blocks: []
+    implemented_at: "2026-02-06T05:20:00Z"
+    sa_verified_at: "2026-02-06T05:45:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-035"
+    title: "Layer Visibility Toggle"
+    system: "Rendering"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-034"]
+    blocks: ["2-036"]
+    implemented_at: "2026-02-06T06:15:00Z"
+    sa_verified_at: "2026-02-06T06:30:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-036"
+    title: "Underground View Mode"
+    system: "Rendering"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-035", "2-016"]
+    blocks: []
+    implemented_at: "2026-02-06T06:45:00Z"
+    sa_verified_at: "2026-02-06T07:15:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  # Wave 13: Visual Effects (Advanced)
+  - id: "2-039"
+    title: "Shadow Rendering (Basic)"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-018"]
+    blocks: []
+    implemented_at: "2026-02-06T06:20:00Z"
+    sa_verified_at: "2026-02-06T06:30:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  # Wave 14: Debug Tools
+  - id: "2-040"
+    title: "Debug Grid Overlay"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-018"]
+    blocks: []
+    implemented_at: "2026-02-06T06:25:00Z"
+    sa_verified_at: "2026-02-06T06:30:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-041"
+    title: "Wireframe Mode"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-007"]
+    blocks: []
+    implemented_at: "2026-02-06T07:00:00Z"
+    sa_verified_at: "2026-02-06T07:15:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-042"
+    title: "Render Statistics Display"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-019"]
+    blocks: []
+    implemented_at: "2026-02-06T07:05:00Z"
+    sa_verified_at: "2026-02-06T07:15:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-043"
+    title: "Bounding Box Visualization"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-010", "2-018"]
+    blocks: []
+    implemented_at: "2026-02-06T07:30:00Z"
+    sa_verified_at: "2026-02-06T08:00:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  # Wave 15: Multiplayer Integration
+  - id: "2-044"
+    title: "Transform Interpolation"
+    system: "Rendering"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-032"]
+    blocks: []
+    implemented_at: "2026-02-06T07:35:00Z"
+    sa_verified_at: "2026-02-06T08:00:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-045"
+    title: "Other Player Cursor Rendering"
+    system: "Rendering"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-018", "2-028"]
+    blocks: []
+    implemented_at: "2026-02-06T07:40:00Z"
+    sa_verified_at: "2026-02-06T08:00:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  # Wave 16: Performance Optimization
+  - id: "2-049"
+    title: "LOD System (Basic Framework)"
+    system: "Rendering"
+    agent: "graphics-engineer"
+    status: complete
+    depends_on: ["2-010", "2-026"]
+    blocks: []
+    implemented_at: "2026-02-06T08:15:00Z"
+    sa_verified_at: "2026-02-06T08:30:00Z"
+    clickup_id: null
+    clickup_updated: false
+
+  - id: "2-050"
+    title: "Spatial Partitioning for Large Maps"
+    system: "Rendering"
+    agent: "systems-architect"
+    status: complete
+    depends_on: ["2-026"]
+    blocks: []
+    implemented_at: "2026-02-06T08:20:00Z"
+    sa_verified_at: "2026-02-06T08:30:00Z"
+    notes: "Satisfied by FrustumCuller spatial grid (2-026)"
+    clickup_id: null
+    clickup_updated: false
+
+# Summary stats
+stats:
+  total: 50
+  complete: 50
+  in_progress: 0
+  pending: 0
+  failed: 0

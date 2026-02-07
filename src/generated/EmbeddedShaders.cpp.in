@@ -1,0 +1,58 @@
+// Placeholder for generated embedded shaders
+// This file is replaced during build by cmake/ShaderCompilation.cmake
+// with actual compiled shader bytecode.
+
+#include <cstdint>
+#include <cstddef>
+
+namespace sims3000 {
+namespace embedded {
+
+// Placeholder fallback vertex shader - DXIL (D3D12)
+// Will be replaced with actual bytecode at build time
+static const uint8_t fallback_vert_dxil[] = {
+    0x00  // Placeholder byte
+};
+static const size_t fallback_vert_dxil_size = 0;
+
+// Placeholder fallback vertex shader - SPIR-V (Vulkan/Metal)
+static const uint8_t fallback_vert_spirv[] = {
+    0x00  // Placeholder byte
+};
+static const size_t fallback_vert_spirv_size = 0;
+
+// Placeholder fallback fragment shader - DXIL
+static const uint8_t fallback_frag_dxil[] = {
+    0x00  // Placeholder byte
+};
+static const size_t fallback_frag_dxil_size = 0;
+
+// Placeholder fallback fragment shader - SPIR-V
+static const uint8_t fallback_frag_spirv[] = {
+    0x00  // Placeholder byte
+};
+static const size_t fallback_frag_spirv_size = 0;
+
+} // namespace embedded
+
+const uint8_t* getEmbeddedFallbackVertexDXIL(size_t& outSize) {
+    outSize = embedded::fallback_vert_dxil_size;
+    return embedded::fallback_vert_dxil;
+}
+
+const uint8_t* getEmbeddedFallbackVertexSPIRV(size_t& outSize) {
+    outSize = embedded::fallback_vert_spirv_size;
+    return embedded::fallback_vert_spirv;
+}
+
+const uint8_t* getEmbeddedFallbackFragmentDXIL(size_t& outSize) {
+    outSize = embedded::fallback_frag_dxil_size;
+    return embedded::fallback_frag_dxil;
+}
+
+const uint8_t* getEmbeddedFallbackFragmentSPIRV(size_t& outSize) {
+    outSize = embedded::fallback_frag_spirv_size;
+    return embedded::fallback_frag_spirv;
+}
+
+} // namespace sims3000

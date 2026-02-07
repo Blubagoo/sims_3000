@@ -84,8 +84,15 @@ void ActionMapping::resetToDefaults() {
     bind(Action::MENU, SDL_SCANCODE_ESCAPE);
 
     // Debug
-    bind(Action::DEBUG_TOGGLE, SDL_SCANCODE_F3);
+    bind(Action::DEBUG_TOGGLE, SDL_SCANCODE_F1);
     bind(Action::DEBUG_CAMERA, SDL_SCANCODE_F4);
+    bind(Action::DEBUG_GRID, SDL_SCANCODE_G);
+    bind(Action::DEBUG_WIREFRAME, SDL_SCANCODE_F);
+    bind(Action::DEBUG_STATS, SDL_SCANCODE_F3);  // Render stats overlay
+    bind(Action::DEBUG_BOUNDING_BOX, SDL_SCANCODE_B);  // Bounding box visualization
+
+    // View modes
+    bind(Action::TOGGLE_UNDERGROUND, SDL_SCANCODE_U);
 
     // System
     bind(Action::FULLSCREEN, SDL_SCANCODE_F11);
@@ -111,6 +118,11 @@ const char* ActionMapping::getActionName(Action action) {
         case Action::MENU:         return "Menu";
         case Action::DEBUG_TOGGLE: return "Debug Toggle";
         case Action::DEBUG_CAMERA: return "Debug Camera";
+        case Action::DEBUG_GRID:   return "Debug Grid";
+        case Action::DEBUG_WIREFRAME: return "Debug Wireframe";
+        case Action::DEBUG_STATS: return "Debug Stats";
+        case Action::DEBUG_BOUNDING_BOX: return "Debug Bounding Box";
+        case Action::TOGGLE_UNDERGROUND: return "Toggle Underground";
         case Action::FULLSCREEN:   return "Fullscreen";
         case Action::QUIT:         return "Quit";
         default:                   return "Unknown";

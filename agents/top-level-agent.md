@@ -337,6 +337,7 @@ Available skills that agents can invoke:
 |-------|---------|---------|
 | Plan Epic | `/plan-epic <N>` | Orchestrate agents to plan an epic's tickets |
 | Do Epic | `/do-epic <N>` | Execute an epic with agent delegation and SA verification |
+| Implement Ticket | `/implement-ticket <ID>` | Sub-agent workflow for ticket implementation (internal) |
 | Update Canon | `/update-canon` | Update project canon files with decisions |
 | Agent Discussion | `/agent-discussion` | Structured Q&A between agents |
 
@@ -389,6 +390,31 @@ This skill:
 - Max 3 retries then ask user (don't spin forever)
 
 **Output:** Completed epic with all tickets SA-verified and ClickUp updated.
+
+### Implement Ticket
+
+**Internal skill used by sub-agents during `/do-epic` execution.**
+
+```
+/implement-ticket 0-007
+```
+
+This skill standardizes how sub-agents implement tickets:
+
+1. **Pre-flight check** - Verify all dependencies exist before starting
+2. **Implementation** - Write code following agent profile and patterns
+3. **Self-verify** - Check implementation against acceptance criteria
+4. **Structured report** - Return consistent format for orchestrator
+
+Sub-agents MUST follow this workflow. The structured report enables:
+- Automated build verification
+- SA verification handoff
+- Queue status updates
+
+**Report statuses:**
+- `COMPLETE` - All criteria met, ready for SA review
+- `BLOCKED` - Missing dependency, cannot proceed
+- `FAILED` - Attempted but could not complete
 
 ### Agent Discussion
 

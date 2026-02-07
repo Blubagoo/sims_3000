@@ -5,6 +5,7 @@
 
 #include "sims3000/test/StateDiffer.h"
 #include "sims3000/ecs/Components.h"
+#include <glm/gtc/quaternion.hpp>
 #include <sstream>
 #include <iomanip>
 #include <cmath>
@@ -360,10 +361,26 @@ std::vector<StateDifference> StateDiffer::compareTransforms(
             continue;
         }
 
-        if (!floatEqual(expTrn.position.x, actTrn->position.x, options.floatTolerance) ||
+        // Compare position components
+        bool positionDiffers =
+            !floatEqual(expTrn.position.x, actTrn->position.x, options.floatTolerance) ||
             !floatEqual(expTrn.position.y, actTrn->position.y, options.floatTolerance) ||
-            !floatEqual(expTrn.position.z, actTrn->position.z, options.floatTolerance) ||
-            !floatEqual(expTrn.rotation, actTrn->rotation, options.floatTolerance)) {
+            !floatEqual(expTrn.position.z, actTrn->position.z, options.floatTolerance);
+
+        // Compare rotation quaternion components
+        bool rotationDiffers =
+            !floatEqual(expTrn.rotation.w, actTrn->rotation.w, options.floatTolerance) ||
+            !floatEqual(expTrn.rotation.x, actTrn->rotation.x, options.floatTolerance) ||
+            !floatEqual(expTrn.rotation.y, actTrn->rotation.y, options.floatTolerance) ||
+            !floatEqual(expTrn.rotation.z, actTrn->rotation.z, options.floatTolerance);
+
+        // Compare scale components
+        bool scaleDiffers =
+            !floatEqual(expTrn.scale.x, actTrn->scale.x, options.floatTolerance) ||
+            !floatEqual(expTrn.scale.y, actTrn->scale.y, options.floatTolerance) ||
+            !floatEqual(expTrn.scale.z, actTrn->scale.z, options.floatTolerance);
+
+        if (positionDiffers || rotationDiffers || scaleDiffers) {
 
             StateDifference diff;
             diff.type = DifferenceType::ComponentValueDiffers;
@@ -374,11 +391,17 @@ std::vector<StateDifference> StateDiffer::compareTransforms(
             exp << std::fixed << std::setprecision(3)
                 << "pos=(" << expTrn.position.x << ","
                 << expTrn.position.y << "," << expTrn.position.z
-                << "),rot=" << expTrn.rotation;
+                << "),rot=(" << expTrn.rotation.w << "," << expTrn.rotation.x << ","
+                << expTrn.rotation.y << "," << expTrn.rotation.z
+                << "),scale=(" << expTrn.scale.x << "," << expTrn.scale.y << ","
+                << expTrn.scale.z << ")";
             act << std::fixed << std::setprecision(3)
                 << "pos=(" << actTrn->position.x << ","
                 << actTrn->position.y << "," << actTrn->position.z
-                << "),rot=" << actTrn->rotation;
+                << "),rot=(" << actTrn->rotation.w << "," << actTrn->rotation.x << ","
+                << actTrn->rotation.y << "," << actTrn->rotation.z
+                << "),scale=(" << actTrn->scale.x << "," << actTrn->scale.y << ","
+                << actTrn->scale.z << ")";
             diff.expectedValue = exp.str();
             diff.actualValue = act.str();
             diffs.push_back(diff);

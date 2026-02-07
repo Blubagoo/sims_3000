@@ -49,21 +49,33 @@ A ticket is ONLY marked done in ClickUp after SA verification passes.
 ┌─────────────────────────────────────────────────────────────────┐
 │  1. LOAD EPIC                                                    │
 │     Read tickets.md, fetch ClickUp status, build dependency graph│
+│     Create or resume from queue.yaml                             │
 ├─────────────────────────────────────────────────────────────────┤
 │  2. CREATE TASK QUEUE                                            │
-│     Order tickets by dependencies, identify parallelizable groups│
+│     Order tickets by dependencies, write to queue.yaml           │
 ├─────────────────────────────────────────────────────────────────┤
 │  3. FOR EACH TICKET (or parallel group):                         │
-│     a. SELECT AGENT - Pick best agent for ticket's domain        │
-│     b. DELEGATE - Spawn agent with ticket context                │
-│     c. BUILD & TEST - Verify compilation and tests pass          │
-│     d. SA VERIFY - Systems Architect reviews against criteria    │
-│     e. CLICKUP UPDATE - Mark done only after SA passes           │
+│     a. UPDATE QUEUE - Set status: in_progress                    │
+│     b. SELECT AGENT - Pick best agent for ticket's domain        │
+│     c. PRE-FLIGHT - Agent verifies work can be completed fully   │
+│     d. DELEGATE - Agent implements (only after pre-flight passes)│
+│        ├─ If ESCALATE: Spawn SA to answer, return to agent       │
+│        └─ Agent continues with SA's guidance                     │
+│     e. UPDATE QUEUE - Set status: implemented                    │
+│     f. BUILD & TEST - Verify compilation and tests pass          │
+│     g. UPDATE QUEUE - Set status: sa_review                      │
+│     h. SA VERIFY - Systems Architect reviews against criteria    │
+│     i. UPDATE QUEUE - Set status: complete (only if SA passes)   │
+│     j. CLICKUP UPDATE - Mark done only after SA passes           │
 ├─────────────────────────────────────────────────────────────────┤
 │  4. EPIC COMPLETE                                                │
-│     All tickets done, final integration test, commit             │
+│     All tickets done, final integration test, update queue.yaml  │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+**Queue file location:** `/docs/epics/epic-{N}/queue.yaml`
+
+The queue file is updated at every step so you can always see exactly where execution is.
 
 ---
 
@@ -104,6 +116,103 @@ Example for Epic 0:
               └─> 0-004 (Game Loop)
 ```
 
+### Create Queue File
+
+**Location:** `/docs/epics/epic-{N}/queue.yaml`
+
+This file is the **source of truth** for execution progress. It persists across sessions and shows exactly where we are in the epic.
+
+```yaml
+# Epic {N} Execution Queue
+# Generated: {timestamp}
+# Last Updated: {timestamp}
+
+epic: {N}
+name: "{Epic Name}"
+status: in_progress  # pending | in_progress | complete
+
+# Current position in queue
+current_index: 3
+current_ticket: "0-004"
+
+# Execution queue (dependency-ordered)
+queue:
+  - id: "0-001"
+    title: "Project Build Infrastructure"
+    system: "Build"
+    agent: "engine-developer"
+    status: complete        # pending | in_progress | implemented | sa_review | complete | failed
+    implemented_at: "2026-02-05T10:30:00Z"
+    sa_verified_at: "2026-02-05T10:35:00Z"
+    clickup_updated: true
+
+  - id: "0-002"
+    title: "SDL3 Initialization"
+    system: "Application"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-05T10:45:00Z"
+    sa_verified_at: "2026-02-05T10:50:00Z"
+    clickup_updated: true
+
+  - id: "0-003"
+    title: "Window Management"
+    system: "Application"
+    agent: "engine-developer"
+    status: sa_review       # Currently being reviewed by SA
+    implemented_at: "2026-02-05T11:00:00Z"
+    sa_verified_at: null
+    clickup_updated: false
+
+  - id: "0-004"
+    title: "Main Game Loop"
+    system: "Application"
+    agent: "engine-developer"
+    status: in_progress     # Currently being implemented
+    implemented_at: null
+    sa_verified_at: null
+    clickup_updated: false
+
+  - id: "0-005"
+    title: "Application State Management"
+    system: "Application"
+    agent: "engine-developer"
+    status: pending         # Waiting for dependencies
+    blocked_by: ["0-004"]
+    implemented_at: null
+    sa_verified_at: null
+    clickup_updated: false
+
+# Summary stats
+stats:
+  total: 34
+  complete: 2
+  in_progress: 2
+  pending: 30
+  failed: 0
+```
+
+### Queue Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Not started, may be blocked by dependencies |
+| `in_progress` | Agent currently implementing |
+| `blocked` | Pre-flight failed, missing dependency or blocker found |
+| `implemented` | Agent reported done, awaiting SA review |
+| `sa_review` | SA currently verifying |
+| `complete` | SA verified, ClickUp updated |
+| `failed` | Failed after max retries, needs user intervention |
+
+### Resuming from Queue
+
+When `/do-epic` is invoked:
+1. Check if `queue.yaml` exists for this epic
+2. If exists, resume from `current_index`
+3. If not, create fresh queue from tickets.md
+
+This allows stopping and resuming epic execution across sessions.
+
 ---
 
 ## Phase 2: Create Task Queue
@@ -117,17 +226,26 @@ Example for Epic 0:
 
 ### Parallelization Strategy
 
+**Maximum 3 tickets in parallel at any time.**
+
+This limit ensures:
+- Questions can be batched efficiently for SA
+- Build verification doesn't conflict
+- Manageable complexity for orchestration
+
 Group tickets with no inter-dependencies for parallel execution:
 
 ```yaml
-# Example parallel groups for Epic 0
+# Example parallel groups for Epic 0 (max 3 per wave)
 wave_1:
   - 0-001  # Build (no deps)
 
-wave_2:  # All depend only on 0-001
+wave_2a:  # All depend only on 0-001 (first batch of 3)
   - 0-013  # Logging
   - 0-025  # ECS Framework
   - 0-014  # Config
+
+wave_2b:  # Same deps, next batch of 3
   - 0-029  # Testing
   - 0-021  # RNG
   - 0-026  # Core Types
@@ -136,6 +254,8 @@ wave_3:  # Depend on wave_2
   - 0-002  # SDL Init (needs logging)
   # ... etc
 ```
+
+When spawning parallel tickets, launch up to 3 agents simultaneously using multiple Task tool calls in a single message.
 
 ---
 
@@ -166,13 +286,15 @@ Map ticket system/type to best agent profile:
 
 ### Step B: Delegate Implementation
 
-Spawn implementation agent with this prompt template:
+Spawn implementation agent with the `/implement-ticket` skill:
 
 ```
 ## Ticket: {TICKET_ID} - {TITLE}
 
-**Agent Profile:** Read and follow /agents/{agent-profile}.md
+**Follow skill:** /implement-ticket
+**Agent Profile:** /agents/{agent-profile}.md
 
+**Epic:** {EPIC_NUMBER}
 **Type:** {TYPE}
 **System:** {SYSTEM}
 
@@ -182,30 +304,22 @@ Spawn implementation agent with this prompt template:
 ### Acceptance Criteria
 {ACCEPTANCE_CRITERIA_LIST}
 
-### Context Files to Read First
+### Context Files
 - {List relevant existing files}
-- /docs/canon/patterns.yaml (for implementation patterns)
-
-### Files to Create/Modify
-- {Expected files based on description}
-
-### Requirements
-1. Follow project patterns from canon
-2. Use sims3000:: namespace
-3. Ensure code compiles with no warnings
-4. Add to CMakeLists.txt if creating new files
-
-### Success Criteria
-All acceptance criteria checkboxes must be satisfiable by your implementation.
+- /docs/canon/patterns.yaml
 
 ### Build Command
-```
 CMAKE="C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe"
 "$CMAKE" --build build --config Release
 ```
 
-Report what you implemented and which acceptance criteria are now met.
-```
+The agent will follow the `/implement-ticket` skill workflow:
+1. **Pre-flight check** - Verify work can be completed
+2. **Implementation** - Write code following patterns
+3. **Self-verify** - Check against acceptance criteria
+4. **Report** - Return structured report
+
+See `/.claude/skills/implement-ticket/SKILL.md` for full workflow.
 
 ### Step C: Build & Test
 
@@ -275,14 +389,21 @@ Be STRICT. Check EXACT wording of criteria.
 3. Re-run SA verification
 4. Repeat until PASS
 
-### Step E: ClickUp Update
+### Step E: Update Queue & ClickUp
 
 **ONLY after SA verification PASSES:**
 
-```bash
-# Update ticket status in ClickUp to "done"
-# (via MCP ClickUp tools)
-```
+1. Update queue.yaml:
+   ```yaml
+   - id: "{TICKET_ID}"
+     status: complete
+     sa_verified_at: "{timestamp}"
+     clickup_updated: true
+   ```
+
+2. Update ClickUp ticket status to "done" (via MCP ClickUp tools)
+
+3. Increment `current_index` in queue.yaml to next ticket
 
 ---
 
@@ -314,7 +435,207 @@ Mark epic as complete in project tracking.
 
 ---
 
+## Escalation Handling
+
+When a sub-agent encounters an issue it cannot resolve, it will send an `ESCALATE` request.
+
+### Parallel Execution
+
+**Maximum 3 tickets run in parallel.** This allows:
+- Efficient use of agent resources
+- Batched SA answers for questions
+- Manageable complexity
+
+### Questions File
+
+All escalations are collected in a single YAML file per epic:
+
+**Location:** `/docs/epics/epic-{N}/questions.yaml`
+
+```yaml
+# Epic {N} Implementation Questions
+# This file collects questions from sub-agents for SA to batch answer
+
+epic: {N}
+created: "{timestamp}"
+last_updated: "{timestamp}"
+
+questions:
+  - id: Q001
+    ticket: "0-007"
+    agent: "engine-developer"
+    status: open          # open | answered | resolved
+    timestamp: "2026-02-05T10:30:00Z"
+    type: CLARIFICATION   # QUESTION | BLOCKER | CLARIFICATION | CONFLICT
+    question: |
+      The acceptance criterion says "handles errors gracefully" but doesn't
+      specify what errors or what graceful means. Should I:
+      A) Log and return nullptr
+      B) Throw an exception
+      C) Return an error code
+    context: |
+      Implementing AsyncLoader::processRequest() for ticket 0-007.
+      Current codebase uses mixed patterns for error handling.
+    answer: null
+    answered_at: null
+
+  - id: Q002
+    ticket: "0-013"
+    agent: "engine-developer"
+    status: answered
+    timestamp: "2026-02-05T10:32:00Z"
+    type: QUESTION
+    question: |
+      Should the Logger write to file synchronously or buffer writes?
+    context: |
+      Implementing file logging for ticket 0-013.
+    answer: |
+      Buffer writes with flush on ERROR/FATAL or every 100 entries.
+      This balances performance with reliability. See patterns.yaml
+      section on "logging" for reference implementation.
+    answered_at: "2026-02-05T10:45:00Z"
+
+  - id: Q003
+    ticket: "0-017"
+    agent: "engine-developer"
+    status: open
+    timestamp: "2026-02-05T10:35:00Z"
+    type: CONFLICT
+    question: |
+      InputSystem.h uses SDL scancodes but ActionMapping uses keycodes.
+      Which should I use for mouse button tracking?
+    context: |
+      Adding mouse edge detection to InputSystem.
+    answer: null
+    answered_at: null
+```
+
+### Escalation Flow (Batched)
+
+```
+┌─────────────┐     ESCALATE      ┌─────────────────┐
+│ Sub-Agent 1 │ ──────────────────│                 │
+└─────────────┘                   │                 │
+                                  │  Top-Level      │──── Write to ────▶ questions.yaml
+┌─────────────┐     ESCALATE      │  Agent          │
+│ Sub-Agent 2 │ ──────────────────│                 │
+└─────────────┘                   │                 │
+                                  └────────┬────────┘
+                                           │
+                                           │ Batch spawn SA
+                                           │ (when questions pending)
+                                           ▼
+                                  ┌─────────────────┐
+                                  │    Systems      │──── Read questions.yaml
+                                  │   Architect     │──── Write answers
+                                  └────────┬────────┘
+                                           │
+                                           │ Answers written to file
+                                           ▼
+┌─────────────┐                   ┌─────────────────┐
+│ Sub-Agents  │ ◄──── Resume ─────│  Top-Level      │──── Read answers
+│ continue    │   with answers    │  Agent          │
+└─────────────┘                   └─────────────────┘
+```
+
+### Handling Escalations
+
+When you receive an `ESCALATE` from a sub-agent:
+
+1. **Add question to questions.yaml**
+   - Generate next question ID (Q001, Q002, etc.)
+   - Record ticket, agent, type, question, context
+   - Set status: open
+
+2. **Check for pending questions periodically**
+   - After each sub-agent completes or escalates
+   - If there are open questions, spawn SA to batch answer
+
+3. **Spawn Systems Architect for batch answers**
+   ```
+   ## SA Batch Consultation: Epic {N}
+
+   **Questions File:** /docs/epics/epic-{N}/questions.yaml
+
+   **Your Task:**
+   1. Read all questions with status: open
+   2. For each question, provide a clear, actionable answer
+   3. Update the question's `answer` field in the YAML
+   4. Set `answered_at` timestamp
+   5. Set status: answered
+
+   Reference specific patterns, files, or canon decisions where applicable.
+   Be concise but complete - the implementing agent needs to continue work.
+   ```
+
+4. **Return answers to waiting sub-agents**
+   - Read answered questions from questions.yaml
+   - Resume each sub-agent with their answer
+   - Sub-agent marks question as `resolved` when work continues
+
+5. **Update queue.yaml**
+   - Log that escalation occurred
+   - Track which questions were asked
+
+### Escalation Types
+
+| Type | When Used | SA Should Provide |
+|------|-----------|-------------------|
+| QUESTION | Agent needs information | Direct answer with references |
+| BLOCKER | Something prevents progress | Solution or workaround |
+| CLARIFICATION | Requirement is ambiguous | Clear interpretation |
+| CONFLICT | Patterns/requirements conflict | Which to follow and why |
+
+### Do NOT Escalate to User
+
+Sub-agent escalations go to SA, not to the user. Only escalate to user when:
+- SA cannot answer (truly novel decision)
+- Max retries exceeded
+- User intervention explicitly needed
+
+---
+
+## User Communication
+
+**Do NOT report progress to user during epic execution.**
+
+The user will be notified only:
+1. **At epic completion** - Full summary of what was done
+2. **When user input is required** - Decisions SA cannot make
+
+The queue.yaml file provides progress visibility if the user wants to check.
+
+### What Requires User Input
+
+- Novel architectural decisions not covered by canon
+- Conflicting requirements that SA cannot resolve
+- External blockers (missing assets, credentials, etc.)
+- Max retries exceeded on a ticket
+
+### What Does NOT Require User Input
+
+- Questions SA can answer
+- Build failures (fix and retry)
+- SA verification failures (fix and retry)
+- Dependency ordering issues (reorder queue)
+
+---
+
 ## Failure Handling
+
+### Pre-Flight Failure
+
+When an agent's pre-flight check fails:
+
+```
+1. Agent reports blocker (missing dependency, type, interface, etc.)
+2. Update queue.yaml: status → "blocked"
+3. Add blocker details to queue entry
+4. Check if blocker is another ticket in the queue
+   - If yes: ensure that ticket runs first (reorder if needed)
+   - If no: report to user for guidance
+5. Move to next unblocked ticket
+```
 
 ### Build Failure
 
@@ -392,38 +713,51 @@ After 3 failed attempts, stop and consult user rather than spinning indefinitely
 
 Always check ClickUp before starting work. Don't re-implement tickets already done.
 
+### Lesson 8: Pre-Flight Before Implementation
+
+Agents must verify they can complete work BEFORE starting. Check:
+- Dependencies exist
+- Required types/interfaces available
+- No blockers in codebase
+
+This catches issues early instead of discovering them mid-implementation.
+
+### Lesson 9: Escalate Don't Guess
+
+When sub-agents encounter issues:
+- Don't guess at the answer
+- Don't make assumptions
+- Don't implement workarounds without guidance
+
+Instead: Escalate to top-level agent → SA provides authoritative answer → continue with guidance.
+
+This prevents bad assumptions from propagating through the codebase.
+
 ---
 
 ## Progress Tracking
 
-Create/update progress file during execution:
+The queue file is the single source of truth for progress:
 
 ```
-/docs/epics/epic-{N}/progress.md
+/docs/epics/epic-{N}/queue.yaml
 ```
 
-Format:
-```markdown
-# Epic {N} Progress
+Check progress at any time by reading this file. Key fields:
 
-Started: {timestamp}
-Last Updated: {timestamp}
+```yaml
+current_index: 5          # We're on the 6th ticket (0-indexed)
+current_ticket: "0-006"   # Current ticket ID
 
-## Tickets
-
-| ID | Title | Status | Agent | SA Verified | ClickUp |
-|----|-------|--------|-------|-------------|---------|
-| 0-001 | Build Infrastructure | DONE | engine-dev | PASS | done |
-| 0-002 | SDL Init | IN_PROGRESS | engine-dev | - | in progress |
-| 0-003 | Window | QUEUED | engine-dev | - | to do |
-
-## Current Wave
-Executing: 0-002, 0-013, 0-025 (parallel)
-
-## Issues Encountered
-- 0-002: Build failed on first attempt, fixed missing include
-- ...
+stats:
+  total: 34               # Total tickets in epic
+  complete: 5             # SA-verified and done
+  in_progress: 1          # Currently being worked
+  pending: 28             # Not yet started
+  failed: 0               # Failed and need intervention
 ```
+
+The queue persists across sessions, so you can stop and resume at any time.
 
 ---
 
@@ -502,10 +836,28 @@ After `/do-epic N` completes:
 
 ```
 docs/epics/epic-{N}/
-├── progress.md           # Execution progress log
+├── queue.yaml            # Execution queue (source of truth for progress)
+├── questions.yaml        # All escalations and SA answers
 ├── verification/
 │   ├── {N}-001-sa.md     # SA verification report for each ticket
 │   ├── {N}-002-sa.md
 │   └── ...
 └── completion-report.md  # Final summary
 ```
+
+### Reading the Queue
+
+To check progress at any time, read `/docs/epics/epic-{N}/queue.yaml`:
+
+- `current_index` - Which ticket we're on
+- `current_ticket` - Current ticket ID
+- `queue[].status` - Status of each ticket
+- `stats` - Summary counts
+
+### Reading Questions
+
+To see all escalations and answers, read `/docs/epics/epic-{N}/questions.yaml`:
+
+- `questions[].status` - open / answered / resolved
+- `questions[].question` - What was asked
+- `questions[].answer` - SA's response (if answered)

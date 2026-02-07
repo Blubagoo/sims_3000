@@ -11,6 +11,7 @@
 #include "sims3000/app/SimulationClock.h"
 #include "sims3000/app/FrameStats.h"
 #include "sims3000/render/Window.h"
+#include "sims3000/render/GPUDevice.h"
 #include "sims3000/input/InputSystem.h"
 #include "sims3000/input/CameraController.h"
 #include "sims3000/ecs/Registry.h"
@@ -19,6 +20,7 @@
 #include "sims3000/net/NetworkServer.h"
 #include "sims3000/net/NetworkClient.h"
 #include "sims3000/sync/SyncSystem.h"
+#include "sims3000/render/ToonPipeline.h"
 
 #include <memory>
 #include <string>
@@ -139,6 +141,27 @@ public:
     Window& getWindow();
 
     /**
+     * Get the GPU device (client only).
+     */
+    GPUDevice& getGPUDevice();
+
+    /**
+     * Get the toon pipeline (client only).
+     */
+    ToonPipeline& getToonPipeline();
+
+    /**
+     * Check if wireframe mode is enabled (client only).
+     */
+    bool isWireframeEnabled() const;
+
+    /**
+     * Toggle wireframe rendering mode (client only).
+     * @return New wireframe state (true = enabled)
+     */
+    bool toggleWireframe();
+
+    /**
      * Get configuration.
      */
     Config& getConfig();
@@ -204,12 +227,14 @@ private:
     bool m_stateChangeRequested = false;
 
     // Core systems (order matters for initialization)
-    // Window, Input, Assets are nullptr in server mode
+    // Window, GPUDevice, Input, Assets, ToonPipeline are nullptr in server mode
+    std::unique_ptr<GPUDevice> m_gpuDevice;
     std::unique_ptr<Window> m_window;
     std::unique_ptr<InputSystem> m_input;
     std::unique_ptr<AssetManager> m_assets;
     std::unique_ptr<Registry> m_registry;
     std::unique_ptr<SystemManager> m_systems;
+    std::unique_ptr<ToonPipeline> m_toonPipeline;
 
     // Networking (server XOR client, not both)
     std::unique_ptr<NetworkServer> m_networkServer;

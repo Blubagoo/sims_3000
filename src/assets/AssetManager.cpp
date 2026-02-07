@@ -4,6 +4,7 @@
  */
 
 #include "sims3000/assets/AssetManager.h"
+#include "sims3000/core/Logger.h"
 #include "sims3000/render/Window.h"
 #include <SDL3/SDL_log.h>
 
@@ -32,7 +33,7 @@ TextureHandle AssetManager::loadTexture(const std::string& path) {
     TextureHandle handle = m_textureLoader->load(fullPath);
 
     if (!handle) {
-        SDL_Log("Using fallback texture for: %s", path.c_str());
+        LOG_WARN("Missing texture, using placeholder: %s", path.c_str());
         return m_fallbackTexture;
     }
 
@@ -44,7 +45,7 @@ ModelHandle AssetManager::loadModel(const std::string& path) {
     ModelHandle handle = m_modelLoader->load(fullPath);
 
     if (!handle) {
-        SDL_Log("Using fallback model for: %s", path.c_str());
+        LOG_WARN("Missing model, using placeholder: %s", path.c_str());
         return m_fallbackModel;
     }
 

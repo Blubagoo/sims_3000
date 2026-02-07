@@ -41,6 +41,208 @@ endif()
 # nlohmann/json for configuration (add to vcpkg.json if not present)
 find_package(nlohmann_json QUIET CONFIG)
 
+# Find stb_image (header-only)
+find_path(STB_INCLUDE_DIR stb_image.h)
+if(NOT STB_INCLUDE_DIR)
+    message(FATAL_ERROR "stb_image.h not found")
+endif()
+
+# =============================================================================
+# Shader Compilation Pipeline
+# =============================================================================
+
+# Include shader compilation module
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ShaderCompilation.cmake)
+
+# Find DXC compiler (required for shader compilation)
+find_dxc_compiler()
+
+# Compile fallback shaders and generate embedded shader source
+set(EMBEDDED_SHADERS_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/EmbeddedShaders.cpp")
+generate_embedded_shaders(
+    OUTPUT_FILE "${EMBEDDED_SHADERS_OUTPUT}"
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders"
+    SHADERS
+        "fallback.vert:vs_6_0"
+        "fallback.frag:ps_6_0"
+)
+
+# Compile toon shaders to output directory (loaded at runtime)
+set(TOON_SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+file(MAKE_DIRECTORY "${TOON_SHADER_OUTPUT_DIR}")
+
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/toon.vert.hlsl"
+    NAME "toon.vert"
+    PROFILE "vs_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(TOON_VERT_DXIL "${SHADER_DXIL_OUTPUT}")
+set(TOON_VERT_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/toon.frag.hlsl"
+    NAME "toon.frag"
+    PROFILE "ps_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(TOON_FRAG_DXIL "${SHADER_DXIL_OUTPUT}")
+set(TOON_FRAG_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+# Create custom target for toon shaders
+add_custom_target(toon_shaders DEPENDS
+    "${TOON_VERT_DXIL}"
+    "${TOON_VERT_SPIRV}"
+    "${TOON_FRAG_DXIL}"
+    "${TOON_FRAG_SPIRV}"
+)
+
+# Compile edge detection shaders (fullscreen triangle + Sobel edge detection)
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/fullscreen.vert.hlsl"
+    NAME "fullscreen.vert"
+    PROFILE "vs_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(FULLSCREEN_VERT_DXIL "${SHADER_DXIL_OUTPUT}")
+set(FULLSCREEN_VERT_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/edge_detect.frag.hlsl"
+    NAME "edge_detect.frag"
+    PROFILE "ps_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(EDGE_DETECT_FRAG_DXIL "${SHADER_DXIL_OUTPUT}")
+set(EDGE_DETECT_FRAG_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+# Create custom target for edge detection shaders
+add_custom_target(edge_shaders DEPENDS
+    "${FULLSCREEN_VERT_DXIL}"
+    "${FULLSCREEN_VERT_SPIRV}"
+    "${EDGE_DETECT_FRAG_DXIL}"
+    "${EDGE_DETECT_FRAG_SPIRV}"
+)
+
+# Compile bloom shaders (extraction, blur, composite)
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/bloom_extract.frag.hlsl"
+    NAME "bloom_extract.frag"
+    PROFILE "ps_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(BLOOM_EXTRACT_FRAG_DXIL "${SHADER_DXIL_OUTPUT}")
+set(BLOOM_EXTRACT_FRAG_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/bloom_blur.frag.hlsl"
+    NAME "bloom_blur.frag"
+    PROFILE "ps_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(BLOOM_BLUR_FRAG_DXIL "${SHADER_DXIL_OUTPUT}")
+set(BLOOM_BLUR_FRAG_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/bloom_composite.frag.hlsl"
+    NAME "bloom_composite.frag"
+    PROFILE "ps_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(BLOOM_COMPOSITE_FRAG_DXIL "${SHADER_DXIL_OUTPUT}")
+set(BLOOM_COMPOSITE_FRAG_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+# Create custom target for bloom shaders
+add_custom_target(bloom_shaders DEPENDS
+    "${BLOOM_EXTRACT_FRAG_DXIL}"
+    "${BLOOM_EXTRACT_FRAG_SPIRV}"
+    "${BLOOM_BLUR_FRAG_DXIL}"
+    "${BLOOM_BLUR_FRAG_SPIRV}"
+    "${BLOOM_COMPOSITE_FRAG_DXIL}"
+    "${BLOOM_COMPOSITE_FRAG_SPIRV}"
+)
+
+# Compile debug grid shaders (vertex + fragment)
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/debug_grid.vert.hlsl"
+    NAME "debug_grid.vert"
+    PROFILE "vs_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(DEBUG_GRID_VERT_DXIL "${SHADER_DXIL_OUTPUT}")
+set(DEBUG_GRID_VERT_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/debug_grid.frag.hlsl"
+    NAME "debug_grid.frag"
+    PROFILE "ps_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(DEBUG_GRID_FRAG_DXIL "${SHADER_DXIL_OUTPUT}")
+set(DEBUG_GRID_FRAG_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+# Create custom target for debug grid shaders
+add_custom_target(debug_grid_shaders DEPENDS
+    "${DEBUG_GRID_VERT_DXIL}"
+    "${DEBUG_GRID_VERT_SPIRV}"
+    "${DEBUG_GRID_FRAG_DXIL}"
+    "${DEBUG_GRID_FRAG_SPIRV}"
+)
+
+# Compile stats overlay shaders (vertex + fragment)
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/stats_overlay.vert.hlsl"
+    NAME "stats_overlay.vert"
+    PROFILE "vs_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(STATS_OVERLAY_VERT_DXIL "${SHADER_DXIL_OUTPUT}")
+set(STATS_OVERLAY_VERT_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/stats_overlay.frag.hlsl"
+    NAME "stats_overlay.frag"
+    PROFILE "ps_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(STATS_OVERLAY_FRAG_DXIL "${SHADER_DXIL_OUTPUT}")
+set(STATS_OVERLAY_FRAG_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+# Create custom target for stats overlay shaders
+add_custom_target(stats_overlay_shaders DEPENDS
+    "${STATS_OVERLAY_VERT_DXIL}"
+    "${STATS_OVERLAY_VERT_SPIRV}"
+    "${STATS_OVERLAY_FRAG_DXIL}"
+    "${STATS_OVERLAY_FRAG_SPIRV}"
+)
+
+# Compile debug bounding box shaders (vertex + fragment)
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/debug_bbox.vert.hlsl"
+    NAME "debug_bbox.vert"
+    PROFILE "vs_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(DEBUG_BBOX_VERT_DXIL "${SHADER_DXIL_OUTPUT}")
+set(DEBUG_BBOX_VERT_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+compile_shader(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/debug_bbox.frag.hlsl"
+    NAME "debug_bbox.frag"
+    PROFILE "ps_6_0"
+    OUTPUT_DIR "${TOON_SHADER_OUTPUT_DIR}"
+)
+set(DEBUG_BBOX_FRAG_DXIL "${SHADER_DXIL_OUTPUT}")
+set(DEBUG_BBOX_FRAG_SPIRV "${SHADER_SPIRV_OUTPUT}")
+
+# Create custom target for debug bounding box shaders
+add_custom_target(debug_bbox_shaders DEPENDS
+    "${DEBUG_BBOX_VERT_DXIL}"
+    "${DEBUG_BBOX_VERT_SPIRV}"
+    "${DEBUG_BBOX_FRAG_DXIL}"
+    "${DEBUG_BBOX_FRAG_SPIRV}"
+)
+
 # Define source files
 set(SIMS3000_SOURCES
     src/main.cpp
@@ -53,9 +255,51 @@ set(SIMS3000_SOURCES
     src/core/Random.cpp
     src/core/Logger.cpp
     src/render/Window.cpp
+    src/render/GPUDevice.cpp
+    src/render/ShaderCompiler.cpp
+    src/render/DepthBuffer.cpp
+    src/render/DepthState.cpp
+    src/render/UniformBufferPool.cpp
+    src/render/SamplerCache.cpp
+    src/render/FrameResources.cpp
+    src/render/GPUMesh.cpp
+    src/render/ViewMatrix.cpp
+    src/render/ProjectionMatrix.cpp
+    src/render/BlendState.cpp
+    src/render/ToonPipeline.cpp
+    src/render/ToonShaderConfig.cpp
+    src/render/RenderCommands.cpp
+    src/render/CameraUniforms.cpp
+    src/render/InstanceBuffer.cpp
+    src/render/InstancedRenderer.cpp
+    src/render/ScreenToWorld.cpp
+    src/render/TilePicking.cpp
+    src/render/BloomPass.cpp
+    src/render/MainRenderPass.cpp
+    src/render/TransparentRenderQueue.cpp
+    src/render/NormalBuffer.cpp
+    src/render/EdgeDetectionPass.cpp
+    src/render/ViewportBounds.cpp
+    src/render/FrustumCuller.cpp
+    src/render/ShadowConfig.cpp
+    src/render/ShadowPass.cpp
+    src/render/LayerVisibility.cpp
+    src/render/ViewMode.cpp
+    src/render/DebugGridOverlay.cpp
+    src/render/StatsOverlay.cpp
+    src/render/DebugBoundingBoxOverlay.cpp
+    src/render/CursorRenderer.cpp
+    src/render/LODSystem.cpp
+    ${EMBEDDED_SHADERS_OUTPUT}
     src/input/InputSystem.cpp
     src/input/ActionMapping.cpp
     src/input/CameraController.cpp
+    src/input/ZoomController.cpp
+    src/input/PanController.cpp
+    src/input/OrbitController.cpp
+    src/input/CameraAnimator.cpp
+    src/input/PresetSnapController.cpp
+    src/input/CameraModeManager.cpp
     src/input/InputContext.cpp
     src/input/InputProducer.cpp
     src/input/PendingActionTracker.cpp
@@ -67,6 +311,8 @@ set(SIMS3000_SOURCES
     src/ecs/Registry.cpp
     src/ecs/SystemManager.cpp
     src/ecs/Components.cpp
+    src/ecs/PositionSyncSystem.cpp
+    src/ecs/TransformInterpolationSystem.cpp
     src/net/NetworkBuffer.cpp
     src/net/ENetTransport.cpp
     src/net/NetworkThread.cpp
@@ -97,15 +343,66 @@ set(SIMS3000_HEADERS
     include/sims3000/app/SimulationClock.h
     include/sims3000/app/FrameStats.h
     include/sims3000/render/Window.h
+    include/sims3000/render/GPUDevice.h
+    include/sims3000/render/ShaderCompiler.h
+    include/sims3000/render/CameraState.h
+    include/sims3000/render/RenderLayer.h
+    include/sims3000/render/DepthBuffer.h
+    include/sims3000/render/DepthState.h
+    include/sims3000/render/UniformBufferPool.h
+    include/sims3000/render/SamplerCache.h
+    include/sims3000/render/FrameResources.h
+    include/sims3000/render/ToonShader.h
+    include/sims3000/render/ToonShaderConfig.h
+    include/sims3000/render/BlendState.h
+    include/sims3000/render/ToonPipeline.h
+    include/sims3000/render/GPUMesh.h
+    include/sims3000/render/ViewMatrix.h
+    include/sims3000/render/ProjectionMatrix.h
+    include/sims3000/render/RenderCommands.h
+    include/sims3000/render/CameraUniforms.h
+    include/sims3000/render/InstanceBuffer.h
+    include/sims3000/render/InstancedRenderer.h
+    include/sims3000/render/EmissiveMaterial.h
+    include/sims3000/render/ScreenToWorld.h
+    include/sims3000/render/TilePicking.h
+    include/sims3000/render/BloomPass.h
+    include/sims3000/render/MainRenderPass.h
+    include/sims3000/render/TransparentRenderQueue.h
+    include/sims3000/render/NormalBuffer.h
+    include/sims3000/render/EdgeDetectionPass.h
+    include/sims3000/render/ViewportBounds.h
+    include/sims3000/render/FrustumCuller.h
+    include/sims3000/render/ShadowConfig.h
+    include/sims3000/render/ShadowPass.h
+    include/sims3000/render/LayerVisibility.h
+    include/sims3000/render/ViewMode.h
+    include/sims3000/render/DebugGridOverlay.h
+    include/sims3000/render/StatsOverlay.h
+    include/sims3000/render/DebugBoundingBoxOverlay.h
+    include/sims3000/render/PlayerCursor.h
+    include/sims3000/render/CursorRenderer.h
+    include/sims3000/render/LODSystem.h
+    include/sims3000/sync/ICursorSync.h
     include/sims3000/input/InputSystem.h
     include/sims3000/input/ActionMapping.h
     include/sims3000/input/CameraController.h
+    include/sims3000/input/ZoomController.h
+    include/sims3000/input/PanController.h
+    include/sims3000/input/OrbitController.h
+    include/sims3000/input/CameraAnimator.h
+    include/sims3000/input/PresetSnapController.h
+    include/sims3000/input/CameraModeManager.h
+    include/sims3000/core/Easing.h
     include/sims3000/assets/AssetManager.h
     include/sims3000/assets/TextureLoader.h
     include/sims3000/assets/ModelLoader.h
     include/sims3000/ecs/Registry.h
     include/sims3000/ecs/Components.h
     include/sims3000/ecs/SystemManager.h
+    include/sims3000/ecs/PositionSyncSystem.h
+    include/sims3000/ecs/InterpolatedTransformComponent.h
+    include/sims3000/ecs/TransformInterpolationSystem.h
     include/sims3000/net/InputMessage.h
     include/sims3000/net/NetworkBuffer.h
     include/sims3000/net/INetworkTransport.h
@@ -136,11 +433,15 @@ add_executable(${PROJECT_NAME}
     ${SIMS3000_HEADERS}
 )
 
+# Depend on embedded shaders generation and runtime shaders
+add_dependencies(${PROJECT_NAME} embedded_shaders toon_shaders edge_shaders bloom_shaders debug_grid_shaders stats_overlay_shaders debug_bbox_shaders)
+
 # Include directories
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CGLTF_INCLUDE_DIR}
+        ${STB_INCLUDE_DIR}
 )
 
 # Link libraries
@@ -189,6 +490,14 @@ if(WIN32)
             $<TARGET_FILE_DIR:${PROJECT_NAME}>
     )
 endif()
+
+# Copy compiled shaders to output directory
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${TOON_SHADER_OUTPUT_DIR}"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders"
+    COMMENT "Copying compiled shaders to output directory"
+)
 
 # POC subdirectories
 if(BUILD_POC1)

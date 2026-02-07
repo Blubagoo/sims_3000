@@ -10,6 +10,7 @@
         "lz4",
         "entt",
         "nlohmann-json",
-        "readerwriterqueue"
+        "readerwriterqueue",
+        "stb"
     ]
 }

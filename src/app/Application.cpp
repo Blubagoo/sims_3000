@@ -33,7 +33,17 @@ Application::Application(const ApplicationConfig& config)
     if (m_serverMode) {
         SDL_Log("Starting in SERVER mode on port %d", m_appConfig.serverPort);
     } else {
-        // Client mode - create window
+        // Client mode - create GPU device first
+        m_gpuDevice = std::make_unique<GPUDevice>();
+
+        if (!m_gpuDevice->isValid()) {
+            SDL_Log("Failed to create GPU device: %s", m_gpuDevice->getLastError().c_str());
+            return;
+        }
+
+        m_gpuDevice->logCapabilities();
+
+        // Create window
         m_window = std::make_unique<Window>(
             m_appConfig.title,
             m_appConfig.windowWidth,
@@ -41,9 +51,20 @@ Application::Application(const ApplicationConfig& config)
         );
 
         if (!m_window->isValid()) {
-            SDL_Log("Failed to create window");
+            SDL_Log("Failed to create window: %s", m_window->getLastError().c_str());
             return;
         }
+
+        // Claim window for GPU device
+        if (!m_window->claimForDevice(*m_gpuDevice)) {
+            SDL_Log("Failed to claim window for GPU: %s", m_window->getLastError().c_str());
+            return;
+        }
+
+        // Apply vsync setting from config
+        PresentMode presentMode = m_config.graphics().vsync ?
+            PresentMode::VSync : PresentMode::Immediate;
+        m_window->setPresentMode(presentMode);
 
         if (m_appConfig.startFullscreen) {
             m_window->toggleFullscreen();
@@ -53,11 +74,17 @@ Application::Application(const ApplicationConfig& config)
         m_input = std::make_unique<InputSystem>();
 
         // Create asset manager (client only)
+        // Window is now claimed for GPU, so Window.getDevice() returns the GPU device
         m_assets = std::make_unique<AssetManager>(*m_window);
 
 #ifdef SIMS3000_DEBUG
         m_assets->setHotReloadEnabled(true);
 #endif
+
+        // Create ToonPipeline for rendering (client only)
+        // Note: Pipeline creation requires shaders - will be fully initialized
+        // when MainRenderPass and shader loading are connected
+        m_toonPipeline = std::make_unique<ToonPipeline>(*m_gpuDevice);
     }
 
     // Create ECS (both client and server)
@@ -210,6 +237,25 @@ Window& Application::getWindow() {
     return *m_window;
 }
 
+GPUDevice& Application::getGPUDevice() {
+    return *m_gpuDevice;
+}
+
+ToonPipeline& Application::getToonPipeline() {
+    return *m_toonPipeline;
+}
+
+bool Application::isWireframeEnabled() const {
+    return m_toonPipeline && m_toonPipeline->isWireframeEnabled();
+}
+
+bool Application::toggleWireframe() {
+    if (m_toonPipeline) {
+        return m_toonPipeline->toggleWireframe();
+    }
+    return false;
+}
+
 Config& Application::getConfig() {
     return m_config;
 }
@@ -319,6 +365,10 @@ void Application::processEvents() {
                         requestStateChange(AppState::Playing);
                     }
                 }
+                // Debug: Toggle wireframe mode (F key)
+                if (m_input->isActionPressed(Action::DEBUG_WIREFRAME)) {
+                    toggleWireframe();
+                }
                 break;
 
             default:
@@ -378,15 +428,17 @@ void Application::updateSimulation() {
 }
 
 void Application::render() {
-    if (!m_window) return;
+    if (!m_window || !m_gpuDevice) return;
 
-    SDL_GPUCommandBuffer* cmdBuffer = m_window->acquireCommandBuffer();
+    SDL_GPUCommandBuffer* cmdBuffer = m_gpuDevice->acquireCommandBuffer();
     if (!cmdBuffer) {
         return;
     }
 
     SDL_GPUTexture* swapchainTexture = nullptr;
     if (!m_window->acquireSwapchainTexture(cmdBuffer, &swapchainTexture)) {
+        // Still need to submit the command buffer even if acquire fails
+        m_gpuDevice->submit(cmdBuffer);
         return;
     }
 
@@ -407,7 +459,7 @@ void Application::render() {
         SDL_EndGPURenderPass(renderPass);
     }
 
-    m_window->submit(cmdBuffer);
+    m_gpuDevice->submit(cmdBuffer);
 }
 
 void Application::shutdown() {
@@ -439,9 +491,11 @@ void Application::shutdown() {
     // Destroy systems in reverse order of creation
     m_systems.reset();
     m_registry.reset();
+    m_toonPipeline.reset();  // Pipeline before GPU device
     m_assets.reset();
     m_input.reset();
-    m_window.reset();
+    m_window.reset();      // Window releases from GPU device on destruction
+    m_gpuDevice.reset();   // GPU device destroyed after window
 
     SDL_Quit();
 

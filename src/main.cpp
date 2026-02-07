@@ -12,6 +12,7 @@
 #include <SDL3/SDL_log.h>
 #include <cstring>
 #include <cstdlib>
+#include <string>
 
 namespace {
 
@@ -20,6 +21,8 @@ void printUsage(const char* programName) {
     SDL_Log("Options:");
     SDL_Log("  --server       Run as dedicated server (headless)");
     SDL_Log("  --port <num>   Server port (default: 7777)");
+    SDL_Log("  --connect <addr>  Connect to server at address (client mode)");
+    SDL_Log("  --name <name>  Player name (default: Player)");
     SDL_Log("  --fullscreen   Start in fullscreen mode");
     SDL_Log("  --width <num>  Window width (default: 1280)");
     SDL_Log("  --height <num> Window height (default: 720)");
@@ -34,6 +37,19 @@ sims3000::ApplicationConfig parseArgs(int argc, char* argv[]) {
             config.serverMode = true;
         } else if (std::strcmp(argv[i], "--port") == 0 && i + 1 < argc) {
             config.serverPort = std::atoi(argv[++i]);
+        } else if (std::strcmp(argv[i], "--connect") == 0 && i + 1 < argc) {
+            // Parse address:port or just address (defaults to 7777)
+            std::string addr = argv[++i];
+            size_t colonPos = addr.find(':');
+            if (colonPos != std::string::npos) {
+                config.connectAddress = addr.substr(0, colonPos);
+                config.connectPort = static_cast<std::uint16_t>(std::atoi(addr.substr(colonPos + 1).c_str()));
+            } else {
+                config.connectAddress = addr;
+                config.connectPort = 7777;  // Default port
+            }
+        } else if (std::strcmp(argv[i], "--name") == 0 && i + 1 < argc) {
+            config.playerName = argv[++i];
         } else if (std::strcmp(argv[i], "--fullscreen") == 0) {
             config.startFullscreen = true;
         } else if (std::strcmp(argv[i], "--width") == 0 && i + 1 < argc) {

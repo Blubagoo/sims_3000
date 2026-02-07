@@ -41,6 +41,13 @@ enum class Action {
     // Debug
     DEBUG_TOGGLE,
     DEBUG_CAMERA,
+    DEBUG_GRID,
+    DEBUG_WIREFRAME,
+    DEBUG_STATS,  // Toggle render statistics overlay (F3)
+    DEBUG_BOUNDING_BOX,  // Toggle bounding box visualization (B)
+
+    // View modes
+    TOGGLE_UNDERGROUND,
 
     // System
     FULLSCREEN,

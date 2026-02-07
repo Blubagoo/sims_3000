@@ -1,6 +1,12 @@
 /**
  * @file ModelLoader.cpp
  * @brief ModelLoader implementation with cgltf.
+ *
+ * Loads glTF 2.0 models (.gltf JSON and .glb binary formats).
+ * Extracts mesh geometry and material properties including:
+ * - Base color (albedo/diffuse) texture and factor
+ * - Emissive texture and factor
+ * - Metallic-roughness properties
  */
 
 #include "sims3000/assets/ModelLoader.h"
@@ -11,8 +17,38 @@
 
 #include <SDL3/SDL_log.h>
 #include <SDL3/SDL_filesystem.h>
+#include <algorithm>
 
 namespace sims3000 {
+
+// Helper to get texture path from cgltf_texture
+static std::string getTexturePath(const cgltf_texture* texture,
+                                   const std::string& modelDirectory) {
+    if (!texture || !texture->image || !texture->image->uri) {
+        return "";
+    }
+
+    const char* uri = texture->image->uri;
+
+    // Check for data URI (embedded texture)
+    if (std::strncmp(uri, "data:", 5) == 0) {
+        // Data URIs are embedded - we don't support loading them here
+        // The texture data would need to be extracted separately
+        return "";
+    }
+
+    // Relative path - resolve against model directory
+    std::string resolved = modelDirectory;
+    if (!resolved.empty() && resolved.back() != '/' && resolved.back() != '\\') {
+        resolved += '/';
+    }
+    resolved += uri;
+
+    // Normalize path separators
+    std::replace(resolved.begin(), resolved.end(), '\\', '/');
+
+    return resolved;
+}
 
 ModelLoader::ModelLoader(Window& window)
     : m_window(window)
@@ -24,6 +60,8 @@ ModelLoader::~ModelLoader() {
 }
 
 ModelHandle ModelLoader::load(const std::string& path) {
+    m_lastError.clear();
+
     // Check cache
     auto it = m_cache.find(path);
     if (it != m_cache.end()) {
@@ -37,23 +75,128 @@ ModelHandle ModelLoader::load(const std::string& path) {
 
     cgltf_result result = cgltf_parse_file(&options, path.c_str(), &data);
     if (result != cgltf_result_success) {
-        SDL_Log("Failed to parse GLTF: %s", path.c_str());
+        m_lastError = "Failed to parse glTF file: " + path;
+        if (result == cgltf_result_file_not_found) {
+            m_lastError += " (file not found)";
+        } else if (result == cgltf_result_io_error) {
+            m_lastError += " (I/O error)";
+        } else if (result == cgltf_result_invalid_json) {
+            m_lastError += " (invalid JSON)";
+        } else if (result == cgltf_result_invalid_gltf) {
+            m_lastError += " (invalid glTF)";
+        }
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", m_lastError.c_str());
         return nullptr;
     }
 
     result = cgltf_load_buffers(&options, data, path.c_str());
     if (result != cgltf_result_success) {
+        m_lastError = "Failed to load glTF buffers: " + path;
+        if (result == cgltf_result_file_not_found) {
+            m_lastError += " (external buffer file not found)";
+        } else if (result == cgltf_result_io_error) {
+            m_lastError += " (I/O error reading buffer)";
+        }
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", m_lastError.c_str());
         cgltf_free(data);
-        SDL_Log("Failed to load GLTF buffers: %s", path.c_str());
         return nullptr;
     }
 
     // Create model
     Model model;
     model.path = path;
+    model.directory = getDirectory(path);
     model.refCount = 1;
 
+    // Get file modification time
+    SDL_PathInfo info;
+    if (SDL_GetPathInfo(path.c_str(), &info)) {
+        model.lastModified = static_cast<std::uint64_t>(info.modify_time);
+    }
+
+    // =========================================================================
+    // Extract materials
+    // =========================================================================
+    for (size_t mi = 0; mi < data->materials_count; ++mi) {
+        cgltf_material& gltfMat = data->materials[mi];
+        Material mat;
+
+        // Material name
+        if (gltfMat.name) {
+            mat.name = gltfMat.name;
+        }
+
+        // PBR Metallic Roughness workflow
+        if (gltfMat.has_pbr_metallic_roughness) {
+            cgltf_pbr_metallic_roughness& pbr = gltfMat.pbr_metallic_roughness;
+
+            // Base color texture
+            if (pbr.base_color_texture.texture) {
+                mat.baseColorTexturePath = getTexturePath(
+                    pbr.base_color_texture.texture, model.directory);
+            }
+
+            // Base color factor
+            mat.baseColorFactor = glm::vec4(
+                pbr.base_color_factor[0],
+                pbr.base_color_factor[1],
+                pbr.base_color_factor[2],
+                pbr.base_color_factor[3]
+            );
+
+            // Metallic-roughness texture
+            if (pbr.metallic_roughness_texture.texture) {
+                mat.metallicRoughnessTexturePath = getTexturePath(
+                    pbr.metallic_roughness_texture.texture, model.directory);
+            }
+
+            // Metallic and roughness factors
+            mat.metallicFactor = pbr.metallic_factor;
+            mat.roughnessFactor = pbr.roughness_factor;
+        }
+
+        // Emissive texture
+        if (gltfMat.emissive_texture.texture) {
+            mat.emissiveTexturePath = getTexturePath(
+                gltfMat.emissive_texture.texture, model.directory);
+        }
+
+        // Emissive factor
+        mat.emissiveFactor = glm::vec3(
+            gltfMat.emissive_factor[0],
+            gltfMat.emissive_factor[1],
+            gltfMat.emissive_factor[2]
+        );
+
+        // Normal texture
+        if (gltfMat.normal_texture.texture) {
+            mat.normalTexturePath = getTexturePath(
+                gltfMat.normal_texture.texture, model.directory);
+            mat.normalScale = gltfMat.normal_texture.scale;
+        }
+
+        // Alpha mode
+        switch (gltfMat.alpha_mode) {
+            case cgltf_alpha_mode_opaque:
+                mat.alphaMode = Material::AlphaMode::Opaque;
+                break;
+            case cgltf_alpha_mode_mask:
+                mat.alphaMode = Material::AlphaMode::Mask;
+                mat.alphaCutoff = gltfMat.alpha_cutoff;
+                break;
+            case cgltf_alpha_mode_blend:
+                mat.alphaMode = Material::AlphaMode::Blend;
+                break;
+        }
+
+        mat.doubleSided = gltfMat.double_sided;
+
+        model.materials.push_back(std::move(mat));
+    }
+
+    // =========================================================================
     // Process meshes
+    // =========================================================================
     for (size_t m = 0; m < data->meshes_count; ++m) {
         cgltf_mesh& gltfMesh = data->meshes[m];
 
@@ -68,6 +211,7 @@ ModelHandle ModelLoader::load(const std::string& path) {
             cgltf_accessor* posAccessor = nullptr;
             cgltf_accessor* normAccessor = nullptr;
             cgltf_accessor* uvAccessor = nullptr;
+            cgltf_accessor* colorAccessor = nullptr;
 
             for (size_t a = 0; a < prim.attributes_count; ++a) {
                 if (prim.attributes[a].type == cgltf_attribute_type_position) {
@@ -76,6 +220,8 @@ ModelHandle ModelLoader::load(const std::string& path) {
                     normAccessor = prim.attributes[a].data;
                 } else if (prim.attributes[a].type == cgltf_attribute_type_texcoord) {
                     uvAccessor = prim.attributes[a].data;
+                } else if (prim.attributes[a].type == cgltf_attribute_type_color) {
+                    colorAccessor = prim.attributes[a].data;
                 }
             }
 
@@ -109,8 +255,20 @@ ModelHandle ModelLoader::load(const std::string& path) {
                     vert.texCoord = glm::vec2(0.0f);
                 }
 
-                // Default color
-                vert.color = glm::vec4(1.0f);
+                // Vertex color
+                if (colorAccessor) {
+                    // glTF can have RGB or RGBA vertex colors
+                    if (colorAccessor->type == cgltf_type_vec4) {
+                        cgltf_accessor_read_float(colorAccessor, v, &vert.color.x, 4);
+                    } else if (colorAccessor->type == cgltf_type_vec3) {
+                        cgltf_accessor_read_float(colorAccessor, v, &vert.color.x, 3);
+                        vert.color.w = 1.0f;
+                    } else {
+                        vert.color = glm::vec4(1.0f);
+                    }
+                } else {
+                    vert.color = glm::vec4(1.0f);
+                }
             }
 
             // Read indices
@@ -134,9 +292,21 @@ ModelHandle ModelLoader::load(const std::string& path) {
             mesh.vertexCount = static_cast<std::uint32_t>(vertices.size());
             mesh.indexCount = static_cast<std::uint32_t>(indices.size());
 
+            // Link material
+            if (prim.material) {
+                // Find material index
+                for (size_t mi = 0; mi < data->materials_count; ++mi) {
+                    if (&data->materials[mi] == prim.material) {
+                        mesh.materialIndex = static_cast<int>(mi);
+                        break;
+                    }
+                }
+            }
+
             if (mesh.vertexBuffer && mesh.indexBuffer) {
                 model.meshes.push_back(mesh);
             } else {
+                m_lastError = "Failed to create GPU buffers for mesh";
                 destroyMesh(mesh);
             }
         }
@@ -145,9 +315,13 @@ ModelHandle ModelLoader::load(const std::string& path) {
     cgltf_free(data);
 
     if (model.meshes.empty()) {
-        SDL_Log("No valid meshes in GLTF: %s", path.c_str());
+        m_lastError = "No valid meshes found in glTF file: " + path;
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", m_lastError.c_str());
         return nullptr;
     }
+
+    SDL_Log("Loaded model: %s (%zu meshes, %zu materials)",
+            path.c_str(), model.meshes.size(), model.materials.size());
 
     auto inserted = m_cache.emplace(path, std::move(model));
     return &inserted.first->second;
@@ -410,6 +584,39 @@ void ModelLoader::destroyMesh(Mesh& mesh) {
         SDL_ReleaseGPUBuffer(device, mesh.indexBuffer);
         mesh.indexBuffer = nullptr;
     }
+}
+
+std::string ModelLoader::getDirectory(const std::string& filepath) {
+    // Find last separator
+    size_t lastSlash = filepath.find_last_of("/\\");
+    if (lastSlash == std::string::npos) {
+        return ".";
+    }
+    return filepath.substr(0, lastSlash);
+}
+
+std::string ModelLoader::resolveUri(const std::string& uri, const std::string& modelDirectory) {
+    // Check for data URI
+    if (uri.compare(0, 5, "data:") == 0) {
+        return "";  // Data URIs not supported as file paths
+    }
+
+    // Check for absolute path
+    if (!uri.empty() && (uri[0] == '/' || (uri.length() > 1 && uri[1] == ':'))) {
+        return uri;
+    }
+
+    // Relative path - combine with model directory
+    std::string resolved = modelDirectory;
+    if (!resolved.empty() && resolved.back() != '/' && resolved.back() != '\\') {
+        resolved += '/';
+    }
+    resolved += uri;
+
+    // Normalize path separators
+    std::replace(resolved.begin(), resolved.end(), '\\', '/');
+
+    return resolved;
 }
 
 } // namespace sims3000

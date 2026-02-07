@@ -61,6 +61,23 @@ target_link_libraries(test_ecs PRIVATE
 
 add_test(NAME ECS COMMAND test_ecs)
 
+# Test executable for RenderComponent (Ticket 2-031)
+add_executable(test_render_component
+    ecs/test_render_component.cpp
+    ${CMAKE_SOURCE_DIR}/src/ecs/Components.cpp
+    ${CMAKE_SOURCE_DIR}/src/net/NetworkBuffer.cpp
+)
+
+target_include_directories(test_render_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_render_component PRIVATE
+    glm::glm
+)
+
+add_test(NAME RenderComponent COMMAND test_render_component)
+
 # Test executable for NetworkBuffer
 add_executable(test_network_buffer
     net/test_network_buffer.cpp
@@ -629,3 +646,827 @@ if(WIN32)
 endif()
 
 add_test(NAME Serialization COMMAND test_serialization)
+
+# Test executable for GPUDevice (Ticket 2-001)
+add_executable(test_gpu_device
+    render/test_gpu_device.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/GPUDevice.cpp
+)
+
+target_include_directories(test_gpu_device PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_gpu_device PRIVATE
+    SDL3::SDL3
+)
+
+# GPU tests require display - mark as requiring manual verification on headless CI
+add_test(NAME GPUDevice COMMAND test_gpu_device)
+
+# Test executable for CameraState (Ticket 2-017)
+add_executable(test_camera_state
+    render/test_camera_state.cpp
+)
+
+target_include_directories(test_camera_state PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_camera_state PRIVATE
+    glm::glm
+)
+
+add_test(NAME CameraState COMMAND test_camera_state)
+
+# Test executable for RenderLayer (Ticket 2-034)
+add_executable(test_render_layer
+    render/test_render_layer.cpp
+    ${CMAKE_SOURCE_DIR}/src/ecs/Components.cpp
+    ${CMAKE_SOURCE_DIR}/src/net/NetworkBuffer.cpp
+)
+
+target_include_directories(test_render_layer PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_render_layer PRIVATE
+    glm::glm
+)
+
+add_test(NAME RenderLayer COMMAND test_render_layer)
+
+# Test executable for TransformComponent (Ticket 2-032)
+add_executable(test_transform_component
+    ecs/test_transform_component.cpp
+    ${CMAKE_SOURCE_DIR}/src/ecs/Components.cpp
+    ${CMAKE_SOURCE_DIR}/src/net/NetworkBuffer.cpp
+)
+
+target_include_directories(test_transform_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_transform_component PRIVATE
+    glm::glm
+)
+
+add_test(NAME TransformComponent COMMAND test_transform_component)
+
+# Test executable for Window (Ticket 2-002)
+add_executable(test_window
+    render/test_window.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/Window.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/GPUDevice.cpp
+)
+
+target_include_directories(test_window PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_window PRIVATE
+    SDL3::SDL3
+)
+
+# Window/GPU tests require display - mark as requiring manual verification on headless CI
+add_test(NAME Window COMMAND test_window)
+
+# Test executable for DepthBuffer (Ticket 2-014)
+add_executable(test_depth_buffer
+    render/test_depth_buffer.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/DepthBuffer.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/GPUDevice.cpp
+)
+
+target_include_directories(test_depth_buffer PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_depth_buffer PRIVATE
+    SDL3::SDL3
+)
+
+# DepthBuffer/GPU tests require display - mark as requiring manual verification on headless CI
+add_test(NAME DepthBuffer COMMAND test_depth_buffer)
+
+# Test executable for DepthState (Ticket 2-015)
+add_executable(test_depth_state
+    render/test_depth_state.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/DepthState.cpp
+)
+
+target_include_directories(test_depth_state PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_depth_state PRIVATE
+    SDL3::SDL3
+)
+
+# DepthState tests do NOT require GPU - pure state configuration tests
+add_test(NAME DepthState COMMAND test_depth_state)
+
+# Test executable for GPU Resources (Ticket 2-003)
+add_executable(test_gpu_resources
+    render/test_gpu_resources.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/UniformBufferPool.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/SamplerCache.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/FrameResources.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/GPUDevice.cpp
+)
+
+target_include_directories(test_gpu_resources PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_gpu_resources PRIVATE
+    SDL3::SDL3
+)
+
+# GPU resource tests require display - mark as requiring manual verification on headless CI
+add_test(NAME GPUResources COMMAND test_gpu_resources)
+
+# Test executable for ShaderCompiler (Ticket 2-004)
+add_executable(test_shader_compiler
+    render/test_shader_compiler.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ShaderCompiler.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/GPUDevice.cpp
+    ${CMAKE_BINARY_DIR}/generated/EmbeddedShaders.cpp
+)
+
+target_include_directories(test_shader_compiler PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_shader_compiler PRIVATE
+    SDL3::SDL3
+)
+
+# Shader tests require display - mark as requiring manual verification on headless CI
+add_test(NAME ShaderCompiler COMMAND test_shader_compiler)
+
+# Test executable for ToonShader data structures (Ticket 2-005)
+add_executable(test_toon_shader
+    render/test_toon_shader.cpp
+)
+
+target_include_directories(test_toon_shader PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_toon_shader PRIVATE
+    glm::glm
+)
+
+add_test(NAME ToonShader COMMAND test_toon_shader)
+
+# Test executable for BlendState (Ticket 2-007)
+add_executable(test_blend_state
+    render/test_blend_state.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/BlendState.cpp
+)
+
+target_include_directories(test_blend_state PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_blend_state PRIVATE
+    SDL3::SDL3
+)
+
+# BlendState tests do NOT require GPU - pure state configuration tests
+add_test(NAME BlendState COMMAND test_blend_state)
+
+# Test executable for ToonPipeline (Ticket 2-007)
+add_executable(test_toon_pipeline
+    render/test_toon_pipeline.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/BlendState.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/DepthState.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ToonPipeline.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/GPUDevice.cpp
+)
+
+target_include_directories(test_toon_pipeline PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_toon_pipeline PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+# ToonPipeline state tests do NOT require GPU
+add_test(NAME ToonPipeline COMMAND test_toon_pipeline)
+
+# Test executable for ModelLoader (Ticket 2-009)
+add_executable(test_model_loader
+    assets/test_model_loader.cpp
+)
+
+target_include_directories(test_model_loader PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_model_loader PRIVATE
+    glm::glm
+)
+
+add_test(NAME ModelLoader COMMAND test_model_loader)
+
+# Test executable for GPUMesh (Ticket 2-010)
+add_executable(test_gpu_mesh
+    render/test_gpu_mesh.cpp
+)
+
+target_include_directories(test_gpu_mesh PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_gpu_mesh PRIVATE
+    glm::glm
+)
+
+add_test(NAME GPUMesh COMMAND test_gpu_mesh)
+
+# Test executable for ViewMatrix (Ticket 2-020)
+add_executable(test_view_matrix
+    render/test_view_matrix.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ViewMatrix.cpp
+)
+
+target_include_directories(test_view_matrix PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_view_matrix PRIVATE
+    glm::glm
+)
+
+add_test(NAME ViewMatrix COMMAND test_view_matrix)
+
+# Test executable for ProjectionMatrix (Ticket 2-021)
+add_executable(test_projection_matrix
+    render/test_projection_matrix.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ProjectionMatrix.cpp
+)
+
+target_include_directories(test_projection_matrix PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_projection_matrix PRIVATE
+    glm::glm
+)
+
+add_test(NAME ProjectionMatrix COMMAND test_projection_matrix)
+
+# Test executable for RenderCommands (Ticket 2-011)
+add_executable(test_render_commands
+    render/test_render_commands.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/RenderCommands.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/UniformBufferPool.cpp
+)
+
+target_include_directories(test_render_commands PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_render_commands PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+add_test(NAME RenderCommands COMMAND test_render_commands)
+
+# Test executable for ToonShaderConfig (Ticket 2-008)
+add_executable(test_toon_shader_config
+    render/test_toon_shader_config.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ToonShaderConfig.cpp
+)
+
+target_include_directories(test_toon_shader_config PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_toon_shader_config PRIVATE
+    glm::glm
+)
+
+add_test(NAME ToonShaderConfig COMMAND test_toon_shader_config)
+
+# Test executable for CameraUniforms (Ticket 2-022)
+add_executable(test_camera_uniforms
+    render/test_camera_uniforms.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/CameraUniforms.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ViewMatrix.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ProjectionMatrix.cpp
+)
+
+target_include_directories(test_camera_uniforms PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_camera_uniforms PRIVATE
+    glm::glm
+)
+
+add_test(NAME CameraUniforms COMMAND test_camera_uniforms)
+
+# Test executable for GPU Instancing (Ticket 2-012)
+add_executable(test_instancing
+    render/test_instancing.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/RenderCommands.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/UniformBufferPool.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/InstanceBuffer.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/InstancedRenderer.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/GPUDevice.cpp
+)
+
+target_include_directories(test_instancing PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_instancing PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+add_test(NAME Instancing COMMAND test_instancing)
+
+# Test executable for EmissiveMaterial (Ticket 2-037)
+add_executable(test_emissive_material
+    render/test_emissive_material.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ToonShaderConfig.cpp
+)
+
+target_include_directories(test_emissive_material PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_emissive_material PRIVATE
+    glm::glm
+)
+
+add_test(NAME EmissiveMaterial COMMAND test_emissive_material)
+
+# Test executable for MainRenderPass (Ticket 2-018)
+# Note: This test focuses on configuration structs and constants.
+# GPU-dependent tests require manual verification.
+add_executable(test_main_render_pass
+    render/test_main_render_pass.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ToonShaderConfig.cpp
+)
+
+target_include_directories(test_main_render_pass PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_main_render_pass PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+add_test(NAME MainRenderPass COMMAND test_main_render_pass)
+
+# Test executable for ZoomController (Ticket 2-024)
+add_executable(test_zoom_controller
+    input/test_zoom_controller.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/ZoomController.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ScreenToWorld.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ViewMatrix.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ProjectionMatrix.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/InputSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/ActionMapping.cpp
+)
+
+target_include_directories(test_zoom_controller PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_zoom_controller PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+add_test(NAME ZoomController COMMAND test_zoom_controller)
+
+# Test executable for ScreenToWorld (Ticket 2-029)
+add_executable(test_screen_to_world
+    render/test_screen_to_world.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ScreenToWorld.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ViewMatrix.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ProjectionMatrix.cpp
+)
+
+target_include_directories(test_screen_to_world PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_screen_to_world PRIVATE
+    glm::glm
+)
+
+add_test(NAME ScreenToWorld COMMAND test_screen_to_world)
+
+# Test executable for TilePicking (Ticket 2-030)
+add_executable(test_tile_picking
+    render/test_tile_picking.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/TilePicking.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ScreenToWorld.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ViewMatrix.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ProjectionMatrix.cpp
+)
+
+target_include_directories(test_tile_picking PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_tile_picking PRIVATE
+    glm::glm
+)
+
+add_test(NAME TilePicking COMMAND test_tile_picking)
+
+# Test executable for TransparentRenderQueue (Ticket 2-016)
+add_executable(test_transparent_render_queue
+    render/test_transparent_render_queue.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/TransparentRenderQueue.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/BlendState.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/DepthState.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/RenderCommands.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/UniformBufferPool.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ToonPipeline.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/GPUDevice.cpp
+)
+
+target_include_directories(test_transparent_render_queue PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_transparent_render_queue PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+# TransparentRenderQueue sorting tests do NOT require GPU
+add_test(NAME TransparentRenderQueue COMMAND test_transparent_render_queue)
+
+# Test executable for EdgeDetectionPass (Ticket 2-006)
+add_executable(test_edge_detection_pass
+    render/test_edge_detection_pass.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ToonShaderConfig.cpp
+)
+
+target_include_directories(test_edge_detection_pass PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_edge_detection_pass PRIVATE
+    glm::glm
+)
+
+# EdgeDetectionPass config tests do NOT require GPU
+add_test(NAME EdgeDetectionPass COMMAND test_edge_detection_pass)
+
+# Test executable for PanController (Ticket 2-023)
+add_executable(test_pan_controller
+    input/test_pan_controller.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/PanController.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/InputSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/ActionMapping.cpp
+)
+
+target_include_directories(test_pan_controller PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_pan_controller PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+add_test(NAME PanController COMMAND test_pan_controller)
+
+# Test executable for CameraAnimator (Ticket 2-027)
+add_executable(test_camera_animator
+    input/test_camera_animator.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/CameraAnimator.cpp
+)
+
+target_include_directories(test_camera_animator PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_camera_animator PRIVATE
+    glm::glm
+)
+
+add_test(NAME CameraAnimator COMMAND test_camera_animator)
+
+# Test executable for OrbitController (Ticket 2-046)
+add_executable(test_orbit_controller
+    input/test_orbit_controller.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/OrbitController.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/InputSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/ActionMapping.cpp
+)
+
+target_include_directories(test_orbit_controller PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_orbit_controller PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+add_test(NAME OrbitController COMMAND test_orbit_controller)
+
+# Test executable for PresetSnapController (Ticket 2-047)
+add_executable(test_preset_snap_controller
+    input/test_preset_snap_controller.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/PresetSnapController.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/CameraAnimator.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/InputSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/ActionMapping.cpp
+)
+
+target_include_directories(test_preset_snap_controller PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_preset_snap_controller PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+add_test(NAME PresetSnapController COMMAND test_preset_snap_controller)
+
+# Test executable for CameraModeManager (Ticket 2-048)
+add_executable(test_camera_mode_manager
+    input/test_camera_mode_manager.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/CameraModeManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/OrbitController.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/PresetSnapController.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/CameraAnimator.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/InputSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/ActionMapping.cpp
+)
+
+target_include_directories(test_camera_mode_manager PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_camera_mode_manager PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+add_test(NAME CameraModeManager COMMAND test_camera_mode_manager)
+
+# Test executable for ViewportBounds (Ticket 2-025)
+add_executable(test_viewport_bounds
+    render/test_viewport_bounds.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ViewportBounds.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ViewMatrix.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ProjectionMatrix.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ScreenToWorld.cpp
+)
+
+target_include_directories(test_viewport_bounds PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_viewport_bounds PRIVATE
+    glm::glm
+)
+
+add_test(NAME ViewportBounds COMMAND test_viewport_bounds)
+
+# Test executable for FrustumCuller (Ticket 2-026)
+add_executable(test_frustum_culler
+    render/test_frustum_culler.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/FrustumCuller.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ViewMatrix.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ProjectionMatrix.cpp
+)
+
+target_include_directories(test_frustum_culler PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_frustum_culler PRIVATE
+    glm::glm
+)
+
+add_test(NAME FrustumCuller COMMAND test_frustum_culler)
+
+# Test executable for BloomPass (Ticket 2-038)
+# Note: test_bloom_pass requires GPU context and SDL3 linking.
+# For now, BloomPass config tests are validated through MainRenderPass tests.
+# TODO: Add full SDL3 linking for standalone bloom tests if needed.
+#add_executable(test_bloom_pass
+#    render/test_bloom_pass.cpp
+#    ${CMAKE_SOURCE_DIR}/src/render/ToonShaderConfig.cpp
+#    ${CMAKE_SOURCE_DIR}/src/render/BloomPass.cpp
+#)
+
+#target_include_directories(test_bloom_pass PRIVATE
+#    ${CMAKE_SOURCE_DIR}/include
+#)
+
+#target_link_libraries(test_bloom_pass PRIVATE
+#    glm::glm
+#)
+
+# BloomPass config tests do NOT require GPU
+#add_test(NAME BloomPass COMMAND test_bloom_pass)
+
+# Test executable for PositionSyncSystem (Ticket 2-033)
+add_executable(test_position_sync_system
+    ecs/test_position_sync_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/ecs/PositionSyncSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/ecs/Registry.cpp
+    ${CMAKE_SOURCE_DIR}/src/ecs/Components.cpp
+    ${CMAKE_SOURCE_DIR}/src/net/NetworkBuffer.cpp
+)
+
+target_include_directories(test_position_sync_system PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_position_sync_system PRIVATE
+    EnTT::EnTT
+    glm::glm
+)
+
+add_test(NAME PositionSyncSystem COMMAND test_position_sync_system)
+
+# Test executable for LayerVisibility (Ticket 2-035)
+add_executable(test_layer_visibility
+    render/test_layer_visibility.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/LayerVisibility.cpp
+)
+
+target_include_directories(test_layer_visibility PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# LayerVisibility tests do NOT require GPU - pure state configuration tests
+add_test(NAME LayerVisibility COMMAND test_layer_visibility)
+
+# Test executable for ViewMode (Ticket 2-036)
+add_executable(test_view_mode
+    render/test_view_mode.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ViewMode.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/LayerVisibility.cpp
+)
+
+target_include_directories(test_view_mode PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# ViewMode tests do NOT require GPU - pure state configuration tests
+add_test(NAME ViewMode COMMAND test_view_mode)
+
+# Test executable for DebugGridOverlay (Ticket 2-040)
+add_executable(test_debug_grid_overlay
+    render/test_debug_grid_overlay.cpp
+)
+
+target_include_directories(test_debug_grid_overlay PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_debug_grid_overlay PRIVATE
+    glm::glm
+)
+
+# DebugGridOverlay config tests do NOT require GPU
+add_test(NAME DebugGridOverlay COMMAND test_debug_grid_overlay)
+
+# Test executable for WireframeMode (Ticket 2-041)
+add_executable(test_wireframe_mode
+    render/test_wireframe_mode.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/ActionMapping.cpp
+)
+
+target_include_directories(test_wireframe_mode PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_wireframe_mode PRIVATE
+    SDL3::SDL3
+)
+
+# WireframeMode config tests do NOT require GPU
+add_test(NAME WireframeMode COMMAND test_wireframe_mode)
+
+# Test executable for ShadowPass (Ticket 2-039)
+add_executable(test_shadow_pass
+    render/test_shadow_pass.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ShadowConfig.cpp
+)
+
+target_include_directories(test_shadow_pass PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_shadow_pass PRIVATE
+    glm::glm
+)
+
+# ShadowPass config tests do NOT require GPU
+add_test(NAME ShadowPass COMMAND test_shadow_pass)
+
+# Test executable for StatsOverlay (Ticket 2-042)
+add_executable(test_stats_overlay
+    render/test_stats_overlay.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/FrameStats.cpp
+)
+
+target_include_directories(test_stats_overlay PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_stats_overlay PRIVATE
+    glm::glm
+)
+
+# StatsOverlay config tests do NOT require GPU
+add_test(NAME StatsOverlay COMMAND test_stats_overlay)
+
+# Test executable for DebugBoundingBoxOverlay (Ticket 2-043)
+add_executable(test_debug_bounding_box_overlay
+    render/test_debug_bounding_box_overlay.cpp
+    ${CMAKE_SOURCE_DIR}/src/input/ActionMapping.cpp
+)
+
+target_include_directories(test_debug_bounding_box_overlay PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_debug_bounding_box_overlay PRIVATE
+    SDL3::SDL3
+    glm::glm
+)
+
+# DebugBoundingBoxOverlay config tests do NOT require GPU
+add_test(NAME DebugBoundingBoxOverlay COMMAND test_debug_bounding_box_overlay)
+
+# Test executable for TransformInterpolationSystem (Ticket 2-044)
+add_executable(test_transform_interpolation
+    ecs/test_transform_interpolation.cpp
+    ${CMAKE_SOURCE_DIR}/src/ecs/TransformInterpolationSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/ecs/Registry.cpp
+    ${CMAKE_SOURCE_DIR}/src/ecs/Components.cpp
+    ${CMAKE_SOURCE_DIR}/src/net/NetworkBuffer.cpp
+)
+
+target_include_directories(test_transform_interpolation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_transform_interpolation PRIVATE
+    EnTT::EnTT
+    glm::glm
+)
+
+add_test(NAME TransformInterpolation COMMAND test_transform_interpolation)
+
+# Test executable for CursorRenderer (Ticket 2-045)
+add_executable(test_cursor_renderer
+    render/test_cursor_renderer.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/CursorRenderer.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ScreenToWorld.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ViewMatrix.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/ProjectionMatrix.cpp
+)
+
+target_include_directories(test_cursor_renderer PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_cursor_renderer PRIVATE
+    glm::glm
+)
+
+# CursorRenderer tests do NOT require GPU - pure logic tests with mocks
+add_test(NAME CursorRenderer COMMAND test_cursor_renderer)
+
+# Test executable for LODSystem (Ticket 2-049)
+add_executable(test_lod_system
+    render/test_lod_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/render/LODSystem.cpp
+)
+
+target_include_directories(test_lod_system PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_lod_system PRIVATE
+    glm::glm
+)
+
+# LODSystem tests do NOT require GPU - pure logic tests
+add_test(NAME LODSystem COMMAND test_lod_system)

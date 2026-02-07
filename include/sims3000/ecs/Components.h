@@ -13,8 +13,10 @@
 #include "sims3000/core/Serialization.h"
 #include "sims3000/assets/ModelLoader.h"
 #include "sims3000/assets/TextureLoader.h"
+#include "sims3000/render/RenderLayer.h"
 
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <cstdint>
 #include <vector>
 
@@ -56,7 +58,7 @@ namespace ComponentTypeID {
 namespace ComponentVersion {
     constexpr std::uint8_t Position = 1;
     constexpr std::uint8_t Ownership = 1;
-    constexpr std::uint8_t Transform = 1;
+    constexpr std::uint8_t Transform = 2;  // v2: quaternion rotation, scale, cached matrix
     constexpr std::uint8_t Building = 1;
     constexpr std::uint8_t Energy = 1;
     constexpr std::uint8_t Population = 1;
@@ -224,36 +226,124 @@ static_assert(sizeof(OwnershipComponent) == 16, "OwnershipComponent size check")
 
 /**
  * @struct TransformComponent
- * @brief 3D world position for rendering.
- * Derived from grid position but includes height and rotation.
+ * @brief 3D rendering transform for entities.
  *
- * Network wire format (version 1):
- *   [1 byte version][4 bytes x][4 bytes y][4 bytes z][4 bytes rotation]
- *   Total: 17 bytes
+ * This is the RENDERING transform, separate from PositionComponent which is for
+ * game logic. PositionComponent uses GridPosition (int16 x,y) for tile-based
+ * simulation. TransformComponent uses float Vec3 for smooth rendering.
+ *
+ * Uses quaternion for rotation (required for free camera where models are viewed
+ * from all angles). Euler angles would suffer from gimbal lock.
+ *
+ * The cached model matrix is recomputed only when dirty flag is set, avoiding
+ * redundant matrix calculations each frame.
+ *
+ * Position-to-Transform sync is handled by a separate system (ticket 2-033).
+ *
+ * Network wire format (version 2):
+ *   [1 byte version]
+ *   [12 bytes position (3x float)]
+ *   [16 bytes rotation quaternion (4x float)]
+ *   [12 bytes scale (3x float)]
+ *   [1 byte dirty flag]
+ *   [64 bytes model matrix (16x float)]
+ *   Total: 106 bytes
+ *
+ * @note Component is trivially copyable (no pointers). Padding ensures alignment.
  */
 struct TransformComponent {
-    glm::vec3 position{0.0f};
-    float rotation = 0.0f;  // Y-axis rotation in radians
+    /// World-space position (floats for smooth rendering)
+    glm::vec3 position{0.0f, 0.0f, 0.0f};
+
+    /// Rotation as quaternion (required for free camera, avoids gimbal lock)
+    glm::quat rotation{1.0f, 0.0f, 0.0f, 0.0f};  // Identity quaternion (w, x, y, z)
+
+    /// Non-uniform scale (default 1,1,1 = no scaling)
+    glm::vec3 scale{1.0f, 1.0f, 1.0f};
+
+    /// Dirty flag for matrix recomputation
+    /// Set to true when position, rotation, or scale changes.
+    /// Rendering system clears this after recomputing model_matrix.
+    bool dirty = true;
+
+    /// Padding for alignment (3 bytes to align model_matrix to 4-byte boundary)
+    std::uint8_t padding[3] = {};
+
+    /// Cached model matrix (Mat4) - recomputed when dirty flag is set.
+    /// Combines position, rotation, and scale into a single transform matrix.
+    /// mat4 = T * R * S (Translation * Rotation * Scale)
+    glm::mat4 model_matrix{1.0f};  // Identity matrix
+
+    // =========================================================================
+    // Helper Methods
+    // =========================================================================
+
+    /**
+     * @brief Mark transform as needing matrix recomputation.
+     */
+    void set_dirty() { dirty = true; }
+
+    /**
+     * @brief Recompute model_matrix from position, rotation, and scale.
+     *
+     * Call this when dirty flag is true before using model_matrix for rendering.
+     * Clears the dirty flag after recomputation.
+     */
+    void recompute_matrix();
+
+    // =========================================================================
+    // Network Serialization
+    // =========================================================================
 
     void serialize_net(NetworkBuffer& buffer) const;
     static TransformComponent deserialize_net(NetworkBuffer& buffer);
-    static constexpr std::size_t get_serialized_size() { return 17; }
+
+    /**
+     * @brief Get the serialized size in bytes.
+     * version(1) + position(12) + rotation(16) + scale(12) + dirty(1) + model_matrix(64) = 106
+     */
+    static constexpr std::size_t get_serialized_size() { return 106; }
     static constexpr std::uint8_t get_type_id() { return ComponentTypeID::Transform; }
 };
-static_assert(sizeof(TransformComponent) == 16, "TransformComponent size check");
+static_assert(sizeof(TransformComponent) == 108, "TransformComponent size check");
+
+// RenderLayer enum is defined in sims3000/render/RenderLayer.h
+// Included above for RenderComponent layer assignment.
 
 /**
  * @struct RenderComponent
- * @brief Rendering information for an entity.
- * Uses handles to cached assets.
+ * @brief Rendering information for entities that should be rendered.
+ *
+ * Contains all per-instance rendering data:
+ * - Model and texture asset references
+ * - Render layer for draw ordering
+ * - Visibility and tint color
+ * - Scale factor for size variation
+ * - Emissive properties for bioluminescent glow
+ *
+ * Emissive state reflects power status:
+ * - Powered buildings: emissive_intensity > 0
+ * - Unpowered buildings: emissive_intensity = 0
+ *
+ * SyncPolicy::None - client-only visual data, never synced.
  */
 struct RenderComponent {
-    ModelHandle model = nullptr;
-    TextureHandle texture = nullptr;
-    glm::vec4 tintColor{1.0f, 1.0f, 1.0f, 1.0f};
-    bool visible = true;
-    std::uint8_t padding[3] = {};
+    // Asset references
+    ModelHandle model = nullptr;        ///< Handle to 3D model asset
+    TextureHandle texture = nullptr;    ///< Handle to texture/material asset
+
+    // Render properties
+    glm::vec4 tint_color{1.0f, 1.0f, 1.0f, 1.0f};  ///< Instance tint color (RGBA), default white
+    glm::vec3 emissive_color{0.0f, 1.0f, 0.8f};    ///< Bioluminescent glow color (RGB), default teal
+    float scale = 1.0f;                             ///< Uniform scale factor for size variety
+    float emissive_intensity = 0.0f;                ///< Glow intensity [0.0-1.0], 0=unpowered
+
+    // State and classification
+    RenderLayer layer = RenderLayer::Buildings;    ///< Render layer assignment
+    bool visible = true;                           ///< Visibility flag
+    std::uint8_t padding[2] = {};                  ///< Padding for alignment
 };
+static_assert(sizeof(RenderComponent) == 56, "RenderComponent size check");
 
 /**
  * @struct BuildingComponent

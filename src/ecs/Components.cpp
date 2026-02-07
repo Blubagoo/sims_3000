@@ -5,6 +5,8 @@
 
 #include "sims3000/ecs/Components.h"
 #include "sims3000/net/NetworkBuffer.h"
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <cstring>
 
 namespace sims3000 {
@@ -155,26 +157,106 @@ OwnershipComponent OwnershipComponent::deserialize_net(NetworkBuffer& buffer) {
 }
 
 // -----------------------------------------------------------------------------
+// TransformComponent Helper Methods
+// -----------------------------------------------------------------------------
+
+void TransformComponent::recompute_matrix() {
+    // Model matrix = T * R * S (Translation * Rotation * Scale)
+    // Start with identity matrix
+    model_matrix = glm::mat4(1.0f);
+
+    // Apply translation
+    model_matrix = glm::translate(model_matrix, position);
+
+    // Apply rotation (quaternion to rotation matrix)
+    model_matrix *= glm::mat4_cast(rotation);
+
+    // Apply scale
+    model_matrix = glm::scale(model_matrix, scale);
+
+    // Clear dirty flag
+    dirty = false;
+}
+
+// -----------------------------------------------------------------------------
 // TransformComponent Network Serialization
 // -----------------------------------------------------------------------------
 
 void TransformComponent::serialize_net(NetworkBuffer& buffer) const {
+    // Version 2 format: full transform with quaternion rotation
     buffer.write_u8(ComponentVersion::Transform);
+
+    // Position (12 bytes)
     buffer.write_f32(position.x);
     buffer.write_f32(position.y);
     buffer.write_f32(position.z);
-    buffer.write_f32(rotation);
+
+    // Rotation quaternion (16 bytes) - note: glm::quat stores as (w, x, y, z)
+    buffer.write_f32(rotation.w);
+    buffer.write_f32(rotation.x);
+    buffer.write_f32(rotation.y);
+    buffer.write_f32(rotation.z);
+
+    // Scale (12 bytes)
+    buffer.write_f32(scale.x);
+    buffer.write_f32(scale.y);
+    buffer.write_f32(scale.z);
+
+    // Dirty flag (1 byte)
+    buffer.write_u8(dirty ? 1 : 0);
+
+    // Model matrix (64 bytes) - column-major order
+    for (int col = 0; col < 4; ++col) {
+        for (int row = 0; row < 4; ++row) {
+            buffer.write_f32(model_matrix[col][row]);
+        }
+    }
 }
 
 TransformComponent TransformComponent::deserialize_net(NetworkBuffer& buffer) {
     TransformComponent result;
     std::uint8_t version = buffer.read_u8();
 
-    if (version >= 1) {
+    if (version >= 2) {
+        // Version 2: full transform with quaternion rotation
+        // Position
         result.position.x = buffer.read_f32();
         result.position.y = buffer.read_f32();
         result.position.z = buffer.read_f32();
-        result.rotation = buffer.read_f32();
+
+        // Rotation quaternion
+        result.rotation.w = buffer.read_f32();
+        result.rotation.x = buffer.read_f32();
+        result.rotation.y = buffer.read_f32();
+        result.rotation.z = buffer.read_f32();
+
+        // Scale
+        result.scale.x = buffer.read_f32();
+        result.scale.y = buffer.read_f32();
+        result.scale.z = buffer.read_f32();
+
+        // Dirty flag
+        result.dirty = buffer.read_u8() != 0;
+
+        // Model matrix (column-major order)
+        for (int col = 0; col < 4; ++col) {
+            for (int row = 0; row < 4; ++row) {
+                result.model_matrix[col][row] = buffer.read_f32();
+            }
+        }
+    } else if (version >= 1) {
+        // Version 1 compatibility: old format with position + Y-axis rotation
+        result.position.x = buffer.read_f32();
+        result.position.y = buffer.read_f32();
+        result.position.z = buffer.read_f32();
+
+        // Old rotation was Y-axis rotation in radians
+        float y_rotation = buffer.read_f32();
+        result.rotation = glm::angleAxis(y_rotation, glm::vec3(0.0f, 1.0f, 0.0f));
+
+        // Default scale (1,1,1) is already set
+        // Mark as dirty so matrix gets recomputed
+        result.dirty = true;
     }
 
     return result;
