@@ -2,7 +2,7 @@
  * @file ForwardDependencyInterfaces.h
  * @brief Forward dependency interfaces for BuildingSystem (Epic 4)
  *
- * Defines six pure abstract interfaces that represent dependencies on systems
+ * Defines seven pure abstract interfaces that represent dependencies on systems
  * implemented in later epics. These interfaces enable BuildingSystem and
  * ZoneSystem to be developed and tested independently of future epics.
  *
@@ -10,6 +10,7 @@
  * - IEnergyProvider: Power state queries (Epic 5)
  * - IFluidProvider: Water/fluid state queries (Epic 6)
  * - ITransportProvider: Pathway connectivity queries (Epic 7)
+ * - IPortProvider: Port facility and trade queries (Epic 8)
  * - ILandValueProvider: Sector desirability queries (Epic 10)
  * - IDemandProvider: Zone growth pressure queries (Epic 10)
  * - ICreditProvider: Treasury/credit deduction (Epic 11)
@@ -203,6 +204,111 @@ public:
         (void)x; (void)y;
         return 0; // Not in any network default
     }
+};
+
+/**
+ * @interface IPortProvider
+ * @brief Port facility and trade query interface (Epic 8 dependency)
+ *
+ * Allows BuildingSystem and ZoneSystem to query port capacity, utilization,
+ * demand bonuses, external connections, and trade income.
+ * Will be implemented by PortSystem in Epic 8.
+ *
+ * All enum parameters use uint8_t to avoid circular includes,
+ * matching the pattern used by other interfaces in this file.
+ */
+class IPortProvider {
+public:
+    /// Virtual destructor for proper polymorphic cleanup
+    virtual ~IPortProvider() = default;
+
+    // =========================================================================
+    // Port state queries
+    // =========================================================================
+
+    /**
+     * @brief Get total capacity for a port type.
+     * @param port_type Port type (cast from port::PortType).
+     * @param owner Owning player ID.
+     * @return Total capacity across all ports of this type for this owner.
+     */
+    virtual std::uint32_t get_port_capacity(std::uint8_t port_type, std::uint8_t owner) const = 0;
+
+    /**
+     * @brief Get utilization ratio for a port type.
+     * @param port_type Port type (cast from port::PortType).
+     * @param owner Owning player ID.
+     * @return Utilization ratio (0.0 = idle, 1.0 = fully utilized).
+     */
+    virtual float get_port_utilization(std::uint8_t port_type, std::uint8_t owner) const = 0;
+
+    /**
+     * @brief Check if an operational port of the given type exists.
+     * @param port_type Port type (cast from port::PortType).
+     * @param owner Owning player ID.
+     * @return true if at least one operational port of this type exists.
+     */
+    virtual bool has_operational_port(std::uint8_t port_type, std::uint8_t owner) const = 0;
+
+    /**
+     * @brief Get count of ports of the given type.
+     * @param port_type Port type (cast from port::PortType).
+     * @param owner Owning player ID.
+     * @return Number of ports of this type for this owner.
+     */
+    virtual std::uint32_t get_port_count(std::uint8_t port_type, std::uint8_t owner) const = 0;
+
+    // =========================================================================
+    // Demand bonus queries
+    // =========================================================================
+
+    /**
+     * @brief Get global demand bonus for a zone type from all ports.
+     * @param zone_type Zone type to query.
+     * @param owner Owning player ID.
+     * @return Global demand bonus factor (0.0 = no bonus).
+     */
+    virtual float get_global_demand_bonus(std::uint8_t zone_type, std::uint8_t owner) const = 0;
+
+    /**
+     * @brief Get local demand bonus at a position from nearby ports.
+     * @param zone_type Zone type to query.
+     * @param x X coordinate (column).
+     * @param y Y coordinate (row).
+     * @param owner Owning player ID.
+     * @return Local demand bonus factor (0.0 = no bonus).
+     */
+    virtual float get_local_demand_bonus(std::uint8_t zone_type, std::int32_t x, std::int32_t y, std::uint8_t owner) const = 0;
+
+    // =========================================================================
+    // External connection queries
+    // =========================================================================
+
+    /**
+     * @brief Get count of active external connections.
+     * @param owner Owning player ID.
+     * @return Number of active external connections for this owner.
+     */
+    virtual std::uint32_t get_external_connection_count(std::uint8_t owner) const = 0;
+
+    /**
+     * @brief Check if a specific map edge has a connection.
+     * @param edge Map edge side (cast from port::MapEdge).
+     * @param owner Owning player ID.
+     * @return true if connected to the specified edge.
+     */
+    virtual bool is_connected_to_edge(std::uint8_t edge, std::uint8_t owner) const = 0;
+
+    // =========================================================================
+    // Trade income queries
+    // =========================================================================
+
+    /**
+     * @brief Get total trade income for a player.
+     * @param owner Owning player ID.
+     * @return Trade income in credits per cycle.
+     */
+    virtual std::int64_t get_trade_income(std::uint8_t owner) const = 0;
 };
 
 /**

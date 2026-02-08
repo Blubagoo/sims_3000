@@ -91,6 +91,12 @@ enum class Action {
     TRANSPORT_REMOVE,     // Remove transport item (V)
     TRANSPORT_OVERLAY,    // Toggle transport overlay (P)
 
+    // Port demo controls (Epic 8)
+    PORT_AERO,          // Select aero port mode (L)
+    PORT_AQUA,          // Select aqua port mode (K)
+    PORT_PLACE,         // Place port at camera focus (,)
+    PORT_REMOVE,        // Remove port at camera focus (.)
+
     // System
     FULLSCREEN,
     QUIT,

@@ -1,0 +1,96 @@
+# Epic 8 Execution Queue
+# Generated: 2026-02-08
+# Last Updated: 2026-02-08
+
+epic: 8
+name: "Ports & External Connections"
+status: complete
+
+current_wave: 9
+# ALL WAVES COMPLETE
+
+
+# Execution waves (dependency-ordered, max 3 parallel agents per wave)
+waves:
+  wave_1:
+    description: "Foundation types (no dependencies)"
+    tickets:
+      - {id: "8-001", title: "PortType Enum and Port Terminology", status: complete}
+      - {id: "8-004", title: "ExternalConnectionComponent Definition", status: complete}
+      - {id: "8-005", title: "TradeAgreementComponent Definition", status: complete}
+      - {id: "8-028", title: "Port Event Definitions", status: complete}
+      - {id: "8-029", title: "Trade Agreement Event Definitions", status: complete}
+
+  wave_2:
+    description: "Dependent components + interface + zone extension"
+    tickets:
+      - {id: "8-002", title: "PortComponent Definition", status: complete}
+      - {id: "8-003", title: "PortZoneComponent Definition", status: complete}
+      - {id: "8-031", title: "Zone Type Extension for Ports", status: complete}
+
+  wave_3:
+    description: "System skeleton + interface + validation"
+    tickets:
+      - {id: "8-007", title: "IPortProvider Interface Definition", status: complete}
+      - {id: "8-006", title: "PortSystem Class Skeleton", status: complete}
+      - {id: "8-008", title: "Aero Port Zone Validation", status: complete}
+      - {id: "8-009", title: "Aqua Port Zone Validation", status: complete}
+
+  wave_4:
+    description: "Capacity + operational + external connections"
+    tickets:
+      - {id: "8-010", title: "Port Capacity Calculation", status: complete}
+      - {id: "8-013", title: "Map Edge Detection", status: complete}
+      - {id: "8-011", title: "Port Operational Status Check", status: complete}
+
+  wave_5:
+    description: "Development + connection capacity + neighbors + demand"
+    tickets:
+      - {id: "8-012", title: "Port Development Levels", status: complete}
+      - {id: "8-014", title: "External Connection Capacity", status: complete}
+      - {id: "8-015", title: "NPC Neighbor Generation", status: complete}
+      - {id: "8-016", title: "Global Demand Bonus Calculation", status: complete}
+
+  wave_6:
+    description: "Local demand + trade deals + trade income + inter-player"
+    tickets:
+      - {id: "8-017", title: "Local Demand Bonus Calculation", status: complete}
+      - {id: "8-022", title: "Trade Deal Negotiation", status: complete}
+      - {id: "8-025", title: "Trade Offer System", status: complete}
+
+  wave_7:
+    description: "Integration + messages + benefits + migration"
+    tickets:
+      - {id: "8-018", title: "DemandSystem Integration", status: complete}
+      - {id: "8-019", title: "Trade Income Calculation", status: complete}
+      - {id: "8-023", title: "Trade Deal Expiration", status: complete}
+      - {id: "8-026", title: "Trade Route Network Messages", status: complete}
+      - {id: "8-027", title: "Trade Agreement Benefits", status: complete}
+      - {id: "8-024", title: "Migration Effects", status: complete}
+
+  wave_8:
+    description: "Economy integration + UI data + rendering + advanced"
+    tickets:
+      - {id: "8-020", title: "EconomySystem Integration", status: complete}
+      - {id: "8-021", title: "Trade Income Breakdown UI Data", status: complete}
+      - {id: "8-030", title: "Port Zone Rendering Support", status: complete}
+      - {id: "8-032", title: "Port Infrastructure Upgrades", status: complete}
+      - {id: "8-033", title: "Port Noise/Contamination Effects", status: complete}
+      - {id: "8-035", title: "Multiple Port Diminishing Returns", status: complete}
+
+  wave_9:
+    description: "Neighbor evolution + tests + canon"
+    tickets:
+      - {id: "8-034", title: "Neighbor Relationship Evolution", status: complete}
+      - {id: "8-036", title: "Unit Tests - Port Validation", status: complete}
+      - {id: "8-037", title: "Unit Tests - Trade Calculation", status: complete}
+      - {id: "8-038", title: "Integration Tests - Epic 10/11", status: complete}
+      - {id: "8-039", title: "Multiplayer Tests - Trade Routes", status: complete}
+      - {id: "8-040", title: "Canon Update - PortSystem Documentation", status: complete}
+
+stats:
+  total: 40
+  complete: 40
+  in_progress: 0
+  pending: 0
+  failed: 0

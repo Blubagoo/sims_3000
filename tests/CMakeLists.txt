@@ -4460,3 +4460,416 @@ target_include_directories(test_rail_network_messages PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 add_test(NAME RailNetworkMessages COMMAND test_rail_network_messages)
+
+# Test executable for PortEvents (Ticket E8-028)
+add_executable(test_port_events
+    port/test_port_events.cpp
+)
+target_include_directories(test_port_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortEvents COMMAND test_port_events)
+
+# Test executable for TradeEvents (Ticket E8-029)
+add_executable(test_trade_events
+    port/test_trade_events.cpp
+)
+target_include_directories(test_trade_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TradeEvents COMMAND test_trade_events)
+
+# Test executable for PortTypes enums (Tickets E8-001, E8-004, E8-005)
+add_executable(test_port_types
+    port/test_port_types.cpp
+)
+target_include_directories(test_port_types PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortTypes COMMAND test_port_types)
+
+# Test executable for ExternalConnectionComponent (Ticket E8-004)
+add_executable(test_external_connection
+    port/test_external_connection.cpp
+)
+target_include_directories(test_external_connection PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ExternalConnection COMMAND test_external_connection)
+
+# Test executable for TradeAgreementComponent (Ticket E8-005)
+add_executable(test_trade_agreement
+    port/test_trade_agreement.cpp
+    ${CMAKE_SOURCE_DIR}/src/ecs/Components.cpp
+    ${CMAKE_SOURCE_DIR}/src/net/NetworkBuffer.cpp
+)
+target_include_directories(test_trade_agreement PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_trade_agreement PRIVATE
+    glm::glm
+)
+add_test(NAME TradeAgreement COMMAND test_trade_agreement)
+
+# Test executable for PortComponent (Ticket E8-002)
+add_executable(test_port_component
+    port/test_port_component.cpp
+)
+target_include_directories(test_port_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortComponent COMMAND test_port_component)
+
+# Test executable for PortZoneComponent (Ticket E8-003)
+add_executable(test_port_zone_component
+    port/test_port_zone_component.cpp
+)
+target_include_directories(test_port_zone_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortZoneComponent COMMAND test_port_zone_component)
+
+# Test executable for PortSerialization (Ticket E8-002)
+add_executable(test_port_serialization
+    port/test_port_serialization.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortSerialization.cpp
+)
+target_include_directories(test_port_serialization PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortSerialization COMMAND test_port_serialization)
+
+# Test executable for Zone Type Extension for Ports (Ticket E8-031)
+add_executable(test_zone_type_extension
+    port/test_zone_type_extension.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_zone_type_extension PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ZoneTypeExtension COMMAND test_zone_type_extension)
+
+# Test executable for Aero Port Zone Validation (Ticket E8-008)
+add_executable(test_aero_port_validation
+    port/test_aero_port_validation.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortZoneValidation.cpp
+)
+target_include_directories(test_aero_port_validation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME AeroPortValidation COMMAND test_aero_port_validation)
+
+# Test executable for Aqua Port Zone Validation (Ticket E8-009)
+add_executable(test_aqua_port_validation
+    port/test_aqua_port_validation.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortZoneValidation.cpp
+)
+target_include_directories(test_aqua_port_validation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME AquaPortValidation COMMAND test_aqua_port_validation)
+
+# Test executable for PortSystem (Tickets E8-006, E8-007)
+add_executable(test_port_system
+    port/test_port_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/DemandBonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeIncome.cpp
+)
+target_include_directories(test_port_system PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortSystem COMMAND test_port_system)
+
+# Test executable for MapEdgeDetection (E8-013)
+add_executable(test_map_edge_detection
+    port/test_map_edge_detection.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/MapEdgeDetection.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/RailSystem.cpp
+)
+target_include_directories(test_map_edge_detection PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME MapEdgeDetection COMMAND test_map_edge_detection)
+
+# Test executable for Port Capacity Calculation (Ticket E8-010)
+add_executable(test_port_capacity
+    port/test_port_capacity.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortCapacity.cpp
+)
+target_include_directories(test_port_capacity PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortCapacity COMMAND test_port_capacity)
+
+# Test executable for Port Operational Status (Ticket E8-011)
+add_executable(test_port_operational
+    port/test_port_operational.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortOperational.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortZoneValidation.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortCapacity.cpp
+)
+target_include_directories(test_port_operational PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortOperational COMMAND test_port_operational)
+
+# Test executable for Port Development Levels (Ticket E8-012)
+add_executable(test_port_development
+    port/test_port_development.cpp
+)
+target_include_directories(test_port_development PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortDevelopment COMMAND test_port_development)
+
+# Test executable for External Connection Capacity (Ticket E8-014)
+add_executable(test_connection_capacity
+    port/test_connection_capacity.cpp
+)
+target_include_directories(test_connection_capacity PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ConnectionCapacity COMMAND test_connection_capacity)
+
+# Test executable for NPC Neighbor Generation (Ticket E8-015)
+add_executable(test_neighbor_generation
+    port/test_neighbor_generation.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/NeighborGeneration.cpp
+)
+target_include_directories(test_neighbor_generation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME NeighborGeneration COMMAND test_neighbor_generation)
+
+# Test executable for Global Demand Bonus (Ticket E8-016)
+add_executable(test_demand_bonus
+    port/test_demand_bonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/DemandBonus.cpp
+)
+target_include_directories(test_demand_bonus PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME DemandBonus COMMAND test_demand_bonus)
+
+# Test executable for Local Demand Bonus (Ticket E8-017)
+add_executable(test_local_demand_bonus
+    port/test_local_demand_bonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/DemandBonus.cpp
+)
+target_include_directories(test_local_demand_bonus PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME LocalDemandBonus COMMAND test_local_demand_bonus)
+
+# Test executable for Trade Deal Negotiation (Ticket E8-022)
+add_executable(test_trade_deal_negotiation
+    port/test_trade_deal_negotiation.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeDealNegotiation.cpp
+)
+target_include_directories(test_trade_deal_negotiation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_trade_deal_negotiation PRIVATE
+    glm::glm
+)
+add_test(NAME TradeDealNegotiation COMMAND test_trade_deal_negotiation)
+
+# Test executable for Trade Offer Manager (Ticket E8-025)
+add_executable(test_trade_offer_manager
+    port/test_trade_offer_manager.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeOfferManager.cpp
+)
+target_include_directories(test_trade_offer_manager PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TradeOfferManager COMMAND test_trade_offer_manager)
+
+# Test executable for Migration Effects (Ticket E8-024)
+add_executable(test_migration_effects
+    port/test_migration_effects.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/MigrationEffects.cpp
+)
+target_include_directories(test_migration_effects PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME MigrationEffects COMMAND test_migration_effects)
+
+# Test executable for Port Demand Integration (Ticket E8-018)
+add_executable(test_port_demand_integration
+    port/test_port_demand_integration.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/DemandBonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeIncome.cpp
+)
+target_include_directories(test_port_demand_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortDemandIntegration COMMAND test_port_demand_integration)
+
+# Test executable for Trade Income (Ticket E8-019)
+add_executable(test_trade_income
+    port/test_trade_income.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeIncome.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/DemandBonus.cpp
+)
+target_include_directories(test_trade_income PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TradeIncome COMMAND test_trade_income)
+
+# Test executable for Trade Deal Expiration (Ticket E8-023)
+add_executable(test_trade_deal_expiration
+    port/test_trade_deal_expiration.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeDealExpiration.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeDealNegotiation.cpp
+)
+target_include_directories(test_trade_deal_expiration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_trade_deal_expiration PRIVATE
+    glm::glm
+)
+add_test(NAME TradeDealExpiration COMMAND test_trade_deal_expiration)
+
+# Test executable for Trade Network Messages (Ticket E8-026)
+add_executable(test_trade_network_messages
+    port/test_trade_network_messages.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeNetworkMessages.cpp
+)
+target_include_directories(test_trade_network_messages PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TradeNetworkMessages COMMAND test_trade_network_messages)
+
+# Test executable for Trade Agreement Benefits (Ticket E8-027)
+add_executable(test_trade_agreement_benefits
+    port/test_trade_agreement_benefits.cpp
+)
+target_include_directories(test_trade_agreement_benefits PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TradeAgreementBenefits COMMAND test_trade_agreement_benefits)
+
+# Test executable for Port Infrastructure Upgrades (Ticket E8-032)
+add_executable(test_port_upgrades
+    port/test_port_upgrades.cpp
+)
+target_include_directories(test_port_upgrades PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortUpgrades COMMAND test_port_upgrades)
+
+# Test executable for Port Noise/Contamination (Ticket E8-033)
+add_executable(test_port_contamination
+    port/test_port_contamination.cpp
+)
+target_include_directories(test_port_contamination PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortContamination COMMAND test_port_contamination)
+
+# Test executable for Multiple Port Diminishing Returns (Ticket E8-035)
+add_executable(test_diminishing_returns
+    port/test_diminishing_returns.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/DemandBonus.cpp
+)
+target_include_directories(test_diminishing_returns PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME DiminishingReturns COMMAND test_diminishing_returns)
+
+# Test executable for PortEconomyIntegration (Ticket E8-020)
+add_executable(test_port_economy_integration
+    port/test_port_economy_integration.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/DemandBonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeIncome.cpp
+)
+target_include_directories(test_port_economy_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortEconomyIntegration COMMAND test_port_economy_integration)
+
+# Test executable for PortIncomeUI (Ticket E8-021)
+add_executable(test_port_income_ui
+    port/test_port_income_ui.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/DemandBonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeIncome.cpp
+)
+target_include_directories(test_port_income_ui PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortIncomeUI COMMAND test_port_income_ui)
+
+# Test executable for PortRenderData (Ticket E8-030)
+add_executable(test_port_render_data
+    port/test_port_render_data.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/DemandBonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeIncome.cpp
+)
+target_include_directories(test_port_render_data PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortRenderData COMMAND test_port_render_data)
+
+# Test executable for Comprehensive Port Validation (Ticket E8-036)
+add_executable(test_port_validation_comprehensive
+    port/test_port_validation_comprehensive.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortZoneValidation.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortCapacity.cpp
+)
+target_include_directories(test_port_validation_comprehensive PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortValidationComprehensive COMMAND test_port_validation_comprehensive)
+
+# Test executable for Comprehensive Trade Calculation (Ticket E8-037)
+add_executable(test_trade_calculation_comprehensive
+    port/test_trade_calculation_comprehensive.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeIncome.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/DemandBonus.cpp
+)
+target_include_directories(test_trade_calculation_comprehensive PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TradeCalculationComprehensive COMMAND test_trade_calculation_comprehensive)
+
+# Test executable for Neighbor Relationship Evolution (Ticket E8-034)
+add_executable(test_neighbor_relationship
+    port/test_neighbor_relationship.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/NeighborRelationship.cpp
+)
+target_include_directories(test_neighbor_relationship PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME NeighborRelationship COMMAND test_neighbor_relationship)
+
+# Test executable for Port Integration Epic 10/11 (Ticket E8-038)
+add_executable(test_port_integration_epic10_11
+    port/test_port_integration_epic10_11.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/DemandBonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeIncome.cpp
+)
+target_include_directories(test_port_integration_epic10_11 PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PortIntegrationEpic10_11 COMMAND test_port_integration_epic10_11)
+
+# Test executable for Multiplayer Trade Routes (Ticket E8-039)
+add_executable(test_multiplayer_trade_routes
+    port/test_multiplayer_trade_routes.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeOfferManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeNetworkMessages.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/PortSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/DemandBonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/port/TradeIncome.cpp
+)
+target_include_directories(test_multiplayer_trade_routes PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME MultiplayerTradeRoutes COMMAND test_multiplayer_trade_routes)

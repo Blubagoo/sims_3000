@@ -34,6 +34,7 @@
 #include "sims3000/fluid/FluidSystem.h"
 #include "sims3000/transport/TransportSystem.h"
 #include "sims3000/transport/RailSystem.h"
+#include "sims3000/port/PortSystem.h"
 
 #include <memory>
 #include <string>
@@ -353,6 +354,16 @@ private:
     int m_transportMode = 0;  // 0=none, 1=basic_pathway, 2=transit_corridor, 3=pedestrian, 4=rail, 5=terminal
     bool m_transportOverlayEnabled = true;
     uint32_t m_transportTickLogCounter = 0;
+
+    // Port demo integration (Epic 8)
+    bool initPort();
+    void tickPort();
+    void handlePortInput();
+    void cleanupPort();
+
+    std::unique_ptr<port::PortSystem> m_portSystem;
+    int m_portMode = 0;  // 0=none, 1=aero, 2=aqua
+    uint32_t m_portTickLogCounter = 0;
 };
 
 } // namespace sims3000

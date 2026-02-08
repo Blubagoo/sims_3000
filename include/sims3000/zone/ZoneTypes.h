@@ -30,19 +30,69 @@ namespace zone {
  * @enum ZoneType
  * @brief Canonical alien zone types.
  *
- * Three zone types provide strategic depth without analysis paralysis:
+ * Five zone types: three base types plus two port zone types (Epic 8).
  * - Habitation: Residential zones for colony inhabitants
  * - Exchange: Commercial zones for trade and commerce
  * - Fabrication: Industrial zones for production and manufacturing
+ * - AeroPort: Air transport port zones (canonical: aero_port) [Epic 8]
+ * - AquaPort: Water transport port zones (canonical: aqua_port) [Epic 8]
+ *
+ * Note: Values 0-2 are base zone types, value 3 is reserved,
+ * values 4-5 are port zone types. The gap at 3 is intentional.
  */
 enum class ZoneType : std::uint8_t {
     Habitation = 0,   ///< Residential zone (canonical: habitation)
     Exchange = 1,     ///< Commercial zone (canonical: exchange)
-    Fabrication = 2   ///< Industrial zone (canonical: fabrication)
+    Fabrication = 2,  ///< Industrial zone (canonical: fabrication)
+    // Value 3 is intentionally reserved
+    AeroPort = 4,     ///< Air transport port zone (canonical: aero_port) [Epic 8]
+    AquaPort = 5      ///< Water transport port zone (canonical: aqua_port) [Epic 8]
 };
 
-/// Total number of zone types
-constexpr std::uint8_t ZONE_TYPE_COUNT = 3;
+/// Total number of zone types (including port zones; note gap at value 3)
+constexpr std::uint8_t ZONE_TYPE_COUNT = 6;
+
+/// Number of base (non-port) zone types
+constexpr std::uint8_t BASE_ZONE_TYPE_COUNT = 3;
+
+/// Check if a ZoneType is a port zone type
+constexpr bool is_port_zone_type(ZoneType type) {
+    return type == ZoneType::AeroPort || type == ZoneType::AquaPort;
+}
+
+// =========================================================================
+// Zone Overlay Color Constants (RGB, 0-255)
+// =========================================================================
+// Base zone colors defined in /docs/zone-color-tokens.yaml
+// Port zone colors added for Epic 8 (E8-031)
+
+/// Overlay color for Habitation zones: teal-cyan (#00aaaa)
+constexpr std::uint8_t ZONE_COLOR_HABITATION_R = 0;
+constexpr std::uint8_t ZONE_COLOR_HABITATION_G = 170;
+constexpr std::uint8_t ZONE_COLOR_HABITATION_B = 170;
+
+/// Overlay color for Exchange zones: amber/gold (#ffaa00)
+constexpr std::uint8_t ZONE_COLOR_EXCHANGE_R = 255;
+constexpr std::uint8_t ZONE_COLOR_EXCHANGE_G = 170;
+constexpr std::uint8_t ZONE_COLOR_EXCHANGE_B = 0;
+
+/// Overlay color for Fabrication zones: magenta (#ff00aa)
+constexpr std::uint8_t ZONE_COLOR_FABRICATION_R = 255;
+constexpr std::uint8_t ZONE_COLOR_FABRICATION_G = 0;
+constexpr std::uint8_t ZONE_COLOR_FABRICATION_B = 170;
+
+/// Overlay color for AeroPort zones: sky blue (#44aaff) [Epic 8]
+constexpr std::uint8_t ZONE_COLOR_AEROPORT_R = 68;
+constexpr std::uint8_t ZONE_COLOR_AEROPORT_G = 170;
+constexpr std::uint8_t ZONE_COLOR_AEROPORT_B = 255;
+
+/// Overlay color for AquaPort zones: deep ocean blue (#0066cc) [Epic 8]
+constexpr std::uint8_t ZONE_COLOR_AQUAPORT_R = 0;
+constexpr std::uint8_t ZONE_COLOR_AQUAPORT_G = 102;
+constexpr std::uint8_t ZONE_COLOR_AQUAPORT_B = 204;
+
+/// Standard overlay alpha for all zone types (0.15 = ~38/255)
+constexpr std::uint8_t ZONE_OVERLAY_ALPHA = 38;
 
 /**
  * @enum ZoneDensity
@@ -84,7 +134,7 @@ constexpr std::uint8_t ZONE_STATE_COUNT = 3;
  * PositionComponent and OwnershipComponent for complete context.
  *
  * Layout:
- * - zone_type: 1 byte (ZoneType enum, 0-2)
+ * - zone_type: 1 byte (ZoneType enum, 0-2 base, 4-5 port)
  * - density: 1 byte (ZoneDensity enum, 0-1)
  * - state: 1 byte (ZoneState enum, 0-2)
  * - desirability: 1 byte (0-255 cached attractiveness score)
@@ -185,6 +235,8 @@ struct ZoneCounts {
     std::uint32_t habitation_total;
     std::uint32_t exchange_total;
     std::uint32_t fabrication_total;
+    std::uint32_t aeroport_total;    ///< AeroPort zone count [Epic 8]
+    std::uint32_t aquaport_total;    ///< AquaPort zone count [Epic 8]
 
     // By density (all types, all states)
     std::uint32_t low_density_total;
@@ -203,6 +255,8 @@ struct ZoneCounts {
         : habitation_total(0)
         , exchange_total(0)
         , fabrication_total(0)
+        , aeroport_total(0)
+        , aquaport_total(0)
         , low_density_total(0)
         , high_density_total(0)
         , designated_total(0)

@@ -143,6 +143,8 @@ TEST(ZoneSerializationTest, ZoneCountsRoundTrip) {
     original.habitation_total = 500;
     original.exchange_total = 300;
     original.fabrication_total = 200;
+    original.aeroport_total = 50;
+    original.aquaport_total = 25;
     original.low_density_total = 600;
     original.high_density_total = 400;
     original.designated_total = 100;
@@ -158,6 +160,8 @@ TEST(ZoneSerializationTest, ZoneCountsRoundTrip) {
     EXPECT_EQ(deserialized.habitation_total, 500u);
     EXPECT_EQ(deserialized.exchange_total, 300u);
     EXPECT_EQ(deserialized.fabrication_total, 200u);
+    EXPECT_EQ(deserialized.aeroport_total, 50u);
+    EXPECT_EQ(deserialized.aquaport_total, 25u);
     EXPECT_EQ(deserialized.low_density_total, 600u);
     EXPECT_EQ(deserialized.high_density_total, 400u);
     EXPECT_EQ(deserialized.designated_total, 100u);
@@ -172,8 +176,8 @@ TEST(ZoneSerializationTest, ZoneCountsVersionByte) {
     serialize_zone_counts(counts, buffer);
 
     EXPECT_EQ(buffer[0], ZONE_SERIALIZATION_VERSION);
-    // Total: version(1) + 9 * uint32(4) = 37 bytes
-    EXPECT_EQ(buffer.size(), 37u);
+    // Total: version(1) + 11 * uint32(4) = 45 bytes (includes aeroport/aquaport counts)
+    EXPECT_EQ(buffer.size(), 45u);
 }
 
 // ============================================================================
@@ -238,6 +242,7 @@ TEST(ZoneSerializationTest, ZoneGridTooSmallBuffer) {
 
 TEST(ZoneSerializationTest, ZoneCountsTooSmallBuffer) {
     std::uint8_t small_buf[10] = {};
+    // Minimum required: 45 bytes (version + 11 uint32 fields including port counts)
     EXPECT_THROW(deserialize_zone_counts(small_buf, 10), std::runtime_error);
 }
 

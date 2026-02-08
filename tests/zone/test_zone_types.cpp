@@ -24,7 +24,10 @@ void test_zone_type_enum() {
     assert(static_cast<std::uint8_t>(ZoneType::Habitation) == 0);
     assert(static_cast<std::uint8_t>(ZoneType::Exchange) == 1);
     assert(static_cast<std::uint8_t>(ZoneType::Fabrication) == 2);
-    assert(ZONE_TYPE_COUNT == 3);
+    assert(static_cast<std::uint8_t>(ZoneType::AeroPort) == 4);
+    assert(static_cast<std::uint8_t>(ZoneType::AquaPort) == 5);
+    assert(ZONE_TYPE_COUNT == 6);
+    assert(BASE_ZONE_TYPE_COUNT == 3);
 
     printf("  PASS: ZoneType enum values correct\n");
 }
@@ -122,6 +125,8 @@ void test_zone_counts() {
     assert(counts.habitation_total == 0);
     assert(counts.exchange_total == 0);
     assert(counts.fabrication_total == 0);
+    assert(counts.aeroport_total == 0);
+    assert(counts.aquaport_total == 0);
     assert(counts.low_density_total == 0);
     assert(counts.high_density_total == 0);
     assert(counts.designated_total == 0);

@@ -76,6 +76,8 @@ std::uint32_t ZoneSystem::get_zone_count(std::uint8_t player_id, ZoneType type) 
         case ZoneType::Habitation:  return counts.habitation_total;
         case ZoneType::Exchange:    return counts.exchange_total;
         case ZoneType::Fabrication: return counts.fabrication_total;
+        case ZoneType::AeroPort:    return counts.aeroport_total;
+        case ZoneType::AquaPort:    return counts.aquaport_total;
         default: return 0;
     }
 }
@@ -101,6 +103,8 @@ std::int8_t ZoneSystem::get_demand_for_type(ZoneType type, std::uint8_t player_i
         case ZoneType::Habitation:  return demand.habitation_demand;
         case ZoneType::Exchange:    return demand.exchange_demand;
         case ZoneType::Fabrication: return demand.fabrication_demand;
+        case ZoneType::AeroPort:    return 0; // Port demand via PortSystem (future)
+        case ZoneType::AquaPort:    return 0; // Port demand via PortSystem (future)
         default: return 0;
     }
 }
@@ -197,6 +201,9 @@ bool ZoneSystem::place_zone(std::int32_t x, std::int32_t y,
             case ZoneType::Habitation:  counts.habitation_total++; break;
             case ZoneType::Exchange:    counts.exchange_total++; break;
             case ZoneType::Fabrication: counts.fabrication_total++; break;
+            case ZoneType::AeroPort:    counts.aeroport_total++; break;
+            case ZoneType::AquaPort:    counts.aquaport_total++; break;
+            default: break;
         }
 
         switch (density) {
@@ -634,6 +641,9 @@ void ZoneSystem::remove_zone_at(std::int32_t x, std::int32_t y) {
             case ZoneType::Habitation:  if (counts.habitation_total > 0) --counts.habitation_total; break;
             case ZoneType::Exchange:    if (counts.exchange_total > 0) --counts.exchange_total; break;
             case ZoneType::Fabrication: if (counts.fabrication_total > 0) --counts.fabrication_total; break;
+            case ZoneType::AeroPort:    if (counts.aeroport_total > 0) --counts.aeroport_total; break;
+            case ZoneType::AquaPort:    if (counts.aquaport_total > 0) --counts.aquaport_total; break;
+            default: break;
         }
 
         // Decrement density count
@@ -771,12 +781,18 @@ RedesignateResult ZoneSystem::redesignate_zone(std::int32_t x, std::int32_t y,
             case ZoneType::Habitation:  if (counts.habitation_total > 0) --counts.habitation_total; break;
             case ZoneType::Exchange:    if (counts.exchange_total > 0) --counts.exchange_total; break;
             case ZoneType::Fabrication: if (counts.fabrication_total > 0) --counts.fabrication_total; break;
+            case ZoneType::AeroPort:    if (counts.aeroport_total > 0) --counts.aeroport_total; break;
+            case ZoneType::AquaPort:    if (counts.aquaport_total > 0) --counts.aquaport_total; break;
+            default: break;
         }
         // Increment new type count
         switch (new_type) {
             case ZoneType::Habitation:  ++counts.habitation_total; break;
             case ZoneType::Exchange:    ++counts.exchange_total; break;
             case ZoneType::Fabrication: ++counts.fabrication_total; break;
+            case ZoneType::AeroPort:    ++counts.aeroport_total; break;
+            case ZoneType::AquaPort:    ++counts.aquaport_total; break;
+            default: break;
         }
 
         // Decrement old density count

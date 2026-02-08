@@ -167,6 +167,8 @@ void serialize_zone_counts(const ZoneCounts& counts, std::vector<std::uint8_t>& 
     write_uint32_le(buffer, counts.habitation_total);
     write_uint32_le(buffer, counts.exchange_total);
     write_uint32_le(buffer, counts.fabrication_total);
+    write_uint32_le(buffer, counts.aeroport_total);
+    write_uint32_le(buffer, counts.aquaport_total);
     write_uint32_le(buffer, counts.low_density_total);
     write_uint32_le(buffer, counts.high_density_total);
     write_uint32_le(buffer, counts.designated_total);
@@ -176,7 +178,7 @@ void serialize_zone_counts(const ZoneCounts& counts, std::vector<std::uint8_t>& 
 }
 
 ZoneCounts deserialize_zone_counts(const std::uint8_t* data, std::size_t size) {
-    if (size < 37) { // version(1) + 9 * uint32(4) = 37
+    if (size < 45) { // version(1) + 11 * uint32(4) = 45
         throw std::runtime_error("ZoneCounts deserialization: buffer too small");
     }
 
@@ -188,6 +190,8 @@ ZoneCounts deserialize_zone_counts(const std::uint8_t* data, std::size_t size) {
     counts.habitation_total = read_uint32_le(data, offset);
     counts.exchange_total = read_uint32_le(data, offset);
     counts.fabrication_total = read_uint32_le(data, offset);
+    counts.aeroport_total = read_uint32_le(data, offset);
+    counts.aquaport_total = read_uint32_le(data, offset);
     counts.low_density_total = read_uint32_le(data, offset);
     counts.high_density_total = read_uint32_le(data, offset);
     counts.designated_total = read_uint32_le(data, offset);

@@ -1,6 +1,6 @@
 /**
  * @file ForwardDependencyStubs.h
- * @brief Stub implementations of all 6 forward dependency interfaces
+ * @brief Stub implementations of all 7 forward dependency interfaces
  *
  * Provides permissive default implementations for testing and development
  * before real systems are available. Each stub has a debug_restrictive mode
@@ -10,6 +10,7 @@
  * - StubEnergyProvider: is_powered() -> true
  * - StubFluidProvider: has_fluid() -> true
  * - StubTransportProvider: is_road_accessible_at() -> true
+ * - StubPortProvider: get_port_capacity() -> 0, has_operational_port() -> false
  * - StubLandValueProvider: get_land_value() -> 50.0f
  * - StubDemandProvider: get_demand() -> 1.0f
  * - StubCreditProvider: deduct_credits() -> true, has_credits() -> true
@@ -136,6 +137,73 @@ public:
     std::uint16_t get_network_id_at(std::int32_t x, std::int32_t y) const override {
         (void)x; (void)y;
         return m_restrictive ? 0 : 1;
+    }
+
+    void set_debug_restrictive(bool restrictive) { m_restrictive = restrictive; }
+    bool is_debug_restrictive() const { return m_restrictive; }
+
+private:
+    bool m_restrictive;
+};
+
+/**
+ * @class StubPortProvider
+ * @brief Port provider stub with safe defaults.
+ *
+ * Default: no ports, no capacity, no connections, no trade income.
+ * Debug restrictive: same as default (ports are opt-in infrastructure).
+ */
+class StubPortProvider : public IPortProvider {
+public:
+    StubPortProvider() : m_restrictive(false) {}
+
+    // Port state queries
+    std::uint32_t get_port_capacity(std::uint8_t port_type, std::uint8_t owner) const override {
+        (void)port_type; (void)owner;
+        return 0;
+    }
+
+    float get_port_utilization(std::uint8_t port_type, std::uint8_t owner) const override {
+        (void)port_type; (void)owner;
+        return 0.0f;
+    }
+
+    bool has_operational_port(std::uint8_t port_type, std::uint8_t owner) const override {
+        (void)port_type; (void)owner;
+        return false;
+    }
+
+    std::uint32_t get_port_count(std::uint8_t port_type, std::uint8_t owner) const override {
+        (void)port_type; (void)owner;
+        return 0;
+    }
+
+    // Demand bonus queries
+    float get_global_demand_bonus(std::uint8_t zone_type, std::uint8_t owner) const override {
+        (void)zone_type; (void)owner;
+        return 0.0f;
+    }
+
+    float get_local_demand_bonus(std::uint8_t zone_type, std::int32_t x, std::int32_t y, std::uint8_t owner) const override {
+        (void)zone_type; (void)x; (void)y; (void)owner;
+        return 0.0f;
+    }
+
+    // External connection queries
+    std::uint32_t get_external_connection_count(std::uint8_t owner) const override {
+        (void)owner;
+        return 0;
+    }
+
+    bool is_connected_to_edge(std::uint8_t edge, std::uint8_t owner) const override {
+        (void)edge; (void)owner;
+        return false;
+    }
+
+    // Trade income queries
+    std::int64_t get_trade_income(std::uint8_t owner) const override {
+        (void)owner;
+        return 0;
     }
 
     void set_debug_restrictive(bool restrictive) { m_restrictive = restrictive; }

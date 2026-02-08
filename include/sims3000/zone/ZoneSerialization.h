@@ -52,7 +52,7 @@ ZoneGrid deserialize_zone_grid(const std::uint8_t* data, std::size_t size);
 
 /**
  * @brief Serialize ZoneCounts to a byte buffer.
- * Format: version(1) + 9 x uint32(4) = 37 bytes
+ * Format: version(1) + 11 x uint32(4) = 45 bytes (includes aeroport/aquaport counts)
  */
 void serialize_zone_counts(const ZoneCounts& counts, std::vector<std::uint8_t>& buffer);
 

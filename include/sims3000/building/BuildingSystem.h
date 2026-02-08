@@ -116,6 +116,9 @@ public:
     /** @brief Set transport provider for road access queries. */
     void set_transport_provider(ITransportProvider* provider);
 
+    /** @brief Set port provider for port/trade queries. */
+    void set_port_provider(IPortProvider* provider);
+
     /** @brief Set land value provider for desirability queries. */
     void set_land_value_provider(ILandValueProvider* provider);
 
@@ -229,6 +232,7 @@ private:
     IEnergyProvider* m_energy = nullptr;
     IFluidProvider* m_fluid = nullptr;
     ITransportProvider* m_transport = nullptr;
+    IPortProvider* m_port = nullptr;
     ILandValueProvider* m_land_value = nullptr;
     IDemandProvider* m_demand = nullptr;
     ICreditProvider* m_credits = nullptr;

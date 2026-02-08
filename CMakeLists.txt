@@ -485,6 +485,20 @@ set(SIMS3000_SOURCES
     src/transport/PathCache.cpp
     src/transport/PathwayNetworkMessages.cpp
     src/transport/RailNetworkMessages.cpp
+    src/port/PortSerialization.cpp
+    src/port/PortZoneValidation.cpp
+    src/port/PortCapacity.cpp
+    src/port/PortOperational.cpp
+    src/port/PortSystem.cpp
+    src/port/MapEdgeDetection.cpp
+    src/port/NeighborGeneration.cpp
+    src/port/DemandBonus.cpp
+    src/port/TradeDealNegotiation.cpp
+    src/port/TradeOfferManager.cpp
+    src/port/TradeDealExpiration.cpp
+    src/port/TradeNetworkMessages.cpp
+    src/port/MigrationEffects.cpp
+    src/port/TradeIncome.cpp
 )
 
 # Define header files (for IDE integration)
@@ -684,6 +698,24 @@ set(SIMS3000_HEADERS
     include/sims3000/transport/PathCache.h
     include/sims3000/transport/PathwayNetworkMessages.h
     include/sims3000/transport/RailNetworkMessages.h
+    include/sims3000/port/PortTypes.h
+    include/sims3000/port/PortComponent.h
+    include/sims3000/port/PortZoneComponent.h
+    include/sims3000/port/PortSerialization.h
+    include/sims3000/port/PortZoneValidation.h
+    include/sims3000/port/PortCapacity.h
+    include/sims3000/port/PortOperational.h
+    include/sims3000/port/PortSystem.h
+    include/sims3000/port/MapEdgeDetection.h
+    include/sims3000/port/NeighborGeneration.h
+    include/sims3000/port/DemandBonus.h
+    include/sims3000/port/TradeDealNegotiation.h
+    include/sims3000/port/TradeOfferManager.h
+    include/sims3000/port/TradeDealExpiration.h
+    include/sims3000/port/TradeNetworkMessages.h
+    include/sims3000/port/TradeAgreementBenefits.h
+    include/sims3000/port/MigrationEffects.h
+    include/sims3000/port/TradeIncome.h
 )
 
 # Create executable

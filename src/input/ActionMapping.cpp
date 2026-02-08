@@ -136,6 +136,12 @@ void ActionMapping::resetToDefaults() {
     bind(Action::TRANSPORT_REMOVE, SDL_SCANCODE_V);
     bind(Action::TRANSPORT_OVERLAY, SDL_SCANCODE_P);
 
+    // Port demo controls (Epic 8)
+    bind(Action::PORT_AERO, SDL_SCANCODE_L);
+    bind(Action::PORT_AQUA, SDL_SCANCODE_K);
+    bind(Action::PORT_PLACE, SDL_SCANCODE_COMMA);
+    bind(Action::PORT_REMOVE, SDL_SCANCODE_PERIOD);
+
     // System
     bind(Action::FULLSCREEN, SDL_SCANCODE_F11);
     bind(Action::QUIT, SDL_SCANCODE_ESCAPE);
@@ -197,6 +203,10 @@ const char* ActionMapping::getActionName(Action action) {
         case Action::TRANSPORT_PLACE: return "Transport Place";
         case Action::TRANSPORT_REMOVE: return "Transport Remove";
         case Action::TRANSPORT_OVERLAY: return "Transport Overlay";
+        case Action::PORT_AERO: return "Port Aero";
+        case Action::PORT_AQUA: return "Port Aqua";
+        case Action::PORT_PLACE: return "Port Place";
+        case Action::PORT_REMOVE: return "Port Remove";
         case Action::FULLSCREEN:   return "Fullscreen";
         case Action::QUIT:         return "Quit";
         default:                   return "Unknown";

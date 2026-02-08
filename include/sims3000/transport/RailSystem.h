@@ -276,6 +276,21 @@ public:
      */
     uint32_t get_terminal_count(uint8_t owner) const;
 
+    // =========================================================================
+    // Position queries
+    // =========================================================================
+
+    /**
+     * @brief Check if any rail exists at exactly the given position (any player).
+     *
+     * Searches all players' rail entries for a rail at the given coordinates.
+     *
+     * @param x Grid X coordinate.
+     * @param y Grid Y coordinate.
+     * @return true if a rail segment exists at (x, y).
+     */
+    bool has_rail_at(int32_t x, int32_t y) const;
+
 private:
     uint32_t map_width_;
     uint32_t map_height_;
@@ -306,9 +321,6 @@ private:
     // =========================================================================
     // Internal helpers
     // =========================================================================
-
-    /// Check if any rail exists at exactly the given position (any player)
-    bool has_rail_at(int32_t x, int32_t y) const;
 
     /// Check if any rail exists adjacent (N/S/E/W) to the given position (any player)
     bool has_adjacent_rail(int32_t x, int32_t y) const;

@@ -132,6 +132,11 @@ Application::Application(const ApplicationConfig& config)
         if (!initTransport()) {
             SDL_Log("Warning: Transport demo failed to initialize");
         }
+
+        // Initialize port demo (Epic 8)
+        if (!initPort()) {
+            SDL_Log("Warning: Port demo failed to initialize");
+        }
     }
 
     // Create ECS (both client and server)
@@ -424,6 +429,8 @@ void Application::processEvents() {
                 handleFluidInput();
                 // Transport demo input (Epic 7)
                 handleTransportInput();
+                // Port demo input (Epic 8)
+                handlePortInput();
                 break;
 
             default:
@@ -460,6 +467,9 @@ void Application::updateSimulation() {
 
         // Tick transport system (Epic 7 demo) - priority 45, after fluid, before zones/buildings
         tickTransport();
+
+        // Tick port system (Epic 8 demo) - priority 48, after transport, before population
+        tickPort();
 
         // Tick zone/building systems (Epic 4 demo)
         tickZoneBuilding();
@@ -561,6 +571,9 @@ void Application::shutdown() {
 
     // Cleanup fluid resources
     cleanupFluid();
+
+    // Cleanup port resources
+    cleanupPort();
 
     // Cleanup transport resources
     cleanupTransport();
@@ -2691,6 +2704,118 @@ void Application::handleTransportInput() {
 void Application::cleanupTransport() {
     m_railSystem.reset();
     m_transportSystem.reset();
+}
+
+// =============================================================================
+// Port Demo Integration (Epic 8)
+// =============================================================================
+
+bool Application::initPort() {
+    SDL_Log("Initializing port demo...");
+
+    // Create PortSystem (256x256 to match terrain grid)
+    m_portSystem = std::make_unique<port::PortSystem>(256, 256);
+
+    SDL_Log("Port demo initialized");
+    SDL_Log("  L=AeroPort  K=AquaPort  ,=Place  .=Remove");
+
+    return true;
+}
+
+void Application::tickPort() {
+    if (!m_portSystem) return;
+
+    // Deferred wiring: set port provider on building system on first tick
+    static bool portWired = false;
+    if (!portWired) {
+        if (m_buildingSystem) {
+            m_buildingSystem->set_port_provider(m_portSystem.get());
+            SDL_Log("Port system wired to building system (replaced stub)");
+        }
+        portWired = true;
+    }
+
+    m_portSystem->tick(0.05f);  // 50ms per tick at 20Hz
+
+    m_portTickLogCounter++;
+    if (m_portTickLogCounter % 200 == 0) {
+        uint32_t aeroCount = m_portSystem->get_port_count(
+            static_cast<uint8_t>(port::PortType::Aero), 0);
+        uint32_t aquaCount = m_portSystem->get_port_count(
+            static_cast<uint8_t>(port::PortType::Aqua), 0);
+        int64_t income = m_portSystem->get_trade_income(0);
+        SDL_Log("Port [P0]: aero=%u aqua=%u trade_income=%lld",
+                aeroCount, aquaCount, static_cast<long long>(income));
+    }
+}
+
+void Application::handlePortInput() {
+    if (!m_portSystem || !m_input) return;
+
+    // Port mode selection
+    if (m_input->isActionPressed(Action::PORT_AERO)) {
+        m_portMode = (m_portMode == 1) ? 0 : 1;
+        SDL_Log("Port mode: %s", m_portMode == 1 ? "AERO PORT" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::PORT_AQUA)) {
+        m_portMode = (m_portMode == 2) ? 0 : 2;
+        SDL_Log("Port mode: %s", m_portMode == 2 ? "AQUA PORT" : "NONE");
+    }
+
+    // Place port at camera focus
+    if (m_input->isActionPressed(Action::PORT_PLACE) && m_portMode > 0) {
+        int32_t cx = static_cast<int32_t>(std::max(0.0f, m_demoCamera.focus_point.x));
+        int32_t cz = static_cast<int32_t>(std::max(0.0f, m_demoCamera.focus_point.z));
+
+        port::PortType ptype = (m_portMode == 1)
+            ? port::PortType::Aero
+            : port::PortType::Aqua;
+
+        port::PortData portData;
+        portData.port_type = ptype;
+        portData.capacity = 100;
+        portData.is_operational = true;
+        portData.owner = 0;
+        portData.x = cx;
+        portData.y = cz;
+
+        m_portSystem->add_port(portData);
+        const char* typeName = (ptype == port::PortType::Aero) ? "aero" : "aqua";
+        SDL_Log("Placed %s port at (%d, %d)", typeName, cx, cz);
+    }
+
+    // Remove port at camera focus
+    if (m_input->isActionPressed(Action::PORT_REMOVE)) {
+        int32_t cx = static_cast<int32_t>(std::max(0.0f, m_demoCamera.focus_point.x));
+        int32_t cz = static_cast<int32_t>(std::max(0.0f, m_demoCamera.focus_point.z));
+
+        // Try to remove a port near the focus position
+        bool removed = false;
+        for (int32_t dz = -1; dz <= 1 && !removed; ++dz) {
+            for (int32_t dx = -1; dx <= 1 && !removed; ++dx) {
+                int32_t rx = cx + dx;
+                int32_t rz = cz + dz;
+                if (rx >= 0 && rz >= 0) {
+                    const auto& ports = m_portSystem->get_ports();
+                    for (size_t i = 0; i < ports.size(); ++i) {
+                        if (ports[i].x == rx && ports[i].y == rz && ports[i].owner == 0) {
+                            m_portSystem->remove_port(0, rx, rz);
+                            SDL_Log("Removed port at (%d, %d)", rx, rz);
+                            removed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (!removed) {
+            SDL_Log("No port found near (%d, %d) to remove", cx, cz);
+        }
+    }
+}
+
+void Application::cleanupPort() {
+    m_portSystem.reset();
 }
 
 } // namespace sims3000
