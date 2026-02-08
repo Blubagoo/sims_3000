@@ -467,6 +467,24 @@ set(SIMS3000_SOURCES
     src/fluid/FluidExtractorConfig.cpp
     src/fluid/FluidReservoirConfig.cpp
     src/fluid/FluidSystem.cpp
+    src/transport/NetworkGraph.cpp
+    src/transport/PathwayGrid.cpp
+    src/transport/ProximityCache.cpp
+    src/transport/TransportSerialization.cpp
+    src/transport/PathwayDecay.cpp
+    src/transport/RailSystem.cpp
+    src/transport/SubterraLayerManager.cpp
+    src/transport/FlowDistribution.cpp
+    src/transport/ConnectivityQuery.cpp
+    src/transport/TransportProviderImpl.cpp
+    src/transport/FlowPropagation.cpp
+    src/transport/Pathfinding.cpp
+    src/transport/CongestionCalculator.cpp
+    src/transport/ContaminationQuery.cpp
+    src/transport/TransportSystem.cpp
+    src/transport/PathCache.cpp
+    src/transport/PathwayNetworkMessages.cpp
+    src/transport/RailNetworkMessages.cpp
 )
 
 # Define header files (for IDE integration)
@@ -636,6 +654,36 @@ set(SIMS3000_HEADERS
     include/sims3000/fluid/FluidReservoirConfig.h
     include/sims3000/fluid/FluidRequirements.h
     include/sims3000/fluid/FluidSystem.h
+    include/sims3000/transport/NetworkGraph.h
+    include/sims3000/transport/TransportEnums.h
+    include/sims3000/transport/TransportEvents.h
+    include/sims3000/transport/TrafficComponent.h
+    include/sims3000/transport/PathwayGrid.h
+    include/sims3000/transport/ProximityCache.h
+    include/sims3000/transport/TransportSerialization.h
+    include/sims3000/transport/RoadComponent.h
+    include/sims3000/transport/DecayConfig.h
+    include/sims3000/transport/RailComponent.h
+    include/sims3000/transport/TerminalComponent.h
+    include/sims3000/transport/PathwayDecay.h
+    include/sims3000/transport/MaintenanceCost.h
+    include/sims3000/transport/RailSystem.h
+    include/sims3000/transport/CapacityDegradation.h
+    include/sims3000/transport/MaintenanceAPI.h
+    include/sims3000/transport/SubterraLayerManager.h
+    include/sims3000/transport/FlowDistribution.h
+    include/sims3000/transport/ConnectivityQuery.h
+    include/sims3000/transport/TransportProviderImpl.h
+    include/sims3000/transport/FlowPropagation.h
+    include/sims3000/transport/Pathfinding.h
+    include/sims3000/transport/BoundaryFlags.h
+    include/sims3000/transport/CongestionCalculator.h
+    include/sims3000/transport/EdgeCost.h
+    include/sims3000/transport/ContaminationQuery.h
+    include/sims3000/transport/TransportSystem.h
+    include/sims3000/transport/PathCache.h
+    include/sims3000/transport/PathwayNetworkMessages.h
+    include/sims3000/transport/RailNetworkMessages.h
 )
 
 # Create executable

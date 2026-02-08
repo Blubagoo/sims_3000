@@ -86,13 +86,16 @@ private:
  * @class StubTransportProvider
  * @brief Permissive transport provider stub.
  *
- * Default: all positions are road-accessible, distance 0.
- * Debug restrictive: nothing is accessible, distance 255.
+ * Default: all positions are road-accessible, connected, distance 0, no congestion.
+ * Debug restrictive: nothing is accessible, distance 255, fully congested.
+ *
+ * Implements all ITransportProvider methods including Epic 7 extensions.
  */
 class StubTransportProvider : public ITransportProvider {
 public:
     StubTransportProvider() : m_restrictive(false) {}
 
+    // Original methods (Epic 4)
     bool is_road_accessible_at(std::uint32_t x, std::uint32_t y, std::uint32_t max_distance) const override {
         (void)x; (void)y; (void)max_distance;
         return !m_restrictive;
@@ -101,6 +104,38 @@ public:
     std::uint32_t get_nearest_road_distance(std::uint32_t x, std::uint32_t y) const override {
         (void)x; (void)y;
         return m_restrictive ? 255 : 0;
+    }
+
+    // Extended methods (Epic 7, Ticket E7-016)
+    bool is_road_accessible(EntityID entity) const override {
+        (void)entity;
+        return !m_restrictive;
+    }
+
+    bool is_connected_to_network(std::int32_t x, std::int32_t y) const override {
+        (void)x; (void)y;
+        return !m_restrictive;
+    }
+
+    bool are_connected(std::int32_t x1, std::int32_t y1,
+                       std::int32_t x2, std::int32_t y2) const override {
+        (void)x1; (void)y1; (void)x2; (void)y2;
+        return !m_restrictive;
+    }
+
+    float get_congestion_at(std::int32_t x, std::int32_t y) const override {
+        (void)x; (void)y;
+        return m_restrictive ? 1.0f : 0.0f;
+    }
+
+    std::uint32_t get_traffic_volume_at(std::int32_t x, std::int32_t y) const override {
+        (void)x; (void)y;
+        return m_restrictive ? 1000 : 0;
+    }
+
+    std::uint16_t get_network_id_at(std::int32_t x, std::int32_t y) const override {
+        (void)x; (void)y;
+        return m_restrictive ? 0 : 1;
     }
 
     void set_debug_restrictive(bool restrictive) { m_restrictive = restrictive; }

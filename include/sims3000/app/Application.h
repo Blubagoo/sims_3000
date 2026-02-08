@@ -32,6 +32,8 @@
 #include "sims3000/building/ForwardDependencyStubs.h"
 #include "sims3000/energy/EnergySystem.h"
 #include "sims3000/fluid/FluidSystem.h"
+#include "sims3000/transport/TransportSystem.h"
+#include "sims3000/transport/RailSystem.h"
 
 #include <memory>
 #include <string>
@@ -339,6 +341,18 @@ private:
     int m_fluidMode = 0;  // 0=none, 1=extractor, 2=reservoir, 3=conduit
     bool m_fluidOverlayEnabled = true;
     uint32_t m_fluidTickLogCounter = 0;
+
+    // Transport demo integration (Epic 7)
+    bool initTransport();
+    void tickTransport();
+    void handleTransportInput();
+    void cleanupTransport();
+
+    std::unique_ptr<transport::TransportSystem> m_transportSystem;
+    std::unique_ptr<transport::RailSystem> m_railSystem;
+    int m_transportMode = 0;  // 0=none, 1=basic_pathway, 2=transit_corridor, 3=pedestrian, 4=rail, 5=terminal
+    bool m_transportOverlayEnabled = true;
+    uint32_t m_transportTickLogCounter = 0;
 };
 
 } // namespace sims3000

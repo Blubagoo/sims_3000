@@ -127,6 +127,15 @@ void ActionMapping::resetToDefaults() {
     bind(Action::FLUID_REMOVE, SDL_SCANCODE_M);
     bind(Action::FLUID_OVERLAY, SDL_SCANCODE_H);
 
+    // Transport demo controls (Epic 7)
+    bind(Action::TRANSPORT_BASIC, SDL_SCANCODE_T);
+    bind(Action::TRANSPORT_CORRIDOR, SDL_SCANCODE_Y);
+    bind(Action::TRANSPORT_RAIL, SDL_SCANCODE_G);
+    bind(Action::TRANSPORT_TERMINAL, SDL_SCANCODE_J);
+    bind(Action::TRANSPORT_PLACE, SDL_SCANCODE_B);
+    bind(Action::TRANSPORT_REMOVE, SDL_SCANCODE_V);
+    bind(Action::TRANSPORT_OVERLAY, SDL_SCANCODE_P);
+
     // System
     bind(Action::FULLSCREEN, SDL_SCANCODE_F11);
     bind(Action::QUIT, SDL_SCANCODE_ESCAPE);
@@ -181,6 +190,13 @@ const char* ActionMapping::getActionName(Action action) {
         case Action::FLUID_PLACE: return "Fluid Place";
         case Action::FLUID_REMOVE: return "Fluid Remove";
         case Action::FLUID_OVERLAY: return "Fluid Overlay";
+        case Action::TRANSPORT_BASIC: return "Transport Basic Pathway";
+        case Action::TRANSPORT_CORRIDOR: return "Transport Corridor";
+        case Action::TRANSPORT_RAIL: return "Transport Rail";
+        case Action::TRANSPORT_TERMINAL: return "Transport Terminal";
+        case Action::TRANSPORT_PLACE: return "Transport Place";
+        case Action::TRANSPORT_REMOVE: return "Transport Remove";
+        case Action::TRANSPORT_OVERLAY: return "Transport Overlay";
         case Action::FULLSCREEN:   return "Fullscreen";
         case Action::QUIT:         return "Quit";
         default:                   return "Unknown";

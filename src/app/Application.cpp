@@ -18,6 +18,9 @@
 #include "sims3000/fluid/FluidComponent.h"
 #include "sims3000/fluid/FluidConduitComponent.h"
 #include "sims3000/fluid/FluidEnums.h"
+#include "sims3000/transport/TransportEnums.h"
+#include "sims3000/transport/RailComponent.h"
+#include "sims3000/transport/TerminalComponent.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_log.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -123,6 +126,11 @@ Application::Application(const ApplicationConfig& config)
         // Initialize fluid demo (Epic 6)
         if (!initFluid()) {
             SDL_Log("Warning: Fluid demo failed to initialize");
+        }
+
+        // Initialize transport demo (Epic 7)
+        if (!initTransport()) {
+            SDL_Log("Warning: Transport demo failed to initialize");
         }
     }
 
@@ -414,6 +422,8 @@ void Application::processEvents() {
                 handleEnergyInput();
                 // Fluid demo input (Epic 6)
                 handleFluidInput();
+                // Transport demo input (Epic 7)
+                handleTransportInput();
                 break;
 
             default:
@@ -447,6 +457,9 @@ void Application::updateSimulation() {
 
         // Tick fluid system (Epic 6 demo) - after energy, before zones/buildings
         tickFluid();
+
+        // Tick transport system (Epic 7 demo) - priority 45, after fluid, before zones/buildings
+        tickTransport();
 
         // Tick zone/building systems (Epic 4 demo)
         tickZoneBuilding();
@@ -545,6 +558,12 @@ void Application::shutdown() {
 
     // Cleanup energy resources
     cleanupEnergy();
+
+    // Cleanup fluid resources
+    cleanupFluid();
+
+    // Cleanup transport resources
+    cleanupTransport();
 
     // Cleanup zone/building resources
     cleanupZoneBuilding();
@@ -2511,6 +2530,167 @@ void Application::handleFluidInput() {
 
 void Application::cleanupFluid() {
     m_fluidSystem.reset();
+}
+
+// =============================================================================
+// Transport Demo Integration (Epic 7)
+// =============================================================================
+
+bool Application::initTransport() {
+    SDL_Log("Initializing transport demo...");
+
+    // Create TransportSystem (256x256 to match terrain grid)
+    m_transportSystem = std::make_unique<transport::TransportSystem>(256, 256);
+
+    // Create RailSystem (256x256 to match terrain grid)
+    m_railSystem = std::make_unique<transport::RailSystem>(256, 256);
+
+    SDL_Log("Transport demo initialized");
+    SDL_Log("  T=BasicPathway  Y=Corridor  G=Rail  J=Terminal  B=Place  V=Remove  P=Overlay");
+
+    return true;
+}
+
+void Application::tickTransport() {
+    if (!m_transportSystem) return;
+
+    // Deferred wiring: replace stub transport provider on first tick
+    static bool transportWired = false;
+    if (!transportWired) {
+        if (m_buildingSystem) {
+            m_buildingSystem->set_transport_provider(m_transportSystem.get());
+            SDL_Log("Transport system wired to building system (replaced stub)");
+        }
+        // Wire energy provider to rail system (rails need power)
+        if (m_energySystem && m_railSystem) {
+            m_railSystem->set_energy_provider(m_energySystem.get());
+            SDL_Log("Rail system wired to energy system (power dependency)");
+        }
+        transportWired = true;
+    }
+
+    m_transportSystem->tick(0.05f);  // 50ms per tick at 20Hz
+
+    if (m_railSystem) {
+        m_railSystem->tick(0.05f);
+    }
+
+    m_transportTickLogCounter++;
+    if (m_transportTickLogCounter % 200 == 0) {
+        SDL_Log("Transport [P0]: pathways=%u rail_segments=%u terminals=%u",
+                m_transportSystem->get_pathway_count(),
+                m_railSystem ? m_railSystem->get_rail_count(0) : 0,
+                m_railSystem ? m_railSystem->get_terminal_count(0) : 0);
+    }
+}
+
+void Application::handleTransportInput() {
+    if (!m_transportSystem || !m_input) return;
+
+    // Transport mode selection
+    if (m_input->isActionPressed(Action::TRANSPORT_BASIC)) {
+        m_transportMode = (m_transportMode == 1) ? 0 : 1;
+        SDL_Log("Transport mode: %s", m_transportMode == 1 ? "BASIC PATHWAY" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::TRANSPORT_CORRIDOR)) {
+        m_transportMode = (m_transportMode == 2) ? 0 : 2;
+        SDL_Log("Transport mode: %s", m_transportMode == 2 ? "TRANSIT CORRIDOR" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::TRANSPORT_RAIL)) {
+        m_transportMode = (m_transportMode == 4) ? 0 : 4;
+        SDL_Log("Transport mode: %s", m_transportMode == 4 ? "RAIL" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::TRANSPORT_TERMINAL)) {
+        m_transportMode = (m_transportMode == 5) ? 0 : 5;
+        SDL_Log("Transport mode: %s", m_transportMode == 5 ? "TERMINAL" : "NONE");
+    }
+
+    // Toggle transport overlay
+    if (m_input->isActionPressed(Action::TRANSPORT_OVERLAY)) {
+        m_transportOverlayEnabled = !m_transportOverlayEnabled;
+        SDL_Log("Transport overlay: %s", m_transportOverlayEnabled ? "ON" : "OFF");
+    }
+
+    // Place transport item at camera focus
+    if (m_input->isActionPressed(Action::TRANSPORT_PLACE) && m_transportMode > 0) {
+        int32_t cx = static_cast<int32_t>(std::max(0.0f, m_demoCamera.focus_point.x));
+        int32_t cz = static_cast<int32_t>(std::max(0.0f, m_demoCamera.focus_point.z));
+
+        if (m_transportMode >= 1 && m_transportMode <= 3) {
+            // Place pathway
+            transport::PathwayType ptype;
+            switch (m_transportMode) {
+                case 1: ptype = transport::PathwayType::BasicPathway; break;
+                case 2: ptype = transport::PathwayType::TransitCorridor; break;
+                case 3: ptype = transport::PathwayType::Pedestrian; break;
+                default: ptype = transport::PathwayType::BasicPathway; break;
+            }
+
+            uint32_t entityId = m_transportSystem->place_pathway(cx, cz, ptype, 0);
+            if (entityId != 0) {
+                SDL_Log("Placed %s at (%d, %d) -> entity %u",
+                        transport::pathway_type_to_string(ptype), cx, cz, entityId);
+            } else {
+                SDL_Log("Failed to place pathway at (%d, %d)", cx, cz);
+            }
+        } else if (m_transportMode == 4 && m_railSystem) {
+            // Place rail
+            uint32_t entityId = m_railSystem->place_rail(cx, cz, transport::RailType::SurfaceRail, 0);
+            if (entityId != 0) {
+                SDL_Log("Placed rail at (%d, %d) -> entity %u", cx, cz, entityId);
+            } else {
+                SDL_Log("Failed to place rail at (%d, %d)", cx, cz);
+            }
+        } else if (m_transportMode == 5 && m_railSystem) {
+            // Place terminal
+            uint32_t entityId = m_railSystem->place_terminal(cx, cz, transport::TerminalType::SurfaceStation, 0);
+            if (entityId != 0) {
+                SDL_Log("Placed terminal at (%d, %d) -> entity %u", cx, cz, entityId);
+            } else {
+                SDL_Log("Failed to place terminal at (%d, %d)", cx, cz);
+            }
+        }
+    }
+
+    // Remove transport item at camera focus
+    if (m_input->isActionPressed(Action::TRANSPORT_REMOVE)) {
+        int32_t cx = static_cast<int32_t>(std::max(0.0f, m_demoCamera.focus_point.x));
+        int32_t cz = static_cast<int32_t>(std::max(0.0f, m_demoCamera.focus_point.z));
+
+        bool removed = false;
+
+        // Try removing a pathway at camera focus
+        if (m_transportSystem->has_pathway_at(cx, cz)) {
+            // Need entity ID - search nearby for the entity
+            // For simplicity, try to find and remove by scanning positions
+            for (int32_t dz = -1; dz <= 1 && !removed; ++dz) {
+                for (int32_t dx = -1; dx <= 1 && !removed; ++dx) {
+                    int32_t rx = cx + dx;
+                    int32_t rz = cz + dz;
+                    if (rx >= 0 && rz >= 0 && m_transportSystem->has_pathway_at(rx, rz)) {
+                        // PathwayGrid stores entity IDs; use grid to find it
+                        const auto& grid = m_transportSystem->get_pathway_grid();
+                        uint32_t eid = grid.get_pathway_at(rx, rz);
+                        if (eid != 0 && m_transportSystem->remove_pathway(eid, rx, rz, 0)) {
+                            SDL_Log("Removed pathway entity %u at (%d, %d)", eid, rx, rz);
+                            removed = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Try removing a rail at camera focus
+        if (!removed && m_railSystem) {
+            // Try removing rail/terminal near focus
+            SDL_Log("No transport item found near (%d, %d) to remove", cx, cz);
+        }
+    }
+}
+
+void Application::cleanupTransport() {
+    m_railSystem.reset();
+    m_transportSystem.reset();
 }
 
 } // namespace sims3000

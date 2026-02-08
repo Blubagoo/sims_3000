@@ -1,0 +1,99 @@
+# Epic 7 Execution Queue
+# Generated: 2026-02-08
+# Last Updated: 2026-02-08
+
+epic: 7
+name: "Transportation Network"
+status: complete
+
+current_wave: 8
+
+
+# Execution waves (dependency-ordered, max 3 parallel agents per wave)
+waves:
+  wave_1:
+    description: "Foundation types (no dependencies)"
+    tickets:
+      - {id: "7-001", title: "PathwayType and PathwayDirection Enums", status: complete}
+      - {id: "7-003", title: "TrafficComponent Definition", status: complete}
+      - {id: "7-004", title: "Transport Event Definitions", status: complete}
+      - {id: "7-008", title: "NetworkGraph Node/Edge Structures", status: complete}
+      - {id: "7-016", title: "ITransportProvider Interface Definition", status: complete}
+      - {id: "7-030", title: "RailType Enum and RailComponent Definition", status: complete}
+      - {id: "7-031", title: "TerminalType Enum and TerminalComponent Definition", status: complete}
+      - {id: "7-043", title: "SubterraComponent Definition", status: complete}
+
+  wave_2:
+    description: "Dependent types + config docs"
+    tickets:
+      - {id: "7-002", title: "RoadComponent Definition", status: complete}
+      - {id: "7-012", title: "Building Traffic Contribution Calculation", status: complete}
+      - {id: "7-040", title: "Pathway Type Base Stats Definition", status: complete}
+      - {id: "7-046", title: "Decay Rates and Thresholds Configuration", status: complete}
+      - {id: "7-047", title: "Rail Capacity and Costs Configuration", status: complete}
+      - {id: "7-048", title: "Balance Traffic Contribution Values", status: complete}
+
+  wave_3:
+    description: "Core spatial + serialization + system skeletons"
+    tickets:
+      - {id: "7-005", title: "PathwayGrid Dense 2D Array", status: complete}
+      - {id: "7-021", title: "Per-Owner Maintenance Cost Calculation", status: complete}
+      - {id: "7-025", title: "Pathway Decay System", status: complete}
+      - {id: "7-032", title: "RailSystem Class", status: complete}
+      - {id: "7-036", title: "RoadComponent Serialization", status: complete}
+      - {id: "7-037", title: "TrafficComponent Serialization", status: complete}
+
+  wave_4:
+    description: "Graph + cache + features"
+    tickets:
+      - {id: "7-006", title: "ProximityCache for Distance Queries", status: complete}
+      - {id: "7-009", title: "Graph Rebuild from PathwayGrid", status: complete}
+      - {id: "7-026", title: "Capacity Degradation from Health", status: complete}
+      - {id: "7-027", title: "Maintenance Application API", status: complete}
+      - {id: "7-033", title: "Rail Power State Update", status: complete}
+      - {id: "7-034", title: "Terminal Placement and Activation", status: complete}
+      - {id: "7-042", title: "SubterraLayerManager", status: complete}
+
+  wave_5:
+    description: "BFS + connected components + flow + cross-ownership"
+    tickets:
+      - {id: "7-007", title: "Multi-Source BFS Proximity Rebuild", status: complete}
+      - {id: "7-010", title: "Connected Component Assignment", status: complete}
+      - {id: "7-013", title: "Flow Distribution from Buildings to Pathways", status: complete}
+      - {id: "7-020", title: "Cross-Ownership Connectivity in NetworkGraph", status: complete}
+      - {id: "7-035", title: "Rail Coverage Model", status: complete}
+      - {id: "7-044", title: "Subterra Placement Rules", status: complete}
+
+  wave_6:
+    description: "Queries + propagation + interface implementations"
+    tickets:
+      - {id: "7-011", title: "Connectivity Query (O(1))", status: complete}
+      - {id: "7-014", title: "Flow Propagation (Diffusion Model)", status: complete}
+      - {id: "7-017", title: "is_road_accessible Implementation", status: complete}
+      - {id: "7-018", title: "get_nearest_road_distance Implementation", status: complete}
+      - {id: "7-023", title: "A* Pathfinding Implementation", status: complete}
+      - {id: "7-028", title: "Boundary Flags for Rendering", status: complete}
+
+  wave_7:
+    description: "Congestion + provider replacement + advanced features"
+    tickets:
+      - {id: "7-015", title: "Congestion Calculation", status: complete}
+      - {id: "7-019", title: "Replace BuildingSystem Stub with Real Implementation", status: complete}
+      - {id: "7-024", title: "Edge Cost Function", status: complete}
+      - {id: "7-029", title: "Contamination Rate for ContaminationSystem", status: complete}
+      - {id: "7-045", title: "Rail Traffic Reduction Calculation", status: complete}
+
+  wave_8:
+    description: "System integration + network messages + final"
+    tickets:
+      - {id: "7-022", title: "TransportSystem Class (ISimulatable, Priority 45)", status: complete}
+      - {id: "7-038", title: "Network Messages for Pathway Operations", status: complete}
+      - {id: "7-039", title: "Rail Network Messages", status: complete}
+      - {id: "7-041", title: "PathCache for Frequently-Queried Routes", status: complete}
+
+stats:
+  total: 48
+  complete: 48
+  in_progress: 0
+  pending: 0
+  failed: 0

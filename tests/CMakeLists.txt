@@ -3980,3 +3980,483 @@ target_include_directories(test_fluid_requirements PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 add_test(NAME FluidRequirements COMMAND test_fluid_requirements)
+
+# ===========================================================================
+# Epic 7: Transportation Network Tests
+# ===========================================================================
+
+# Test executable for TransportEnums (Ticket E7-001)
+add_executable(test_transport_enums
+    transport/test_transport_enums.cpp
+)
+target_include_directories(test_transport_enums PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TransportEnums COMMAND test_transport_enums)
+
+# Test executable for TrafficComponent (Ticket E7-003)
+add_executable(test_traffic_component
+    transport/test_traffic_component.cpp
+)
+target_include_directories(test_traffic_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TrafficComponent COMMAND test_traffic_component)
+
+# Test executable for TransportEvents (Ticket E7-004)
+add_executable(test_transport_events
+    transport/test_transport_events.cpp
+)
+target_include_directories(test_transport_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TransportEvents COMMAND test_transport_events)
+
+# Test executable for RailComponent (Ticket E7-030)
+add_executable(test_rail_component
+    transport/test_rail_component.cpp
+)
+target_include_directories(test_rail_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME RailComponent COMMAND test_rail_component)
+
+# Test executable for TerminalComponent (Ticket E7-031)
+add_executable(test_terminal_component
+    transport/test_terminal_component.cpp
+)
+target_include_directories(test_terminal_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TerminalComponent COMMAND test_terminal_component)
+
+# Test executable for SubterraComponent (Ticket E7-043)
+add_executable(test_subterra_component
+    transport/test_subterra_component.cpp
+)
+target_include_directories(test_subterra_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME SubterraComponent COMMAND test_subterra_component)
+
+# Test executable for NetworkGraph (Ticket E7-008)
+add_executable(test_network_graph
+    transport/test_network_graph.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/NetworkGraph.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+)
+target_include_directories(test_network_graph PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME NetworkGraph COMMAND test_network_graph)
+
+# Test executable for ITransportProvider Interface (Ticket E7-016)
+add_executable(test_transport_provider_interface
+    transport/test_transport_provider_interface.cpp
+)
+target_include_directories(test_transport_provider_interface PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TransportProviderInterface COMMAND test_transport_provider_interface)
+
+# Test executable for RoadComponent (Ticket E7-002)
+add_executable(test_road_component
+    transport/test_road_component.cpp
+)
+target_include_directories(test_road_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME RoadComponent COMMAND test_road_component)
+
+# Test executable for TrafficContribution (Ticket E7-012)
+add_executable(test_traffic_contribution
+    transport/test_traffic_contribution.cpp
+)
+target_include_directories(test_traffic_contribution PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TrafficContribution COMMAND test_traffic_contribution)
+
+# Test executable for PathwayTypeConfig (Ticket E7-040)
+add_executable(test_pathway_type_config
+    transport/test_pathway_type_config.cpp
+)
+target_include_directories(test_pathway_type_config PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PathwayTypeConfig COMMAND test_pathway_type_config)
+
+# Test executable for DecayConfig (Ticket E7-046)
+add_executable(test_decay_config
+    transport/test_decay_config.cpp
+)
+target_include_directories(test_decay_config PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME DecayConfig COMMAND test_decay_config)
+
+# Test executable for RailConfig (Ticket E7-047)
+add_executable(test_rail_config
+    transport/test_rail_config.cpp
+)
+target_include_directories(test_rail_config PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME RailConfig COMMAND test_rail_config)
+
+# Test executable for TrafficBalanceConfig (Ticket E7-048)
+add_executable(test_traffic_balance_config
+    transport/test_traffic_balance_config.cpp
+)
+target_include_directories(test_traffic_balance_config PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TrafficBalanceConfig COMMAND test_traffic_balance_config)
+
+# Test executable for PathwayGrid (Ticket E7-005)
+add_executable(test_pathway_grid
+    transport/test_pathway_grid.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+)
+target_include_directories(test_pathway_grid PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PathwayGrid COMMAND test_pathway_grid)
+
+# Test executable for TransportSerialization (Tickets E7-036, E7-037)
+add_executable(test_transport_serialization
+    transport/test_transport_serialization.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/TransportSerialization.cpp
+)
+target_include_directories(test_transport_serialization PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TransportSerialization COMMAND test_transport_serialization)
+
+# Test executable for PathwayDecay (Ticket E7-025)
+add_executable(test_pathway_decay
+    transport/test_pathway_decay.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayDecay.cpp
+)
+target_include_directories(test_pathway_decay PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PathwayDecay COMMAND test_pathway_decay)
+
+# Test executable for MaintenanceCost (Ticket E7-021)
+add_executable(test_maintenance_cost
+    transport/test_maintenance_cost.cpp
+)
+target_include_directories(test_maintenance_cost PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME MaintenanceCost COMMAND test_maintenance_cost)
+
+# Test executable for RailSystem (Ticket E7-032)
+add_executable(test_rail_system
+    transport/test_rail_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/RailSystem.cpp
+)
+target_include_directories(test_rail_system PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME RailSystem COMMAND test_rail_system)
+
+# Test executable for CapacityDegradation (Ticket E7-026)
+add_executable(test_capacity_degradation
+    transport/test_capacity_degradation.cpp
+)
+target_include_directories(test_capacity_degradation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME CapacityDegradation COMMAND test_capacity_degradation)
+
+# Test executable for MaintenanceAPI (Ticket E7-027)
+add_executable(test_maintenance_api
+    transport/test_maintenance_api.cpp
+)
+target_include_directories(test_maintenance_api PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME MaintenanceAPI COMMAND test_maintenance_api)
+
+# Test executable for SubterraLayerManager (Ticket E7-042)
+add_executable(test_subterra_layer
+    transport/test_subterra_layer.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/SubterraLayerManager.cpp
+)
+target_include_directories(test_subterra_layer PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME SubterraLayer COMMAND test_subterra_layer)
+
+# Test executable for ProximityCache (Ticket E7-006)
+add_executable(test_proximity_cache
+    transport/test_proximity_cache.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/ProximityCache.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+)
+target_include_directories(test_proximity_cache PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ProximityCache COMMAND test_proximity_cache)
+
+# Test executable for NetworkGraph rebuild_from_grid (Ticket E7-009)
+add_executable(test_graph_rebuild
+    transport/test_graph_rebuild.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/NetworkGraph.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+)
+target_include_directories(test_graph_rebuild PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME GraphRebuild COMMAND test_graph_rebuild)
+
+# Test executable for RailPower (Ticket E7-033)
+add_executable(test_rail_power
+    transport/test_rail_power.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/RailSystem.cpp
+)
+target_include_directories(test_rail_power PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME RailPower COMMAND test_rail_power)
+
+# Test executable for TerminalPlacement (Ticket E7-034)
+add_executable(test_terminal_placement
+    transport/test_terminal_placement.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/RailSystem.cpp
+)
+target_include_directories(test_terminal_placement PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TerminalPlacement COMMAND test_terminal_placement)
+
+# Test executable for ProximityCache BFS (Ticket E7-007)
+add_executable(test_proximity_bfs
+    transport/test_proximity_bfs.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/ProximityCache.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+)
+target_include_directories(test_proximity_bfs PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ProximityBFS COMMAND test_proximity_bfs)
+
+# Test executable for Connected Components (Ticket E7-010)
+add_executable(test_connected_components
+    transport/test_connected_components.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/NetworkGraph.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+)
+target_include_directories(test_connected_components PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ConnectedComponents COMMAND test_connected_components)
+
+# Test executable for Cross-Ownership Connectivity (Ticket E7-020)
+add_executable(test_cross_ownership
+    transport/test_cross_ownership.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/NetworkGraph.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+)
+target_include_directories(test_cross_ownership PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME CrossOwnership COMMAND test_cross_ownership)
+
+# Test executable for FlowDistribution (Ticket E7-013)
+add_executable(test_flow_distribution
+    transport/test_flow_distribution.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/FlowDistribution.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/ProximityCache.cpp
+)
+target_include_directories(test_flow_distribution PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FlowDistribution COMMAND test_flow_distribution)
+
+# Test executable for RailCoverage (Ticket E7-035)
+add_executable(test_rail_coverage
+    transport/test_rail_coverage.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/RailSystem.cpp
+)
+target_include_directories(test_rail_coverage PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME RailCoverage COMMAND test_rail_coverage)
+
+# Test executable for SubterraPlacement (Ticket E7-044)
+add_executable(test_subterra_placement
+    transport/test_subterra_placement.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/SubterraLayerManager.cpp
+)
+target_include_directories(test_subterra_placement PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME SubterraPlacement COMMAND test_subterra_placement)
+
+# Test executable for ConnectivityQuery (Ticket E7-011)
+add_executable(test_connectivity_query
+    transport/test_connectivity_query.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/ConnectivityQuery.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/NetworkGraph.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+)
+target_include_directories(test_connectivity_query PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ConnectivityQuery COMMAND test_connectivity_query)
+
+# Test executable for TransportProviderImpl (Tickets E7-017/E7-018)
+add_executable(test_transport_provider_impl
+    transport/test_transport_provider_impl.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/TransportProviderImpl.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/ConnectivityQuery.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/NetworkGraph.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/ProximityCache.cpp
+)
+target_include_directories(test_transport_provider_impl PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TransportProviderImpl COMMAND test_transport_provider_impl)
+
+# Test executable for FlowPropagation (Ticket E7-014)
+add_executable(test_flow_propagation
+    transport/test_flow_propagation.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/FlowPropagation.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+)
+target_include_directories(test_flow_propagation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FlowPropagation COMMAND test_flow_propagation)
+
+# Test executable for Pathfinding (Ticket E7-023)
+add_executable(test_pathfinding
+    transport/test_pathfinding.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/Pathfinding.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/NetworkGraph.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+)
+target_include_directories(test_pathfinding PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME Pathfinding COMMAND test_pathfinding)
+
+# Test executable for BoundaryFlags (Ticket E7-028)
+add_executable(test_boundary_flags
+    transport/test_boundary_flags.cpp
+)
+target_include_directories(test_boundary_flags PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME BoundaryFlags COMMAND test_boundary_flags)
+
+# Test executable for CongestionCalculator (Ticket E7-015)
+add_executable(test_congestion_calculator
+    transport/test_congestion_calculator.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/CongestionCalculator.cpp
+)
+target_include_directories(test_congestion_calculator PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME CongestionCalculator COMMAND test_congestion_calculator)
+
+# Test executable for EdgeCost (Ticket E7-024)
+add_executable(test_edge_cost
+    transport/test_edge_cost.cpp
+)
+target_include_directories(test_edge_cost PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME EdgeCost COMMAND test_edge_cost)
+
+# Test executable for ContaminationQuery (Ticket E7-029)
+add_executable(test_contamination_query
+    transport/test_contamination_query.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/ContaminationQuery.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+)
+target_include_directories(test_contamination_query PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ContaminationQuery COMMAND test_contamination_query)
+
+# Test executable for StubReplacement (Ticket E7-019)
+add_executable(test_stub_replacement
+    transport/test_stub_replacement.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/TransportProviderImpl.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/ConnectivityQuery.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/NetworkGraph.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/ProximityCache.cpp
+)
+target_include_directories(test_stub_replacement PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME StubReplacement COMMAND test_stub_replacement)
+
+# Test executable for RailTrafficReduction (Ticket E7-045)
+add_executable(test_rail_traffic_reduction
+    transport/test_rail_traffic_reduction.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/RailSystem.cpp
+)
+target_include_directories(test_rail_traffic_reduction PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME RailTrafficReduction COMMAND test_rail_traffic_reduction)
+
+# Test executable for TransportSystem (Ticket E7-022)
+add_executable(test_transport_system
+    transport/test_transport_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/TransportSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/ProximityCache.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/NetworkGraph.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/TransportProviderImpl.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/ConnectivityQuery.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/FlowDistribution.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/FlowPropagation.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/CongestionCalculator.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayDecay.cpp
+)
+target_include_directories(test_transport_system PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME TransportSystem COMMAND test_transport_system)
+
+# Test executable for PathCache (Ticket E7-041)
+add_executable(test_path_cache
+    transport/test_path_cache.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathCache.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/Pathfinding.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/NetworkGraph.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayGrid.cpp
+)
+target_include_directories(test_path_cache PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PathCache COMMAND test_path_cache)
+
+# Test executable for PathwayNetworkMessages (Ticket E7-038)
+add_executable(test_pathway_network_messages
+    transport/test_pathway_network_messages.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/PathwayNetworkMessages.cpp
+)
+target_include_directories(test_pathway_network_messages PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PathwayNetworkMessages COMMAND test_pathway_network_messages)
+
+# Test executable for RailNetworkMessages (Ticket E7-039)
+add_executable(test_rail_network_messages
+    transport/test_rail_network_messages.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/RailNetworkMessages.cpp
+)
+target_include_directories(test_rail_network_messages PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME RailNetworkMessages COMMAND test_rail_network_messages)

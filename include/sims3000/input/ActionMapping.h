@@ -82,6 +82,15 @@ enum class Action {
     FLUID_REMOVE,           // Remove fluid item (M)
     FLUID_OVERLAY,          // Toggle fluid overlay (H)
 
+    // Transport demo controls (Epic 7)
+    TRANSPORT_BASIC,      // Select basic pathway mode (T)
+    TRANSPORT_CORRIDOR,   // Select transit corridor mode (Y)
+    TRANSPORT_RAIL,       // Select rail mode (G)
+    TRANSPORT_TERMINAL,   // Select terminal mode (J)
+    TRANSPORT_PLACE,      // Place transport item (B)
+    TRANSPORT_REMOVE,     // Remove transport item (V)
+    TRANSPORT_OVERLAY,    // Toggle transport overlay (P)
+
     // System
     FULLSCREEN,
     QUIT,
