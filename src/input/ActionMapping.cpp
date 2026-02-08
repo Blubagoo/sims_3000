@@ -119,6 +119,14 @@ void ActionMapping::resetToDefaults() {
     bind(Action::ENERGY_REMOVE, SDL_SCANCODE_V);
     bind(Action::ENERGY_OVERLAY, SDL_SCANCODE_G);
 
+    // Fluid demo controls (Epic 6)
+    bind(Action::FLUID_EXTRACTOR, SDL_SCANCODE_U);
+    bind(Action::FLUID_RESERVOIR, SDL_SCANCODE_I);
+    bind(Action::FLUID_CONDUIT, SDL_SCANCODE_O);
+    bind(Action::FLUID_PLACE, SDL_SCANCODE_N);
+    bind(Action::FLUID_REMOVE, SDL_SCANCODE_M);
+    bind(Action::FLUID_OVERLAY, SDL_SCANCODE_H);
+
     // System
     bind(Action::FULLSCREEN, SDL_SCANCODE_F11);
     bind(Action::QUIT, SDL_SCANCODE_ESCAPE);
@@ -167,6 +175,12 @@ const char* ActionMapping::getActionName(Action action) {
         case Action::ENERGY_PLACE: return "Energy Place";
         case Action::ENERGY_REMOVE: return "Energy Remove";
         case Action::ENERGY_OVERLAY: return "Energy Overlay";
+        case Action::FLUID_EXTRACTOR: return "Fluid Extractor";
+        case Action::FLUID_RESERVOIR: return "Fluid Reservoir";
+        case Action::FLUID_CONDUIT: return "Fluid Conduit";
+        case Action::FLUID_PLACE: return "Fluid Place";
+        case Action::FLUID_REMOVE: return "Fluid Remove";
+        case Action::FLUID_OVERLAY: return "Fluid Overlay";
         case Action::FULLSCREEN:   return "Fullscreen";
         case Action::QUIT:         return "Quit";
         default:                   return "Unknown";

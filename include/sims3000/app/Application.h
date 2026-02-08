@@ -31,6 +31,7 @@
 #include "sims3000/building/BuildingSystem.h"
 #include "sims3000/building/ForwardDependencyStubs.h"
 #include "sims3000/energy/EnergySystem.h"
+#include "sims3000/fluid/FluidSystem.h"
 
 #include <memory>
 #include <string>
@@ -327,6 +328,17 @@ private:
     int m_energyMode = 0;  // 0=none, 1=carbon, 2=wind, 3=solar, 4=conduit
     bool m_energyOverlayEnabled = true;
     uint32_t m_energyTickLogCounter = 0;
+
+    // Fluid demo integration (Epic 6)
+    bool initFluid();
+    void tickFluid();
+    void handleFluidInput();
+    void cleanupFluid();
+
+    std::unique_ptr<fluid::FluidSystem> m_fluidSystem;
+    int m_fluidMode = 0;  // 0=none, 1=extractor, 2=reservoir, 3=conduit
+    bool m_fluidOverlayEnabled = true;
+    uint32_t m_fluidTickLogCounter = 0;
 };
 
 } // namespace sims3000

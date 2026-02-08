@@ -74,6 +74,14 @@ enum class Action {
     ENERGY_REMOVE,          // Remove energy item (V)
     ENERGY_OVERLAY,         // Toggle energy overlay (G)
 
+    // Fluid demo controls (Epic 6)
+    FLUID_EXTRACTOR,        // Select extractor mode (U)
+    FLUID_RESERVOIR,        // Select reservoir mode (I)
+    FLUID_CONDUIT,          // Select fluid conduit mode (O)
+    FLUID_PLACE,            // Place fluid item at camera focus (N)
+    FLUID_REMOVE,           // Remove fluid item (M)
+    FLUID_OVERLAY,          // Toggle fluid overlay (H)
+
     // System
     FULLSCREEN,
     QUIT,

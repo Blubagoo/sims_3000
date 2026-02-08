@@ -15,6 +15,9 @@
 #include "sims3000/energy/EnergyConduitComponent.h"
 #include "sims3000/energy/EnergyProducerComponent.h"
 #include "sims3000/energy/EnergyEnums.h"
+#include "sims3000/fluid/FluidComponent.h"
+#include "sims3000/fluid/FluidConduitComponent.h"
+#include "sims3000/fluid/FluidEnums.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_log.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -115,6 +118,11 @@ Application::Application(const ApplicationConfig& config)
         // Initialize energy demo (Epic 5)
         if (!initEnergy()) {
             SDL_Log("Warning: Energy demo failed to initialize");
+        }
+
+        // Initialize fluid demo (Epic 6)
+        if (!initFluid()) {
+            SDL_Log("Warning: Fluid demo failed to initialize");
         }
     }
 
@@ -404,6 +412,8 @@ void Application::processEvents() {
                 handleZoneBuildingInput();
                 // Energy demo input (Epic 5)
                 handleEnergyInput();
+                // Fluid demo input (Epic 6)
+                handleFluidInput();
                 break;
 
             default:
@@ -434,6 +444,9 @@ void Application::updateSimulation() {
 
         // Tick energy system (Epic 5 demo) - before zones/buildings
         tickEnergy();
+
+        // Tick fluid system (Epic 6 demo) - after energy, before zones/buildings
+        tickFluid();
 
         // Tick zone/building systems (Epic 4 demo)
         tickZoneBuilding();
@@ -2356,6 +2369,148 @@ void Application::handleEnergyInput() {
 
 void Application::cleanupEnergy() {
     m_energySystem.reset();
+}
+
+// =============================================================================
+// Fluid Demo Integration (Epic 6)
+// =============================================================================
+
+bool Application::initFluid() {
+    SDL_Log("Initializing fluid demo...");
+
+    // Create FluidSystem (256x256 to match terrain grid, no terrain queryable)
+    m_fluidSystem = std::make_unique<fluid::FluidSystem>(256, 256, nullptr);
+
+    SDL_Log("Fluid demo initialized");
+    SDL_Log("  U=Extractor  I=Reservoir  O=Conduit  N=Place  M=Remove  H=Overlay");
+
+    return true;
+}
+
+void Application::tickFluid() {
+    if (!m_fluidSystem) return;
+
+    // Deferred registry wiring: set registry on first tick if not already set
+    if (m_registry) {
+        static bool fluidRegistryWired = false;
+        if (!fluidRegistryWired) {
+            m_fluidSystem->set_registry(&m_registry->raw());
+            // Wire energy provider to fluid system (extractors need power)
+            if (m_energySystem) {
+                m_fluidSystem->set_energy_provider(m_energySystem.get());
+                SDL_Log("Fluid system wired to energy system (extractor power dependency)");
+            }
+            // Wire real fluid provider to building system (replaces stub)
+            if (m_buildingSystem) {
+                m_buildingSystem->set_fluid_provider(m_fluidSystem.get());
+                SDL_Log("Fluid system wired to building system (replaced stub)");
+            }
+            fluidRegistryWired = true;
+        }
+    }
+
+    m_fluidSystem->tick(0.05f);  // 50ms per tick at 20Hz
+
+    m_fluidTickLogCounter++;
+    if (m_fluidTickLogCounter % 100 == 0) {
+        const auto& pool = m_fluidSystem->get_pool(0);
+        SDL_Log("Fluid Pool [P0]: generated=%u consumed=%u surplus=%d state=%s extractors=%u reservoirs=%u conduits=%u",
+                pool.total_generated, pool.total_consumed, pool.surplus,
+                fluid::fluid_pool_state_to_string(pool.state),
+                m_fluidSystem->get_extractor_count(0),
+                m_fluidSystem->get_reservoir_count(0),
+                m_fluidSystem->get_conduit_position_count(0));
+    }
+}
+
+void Application::handleFluidInput() {
+    if (!m_fluidSystem || !m_input) return;
+
+    // Fluid mode selection
+    if (m_input->isActionPressed(Action::FLUID_EXTRACTOR)) {
+        m_fluidMode = (m_fluidMode == 1) ? 0 : 1;
+        SDL_Log("Fluid mode: %s", m_fluidMode == 1 ? "EXTRACTOR" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::FLUID_RESERVOIR)) {
+        m_fluidMode = (m_fluidMode == 2) ? 0 : 2;
+        SDL_Log("Fluid mode: %s", m_fluidMode == 2 ? "RESERVOIR" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::FLUID_CONDUIT)) {
+        m_fluidMode = (m_fluidMode == 3) ? 0 : 3;
+        SDL_Log("Fluid mode: %s", m_fluidMode == 3 ? "CONDUIT" : "NONE");
+    }
+
+    // Toggle fluid overlay
+    if (m_input->isActionPressed(Action::FLUID_OVERLAY)) {
+        m_fluidOverlayEnabled = !m_fluidOverlayEnabled;
+        SDL_Log("Fluid overlay: %s", m_fluidOverlayEnabled ? "ON" : "OFF");
+    }
+
+    // Place fluid item at camera focus
+    if (m_input->isActionPressed(Action::FLUID_PLACE) && m_fluidMode > 0) {
+        uint32_t cx = static_cast<uint32_t>(std::max(0.0f, m_demoCamera.focus_point.x));
+        uint32_t cz = static_cast<uint32_t>(std::max(0.0f, m_demoCamera.focus_point.z));
+
+        if (m_fluidMode == 1) {
+            // Place extractor
+            uint32_t entityId = m_fluidSystem->place_extractor(cx, cz, 0);
+            if (entityId != fluid::INVALID_ENTITY_ID) {
+                SDL_Log("Placed extractor at (%u, %u) -> entity %u", cx, cz, entityId);
+            } else {
+                SDL_Log("Failed to place extractor at (%u, %u)", cx, cz);
+            }
+        } else if (m_fluidMode == 2) {
+            // Place reservoir
+            uint32_t entityId = m_fluidSystem->place_reservoir(cx, cz, 0);
+            if (entityId != fluid::INVALID_ENTITY_ID) {
+                SDL_Log("Placed reservoir at (%u, %u) -> entity %u", cx, cz, entityId);
+            } else {
+                SDL_Log("Failed to place reservoir at (%u, %u)", cx, cz);
+            }
+        } else if (m_fluidMode == 3) {
+            // Place conduit
+            uint32_t entityId = m_fluidSystem->place_conduit(cx, cz, 0);
+            if (entityId != fluid::INVALID_ENTITY_ID) {
+                SDL_Log("Placed fluid conduit at (%u, %u) -> entity %u", cx, cz, entityId);
+            } else {
+                SDL_Log("Failed to place fluid conduit at (%u, %u)", cx, cz);
+            }
+        }
+    }
+
+    // Remove fluid item at camera focus
+    if (m_input->isActionPressed(Action::FLUID_REMOVE)) {
+        uint32_t cx = static_cast<uint32_t>(std::max(0.0f, m_demoCamera.focus_point.x));
+        uint32_t cz = static_cast<uint32_t>(std::max(0.0f, m_demoCamera.focus_point.z));
+
+        bool removed = false;
+        for (int32_t dz = -1; dz <= 1 && !removed; ++dz) {
+            for (int32_t dx = -1; dx <= 1 && !removed; ++dx) {
+                uint32_t rx = static_cast<uint32_t>(std::max(0, static_cast<int32_t>(cx) + dx));
+                uint32_t rz = static_cast<uint32_t>(std::max(0, static_cast<int32_t>(cz) + dz));
+
+                if (m_registry) {
+                    auto& reg = m_registry->raw();
+                    auto conduitView = reg.view<fluid::FluidConduitComponent>();
+                    for (auto entity : conduitView) {
+                        uint32_t eid = static_cast<uint32_t>(entity);
+                        if (m_fluidSystem->remove_conduit(eid, 0, rx, rz)) {
+                            SDL_Log("Removed fluid conduit entity %u at (%u, %u)", eid, rx, rz);
+                            removed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (!removed) {
+            SDL_Log("No fluid conduit found near (%u, %u) to remove", cx, cz);
+        }
+    }
+}
+
+void Application::cleanupFluid() {
+    m_fluidSystem.reset();
 }
 
 } // namespace sims3000

@@ -3463,3 +3463,520 @@ target_link_libraries(test_energy_performance PRIVATE
     EnTT::EnTT
 )
 add_test(NAME EnergyPerformance COMMAND test_energy_performance)
+
+# Test executable for FluidCoverageGrid (Ticket 6-008)
+add_executable(test_fluid_coverage_grid
+    fluid/test_fluid_coverage_grid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+)
+target_include_directories(test_fluid_coverage_grid PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FluidCoverageGrid COMMAND test_fluid_coverage_grid)
+
+# Test executable for FluidProducerComponent (Ticket 6-003)
+add_executable(test_fluid_producer_component
+    fluid/test_fluid_producer_component.cpp
+)
+target_include_directories(test_fluid_producer_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FluidProducerComponent COMMAND test_fluid_producer_component)
+
+# Test executable for PerPlayerFluidPool (Ticket 6-006)
+add_executable(test_per_player_fluid_pool
+    fluid/test_per_player_fluid_pool.cpp
+)
+target_include_directories(test_per_player_fluid_pool PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PerPlayerFluidPool COMMAND test_per_player_fluid_pool)
+
+# Test executable for FluidEvents (Ticket 6-007)
+add_executable(test_fluid_events
+    fluid/test_fluid_events.cpp
+)
+target_include_directories(test_fluid_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FluidEvents COMMAND test_fluid_events)
+
+# Test executable for FluidExtractorConfig (Ticket 6-023)
+add_executable(test_fluid_extractor_config
+    fluid/test_fluid_extractor_config.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+)
+target_include_directories(test_fluid_extractor_config PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FluidExtractorConfig COMMAND test_fluid_extractor_config)
+
+# Test executable for FluidReservoirConfig (Ticket 6-024)
+add_executable(test_fluid_reservoir_config
+    fluid/test_fluid_reservoir_config.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+)
+target_include_directories(test_fluid_reservoir_config PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FluidReservoirConfig COMMAND test_fluid_reservoir_config)
+
+# Test executable for FluidSerialization (Tickets 6-036, 6-037)
+add_executable(test_fluid_serialization
+    fluid/test_fluid_serialization.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSerialization.cpp
+)
+target_include_directories(test_fluid_serialization PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FluidSerialization COMMAND test_fluid_serialization)
+
+# Test executable for FluidCoverageBFS (Ticket 6-010)
+add_executable(test_fluid_coverage_bfs
+    fluid/test_fluid_coverage_bfs.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+)
+target_include_directories(test_fluid_coverage_bfs PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_coverage_bfs PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidCoverageBFS COMMAND test_fluid_coverage_bfs)
+
+# Test executable for FluidPlacementValidation (Tickets 6-027, 6-028)
+add_executable(test_fluid_placement_validation
+    fluid/test_fluid_placement_validation.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+)
+target_include_directories(test_fluid_placement_validation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_placement_validation PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidPlacementValidation COMMAND test_fluid_placement_validation)
+
+# Test executable for FluidSystem (Ticket 6-009)
+add_executable(test_fluid_system
+    fluid/test_fluid_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_system PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_system PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidSystem COMMAND test_fluid_system)
+
+# Test executable for Extractor/Reservoir Registration (Tickets 6-014, 6-015)
+add_executable(test_extractor_registration
+    fluid/test_extractor_registration.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_extractor_registration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_extractor_registration PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME ExtractorRegistration COMMAND test_extractor_registration)
+
+# Test executable for FluidCoverageQueries (Tickets 6-013, 6-011)
+add_executable(test_fluid_coverage_queries
+    fluid/test_coverage_queries.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_coverage_queries PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_coverage_queries PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidCoverageQueries COMMAND test_fluid_coverage_queries)
+
+# Test executable for FluidCoverageDirty (Ticket 6-011)
+add_executable(test_fluid_coverage_dirty
+    fluid/test_coverage_dirty.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_coverage_dirty PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_coverage_dirty PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidCoverageDirty COMMAND test_fluid_coverage_dirty)
+
+# Test executable for FluidProvider integration (Ticket 6-038)
+add_executable(test_fluid_provider
+    fluid/test_fluid_provider.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_provider PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_provider PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidProvider COMMAND test_fluid_provider)
+
+# Test executable for Fluid Consumer Registration & Aggregation (Ticket 6-016)
+add_executable(test_fluid_consumer_aggregation
+    fluid/test_consumer_aggregation.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_consumer_aggregation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_consumer_aggregation PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidConsumerAggregation COMMAND test_fluid_consumer_aggregation)
+
+# Test executable for Water Proximity & Power Dependency (Tickets 6-025, 6-026)
+add_executable(test_water_proximity
+    fluid/test_water_proximity.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_water_proximity PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_water_proximity PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME WaterProximity COMMAND test_water_proximity)
+
+# Test executable for Fluid Conduit Placement (Ticket 6-029)
+add_executable(test_fluid_conduit_placement
+    fluid/test_conduit_placement.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_conduit_placement PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_conduit_placement PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidConduitPlacement COMMAND test_fluid_conduit_placement)
+
+# Test executable for Fluid Conduit Connection Detection (Ticket 6-030)
+add_executable(test_fluid_conduit_connection
+    fluid/test_conduit_connection.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+)
+target_include_directories(test_fluid_conduit_connection PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_conduit_connection PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidConduitConnection COMMAND test_fluid_conduit_connection)
+
+# Test executable for Fluid Conduit Preview (Ticket 6-033)
+add_executable(test_fluid_conduit_preview
+    fluid/test_conduit_preview.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_conduit_preview PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_conduit_preview PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidConduitPreview COMMAND test_fluid_conduit_preview)
+
+# Test executable for Fluid Pool Calculation (Ticket 6-017)
+add_executable(test_fluid_pool_calculation
+    fluid/test_pool_calculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_pool_calculation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_pool_calculation PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidPoolCalculation COMMAND test_fluid_pool_calculation)
+
+# Test executable for Fluid Conduit Removal (Ticket 6-031)
+add_executable(test_fluid_conduit_removal
+    fluid/test_conduit_removal.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_conduit_removal PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_conduit_removal PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidConduitRemoval COMMAND test_fluid_conduit_removal)
+
+# Test executable for Fluid BuildingConstructedEvent Handler (Ticket 6-034)
+add_executable(test_fluid_building_event_handler
+    fluid/test_building_event_handler.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_building_event_handler PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_building_event_handler PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidBuildingEventHandler COMMAND test_fluid_building_event_handler)
+
+# Test executable for Fluid BuildingDeconstructedEvent Handler (Ticket 6-035)
+add_executable(test_fluid_building_decon_handler
+    fluid/test_building_decon_handler.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_building_decon_handler PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_building_decon_handler PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidBuildingDeconHandler COMMAND test_fluid_building_decon_handler)
+
+# Test executable for Fluid Pool State Machine and Reservoir Buffering (Ticket 6-018)
+add_executable(test_fluid_pool_state_machine
+    fluid/test_pool_state_machine.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_pool_state_machine PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_pool_state_machine PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidPoolStateMachine COMMAND test_fluid_pool_state_machine)
+
+# Test executable for Fluid Conduit Active State (Ticket 6-032)
+add_executable(test_fluid_conduit_active_state
+    fluid/test_conduit_active_state.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_conduit_active_state PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_conduit_active_state PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidConduitActiveState COMMAND test_fluid_conduit_active_state)
+
+# Test executable for Fluid Distribution (Ticket 6-019)
+add_executable(test_fluid_distribution
+    fluid/test_fluid_distribution.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_distribution PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_distribution PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidDistribution COMMAND test_fluid_distribution)
+
+# Test executable for Fluid Pool Transition Events (Ticket 6-022)
+add_executable(test_fluid_pool_transition_events
+    fluid/test_pool_transition_events.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_pool_transition_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_pool_transition_events PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidPoolTransitionEvents COMMAND test_fluid_pool_transition_events)
+
+# Test executable for Fluid State Change Events (Ticket 6-021)
+add_executable(test_fluid_state_change_events
+    fluid/test_state_change_events.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_state_change_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_state_change_events PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidStateChangeEvents COMMAND test_fluid_state_change_events)
+
+# Test executable for FluidSystem Integration (Ticket 6-043)
+add_executable(test_fluid_integration
+    fluid/test_fluid_integration.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+)
+target_include_directories(test_fluid_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_integration PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidIntegration COMMAND test_fluid_integration)
+
+# Test executable for Fluid Multiplayer Sync (Ticket 6-044)
+add_executable(test_fluid_multiplayer_sync
+    fluid/test_multiplayer_sync.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidExtractorConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidReservoirConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidCoverageBFS.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidPlacementValidation.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidSerialization.cpp
+)
+target_include_directories(test_fluid_multiplayer_sync PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_fluid_multiplayer_sync PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME FluidMultiplayerSync COMMAND test_fluid_multiplayer_sync)
+
+# Test executable for FluidEnums (Ticket 6-001)
+add_executable(test_fluid_enums
+    fluid/test_fluid_enums.cpp
+)
+target_include_directories(test_fluid_enums PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FluidEnums COMMAND test_fluid_enums)
+
+# Test executable for FluidComponent (Ticket 6-002)
+add_executable(test_fluid_component
+    fluid/test_fluid_component.cpp
+)
+target_include_directories(test_fluid_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FluidComponent COMMAND test_fluid_component)
+
+# Test executable for FluidReservoirComponent (Ticket 6-004)
+add_executable(test_fluid_reservoir_component
+    fluid/test_fluid_reservoir_component.cpp
+)
+target_include_directories(test_fluid_reservoir_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FluidReservoirComponent COMMAND test_fluid_reservoir_component)
+
+# Test executable for FluidConduitComponent (Ticket 6-005)
+add_executable(test_fluid_conduit_component
+    fluid/test_fluid_conduit_component.cpp
+)
+target_include_directories(test_fluid_conduit_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FluidConduitComponent COMMAND test_fluid_conduit_component)
+
+# Test executable for FluidRequirements (Ticket 6-039)
+add_executable(test_fluid_requirements
+    fluid/test_fluid_requirements.cpp
+    ${CMAKE_SOURCE_DIR}/src/fluid/FluidRequirements.cpp
+)
+target_include_directories(test_fluid_requirements PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FluidRequirements COMMAND test_fluid_requirements)

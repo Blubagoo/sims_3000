@@ -459,6 +459,14 @@ set(SIMS3000_SOURCES
     src/energy/NexusTypeConfig.cpp
     src/energy/EnergySystem.cpp
     src/energy/EnergySerialization.cpp
+    src/fluid/FluidRequirements.cpp
+    src/fluid/FluidCoverageGrid.cpp
+    src/fluid/FluidCoverageBFS.cpp
+    src/fluid/FluidSerialization.cpp
+    src/fluid/FluidPlacementValidation.cpp
+    src/fluid/FluidExtractorConfig.cpp
+    src/fluid/FluidReservoirConfig.cpp
+    src/fluid/FluidSystem.cpp
 )
 
 # Define header files (for IDE integration)
@@ -613,6 +621,21 @@ set(SIMS3000_HEADERS
     include/sims3000/energy/NexusTypeConfig.h
     include/sims3000/energy/EnergySystem.h
     include/sims3000/energy/EnergySerialization.h
+    include/sims3000/fluid/FluidCoverageGrid.h
+    include/sims3000/fluid/FluidCoverageBFS.h
+    include/sims3000/fluid/FluidSerialization.h
+    include/sims3000/fluid/FluidPlacementValidation.h
+    include/sims3000/fluid/FluidEnums.h
+    include/sims3000/fluid/FluidComponent.h
+    include/sims3000/fluid/FluidProducerComponent.h
+    include/sims3000/fluid/FluidReservoirComponent.h
+    include/sims3000/fluid/FluidConduitComponent.h
+    include/sims3000/fluid/PerPlayerFluidPool.h
+    include/sims3000/fluid/FluidEvents.h
+    include/sims3000/fluid/FluidExtractorConfig.h
+    include/sims3000/fluid/FluidReservoirConfig.h
+    include/sims3000/fluid/FluidRequirements.h
+    include/sims3000/fluid/FluidSystem.h
 )
 
 # Create executable

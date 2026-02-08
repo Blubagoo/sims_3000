@@ -1,0 +1,102 @@
+# Epic 6 Execution Queue
+# Generated: 2026-02-07
+# Last Updated: 2026-02-08
+
+epic: 6
+name: "Water Infrastructure (FluidSystem)"
+status: complete
+
+current_wave: 10
+
+# Execution waves (dependency-ordered, max 3 parallel agents per wave)
+waves:
+  wave_1:
+    description: "Foundational types (no dependencies)"
+    tickets:
+      - {id: "6-001", title: "Fluid Type Enumerations", status: complete}
+      - {id: "6-002", title: "FluidComponent Structure", status: complete}
+      - {id: "6-004", title: "FluidReservoirComponent Structure", status: complete}
+      - {id: "6-005", title: "FluidConduitComponent Structure", status: complete}
+      - {id: "6-008", title: "FluidCoverageGrid Dense 2D Array", status: complete}
+      - {id: "6-039", title: "Define Fluid Requirements", status: complete}
+
+  wave_2:
+    description: "Components needing enums + configs"
+    tickets:
+      - {id: "6-003", title: "FluidProducerComponent Structure", status: complete}
+      - {id: "6-006", title: "PerPlayerFluidPool Structure", status: complete}
+      - {id: "6-007", title: "Fluid Event Definitions", status: complete}
+      - {id: "6-023", title: "Fluid Extractor Type Config", status: complete}
+      - {id: "6-024", title: "Fluid Reservoir Type Config", status: complete}
+      - {id: "6-036", title: "FluidComponent Serialization", status: complete}
+      - {id: "6-037", title: "Pool State Serialization", status: complete}
+
+  wave_3:
+    description: "System skeleton + BFS + placement validations"
+    tickets:
+      - {id: "6-009", title: "FluidSystem Class Skeleton", status: complete}
+      - {id: "6-010", title: "Coverage BFS Algorithm", status: complete}
+      - {id: "6-027", title: "Extractor Placement Validation", status: complete}
+      - {id: "6-028", title: "Reservoir Placement Validation", status: complete}
+      - {id: "6-040", title: "Balance Stats Doc", status: complete}
+
+  wave_4:
+    description: "Core registrations + queries + dirty flags"
+    tickets:
+      - {id: "6-014", title: "Extractor Registration and Output", status: complete}
+      - {id: "6-015", title: "Reservoir Registration and Storage", status: complete}
+      - {id: "6-013", title: "Coverage Queries", status: complete}
+      - {id: "6-011", title: "Coverage Dirty Flag Tracking", status: complete}
+      - {id: "6-012", title: "Ownership Boundary Enforcement", status: complete}
+
+  wave_5:
+    description: "Consumer reg + conduits + water proximity + power dep"
+    tickets:
+      - {id: "6-016", title: "Consumer Registration", status: complete}
+      - {id: "6-025", title: "Water Proximity Efficiency", status: complete}
+      - {id: "6-026", title: "Extractor Power Dependency", status: complete}
+      - {id: "6-029", title: "Conduit Placement", status: complete}
+      - {id: "6-030", title: "Conduit Connection Detection", status: complete}
+      - {id: "6-033", title: "Conduit Placement Preview", status: complete}
+      - {id: "6-038", title: "IFluidProvider Integration", status: complete}
+
+  wave_6:
+    description: "Pool calculation + conduit removal + building handlers"
+    tickets:
+      - {id: "6-017", title: "Pool Calculation", status: complete}
+      - {id: "6-031", title: "Conduit Removal", status: complete}
+      - {id: "6-034", title: "BuildingConstructedEvent Handler", status: complete}
+      - {id: "6-035", title: "BuildingDeconstructedEvent Handler", status: complete}
+
+  wave_7:
+    description: "Pool state machine + conduit active state"
+    tickets:
+      - {id: "6-018", title: "Pool State Machine + Reservoir Buffering", status: complete}
+      - {id: "6-032", title: "Conduit Active State", status: complete}
+
+  wave_8:
+    description: "Distribution + events"
+    tickets:
+      - {id: "6-019", title: "Fluid Distribution (All-or-Nothing)", status: complete}
+      - {id: "6-022", title: "Pool State Transition Events", status: complete}
+      - {id: "6-041", title: "Balance Thresholds Doc", status: complete}
+      - {id: "6-042", title: "Fluid Overlay UI Requirements", status: complete}
+
+  wave_9:
+    description: "Design note + state change events"
+    tickets:
+      - {id: "6-020", title: "Rationing NOT Implemented (Design Note)", status: complete}
+      - {id: "6-021", title: "FluidStateChangedEvent Emission", status: complete}
+
+  wave_10:
+    description: "Integration and sync tests"
+    tickets:
+      - {id: "6-043", title: "FluidSystem Integration Test Suite", status: complete}
+      - {id: "6-044", title: "Multiplayer Sync Tests", status: complete}
+
+stats:
+  total: 44
+  complete: 44
+  in_progress: 0
+  pending: 0
+  failed: 0
