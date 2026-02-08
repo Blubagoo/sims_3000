@@ -103,6 +103,13 @@ void ActionMapping::resetToDefaults() {
     // View modes
     bind(Action::TOGGLE_UNDERGROUND, SDL_SCANCODE_U);
 
+    // Zone/Building demo controls (Epic 4)
+    bind(Action::ZONE_HABITATION, SDL_SCANCODE_4);
+    bind(Action::ZONE_EXCHANGE, SDL_SCANCODE_5);
+    bind(Action::ZONE_FABRICATION, SDL_SCANCODE_6);
+    bind(Action::ZONE_PLACE, SDL_SCANCODE_Z);
+    bind(Action::ZONE_DEMOLISH, SDL_SCANCODE_X);
+
     // System
     bind(Action::FULLSCREEN, SDL_SCANCODE_F11);
     bind(Action::QUIT, SDL_SCANCODE_ESCAPE);
@@ -139,6 +146,11 @@ const char* ActionMapping::getActionName(Action action) {
         case Action::DEBUG_TERRAIN_WATER: return "Terrain Water Body ID";
         case Action::DEBUG_TERRAIN_BUILDABILITY: return "Terrain Buildability";
         case Action::TOGGLE_UNDERGROUND: return "Toggle Underground";
+        case Action::ZONE_HABITATION: return "Zone Habitation";
+        case Action::ZONE_EXCHANGE: return "Zone Exchange";
+        case Action::ZONE_FABRICATION: return "Zone Fabrication";
+        case Action::ZONE_PLACE: return "Zone Place";
+        case Action::ZONE_DEMOLISH: return "Zone Demolish";
         case Action::FULLSCREEN:   return "Fullscreen";
         case Action::QUIT:         return "Quit";
         default:                   return "Unknown";

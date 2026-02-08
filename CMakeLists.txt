@@ -435,6 +435,24 @@ set(SIMS3000_SOURCES
     src/terrain/TerrainNetworkSync.cpp
     src/building/BuildingGrid.cpp
     src/building/BuildingTemplateRegistry.cpp
+    src/building/TemplateSelector.cpp
+    src/building/InitialTemplates.cpp
+    src/building/BuildingSpawnChecker.cpp
+    src/building/BuildingFactory.cpp
+    src/building/BuildingSpawningLoop.cpp
+    src/building/ConstructionProgressSystem.cpp
+    src/building/BuildingStateTransitionSystem.cpp
+    src/building/DemolitionHandler.cpp
+    src/building/DebrisClearSystem.cpp
+    src/building/BuildingUpgradeSystem.cpp
+    src/building/BuildingDowngradeSystem.cpp
+    src/building/BuildingSystem.cpp
+    src/building/BuildingSerialization.cpp
+    src/building/BuildingNetworkMessages.cpp
+    src/zone/ZoneSystem.cpp
+    src/zone/ZoneSerialization.cpp
+    src/zone/ZoneNetworkMessages.cpp
+    src/zone/ZoneServerHandler.cpp
 )
 
 # Define header files (for IDE integration)

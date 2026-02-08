@@ -11,6 +11,7 @@
 #include "sims3000/terrain/BiomeGenerator.h"
 #include "sims3000/terrain/WaterDistanceField.h"
 #include "sims3000/terrain/TerrainTypeInfo.h"
+#include "sims3000/terrain/TerrainChunk.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_log.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -101,6 +102,11 @@ Application::Application(const ApplicationConfig& config)
             if (!initDemo()) {
                 SDL_Log("Warning: Demo rendering also failed to initialize");
             }
+        }
+
+        // Initialize zone/building demo (Epic 4)
+        if (!initZoneBuilding()) {
+            SDL_Log("Warning: Zone/building demo failed to initialize");
         }
     }
 
@@ -387,6 +393,8 @@ void Application::processEvents() {
                 if (m_input->isActionPressed(Action::DEBUG_WIREFRAME)) {
                     toggleWireframe();
                 }
+                // Zone/Building demo input (Epic 4)
+                handleZoneBuildingInput();
                 break;
 
             default:
@@ -414,6 +422,9 @@ void Application::updateSimulation() {
     for (int i = 0; i < tickCount; ++i) {
         // Run all registered systems
         m_systems->tick(m_clock);
+
+        // Tick zone/building systems (Epic 4 demo)
+        tickZoneBuilding();
 
         // SyncSystem tick (captures dirty entities via signals, no extra work needed)
         m_syncSystem->tick(m_clock);
@@ -467,6 +478,10 @@ void Application::render() {
         } else {
             renderDemo(cmdBuffer, swapchainTexture);
         }
+        // Render zone/building overlay on top (Epic 4)
+        if (m_zoneBuildingInitialized) {
+            renderZoneBuildingOverlay(cmdBuffer, swapchainTexture);
+        }
     } else {
         static int nullCount = 0;
         if (++nullCount % 60 == 1) {
@@ -502,6 +517,9 @@ void Application::shutdown() {
     if (m_assets) {
         m_assets->clearAll();
     }
+
+    // Cleanup zone/building resources
+    cleanupZoneBuilding();
 
     // Cleanup terrain resources
     cleanupTerrain();
@@ -1551,6 +1569,498 @@ void Application::cleanupTerrain() {
     }
 
     m_terrainInitialized = false;
+}
+
+// =============================================================================
+// Zone/Building Demo Integration (Epic 4)
+// =============================================================================
+
+bool Application::initZoneBuilding() {
+    if (!m_gpuDevice || !m_gpuDevice->isValid()) {
+        return false;
+    }
+
+    SDL_Log("Initializing zone/building demo...");
+
+    // Create ZoneSystem (nullptr terrain is OK - validation is permissive)
+    m_zoneSystem = std::make_unique<zone::ZoneSystem>(
+        nullptr,           // no terrain queryable
+        &m_stubTransport,  // stub transport (always accessible)
+        256                // match terrain grid size
+    );
+
+    // Create BuildingSystem
+    m_buildingSystem = std::make_unique<building::BuildingSystem>(
+        m_zoneSystem.get(),
+        nullptr,  // no terrain queryable
+        256       // match terrain grid size
+    );
+
+    // Wire stub providers
+    m_buildingSystem->set_energy_provider(&m_stubEnergy);
+    m_buildingSystem->set_fluid_provider(&m_stubFluid);
+    m_buildingSystem->set_transport_provider(&m_stubTransport);
+    m_buildingSystem->set_land_value_provider(&m_stubLandValue);
+    m_buildingSystem->set_demand_provider(&m_stubDemand);
+    m_buildingSystem->set_credit_provider(&m_stubCredits);
+
+    // Create shader compiler if not already created
+    if (!m_shaderCompiler) {
+        m_shaderCompiler = std::make_unique<ShaderCompiler>(*m_gpuDevice);
+        m_shaderCompiler->setAssetPath(".");
+    }
+
+    // Load debug_bbox shaders for overlay rendering
+    ShaderResources vertResources{};
+    vertResources.numUniformBuffers = 1;  // viewProjection
+
+    ShaderResources fragResources{};
+
+    auto vertResult = m_shaderCompiler->loadShader(
+        "shaders/debug_bbox.vert",
+        ShaderStage::Vertex,
+        "main",
+        vertResources
+    );
+
+    if (!vertResult.isValid()) {
+        SDL_Log("Failed to load overlay vertex shader: %s", vertResult.error.message.c_str());
+        return false;
+    }
+    m_overlayVertShader = vertResult.shader;
+
+    auto fragResult = m_shaderCompiler->loadShader(
+        "shaders/debug_bbox.frag",
+        ShaderStage::Fragment,
+        "main",
+        fragResources
+    );
+
+    if (!fragResult.isValid()) {
+        SDL_Log("Failed to load overlay fragment shader: %s", fragResult.error.message.c_str());
+        return false;
+    }
+    m_overlayFragShader = fragResult.shader;
+
+    // Create overlay pipeline (LINELIST, no depth test, draws on top)
+    SDL_GPUDevice* device = m_gpuDevice->getHandle();
+
+    // Vertex attributes: position (vec3) + color (vec4)
+    SDL_GPUVertexBufferDescription vertexBufferDesc{};
+    vertexBufferDesc.slot = 0;
+    vertexBufferDesc.pitch = sizeof(float) * 7;
+    vertexBufferDesc.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX;
+    vertexBufferDesc.instance_step_rate = 0;
+
+    SDL_GPUVertexAttribute vertexAttributes[2] = {};
+    vertexAttributes[0].location = 0;
+    vertexAttributes[0].buffer_slot = 0;
+    vertexAttributes[0].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
+    vertexAttributes[0].offset = 0;
+    vertexAttributes[1].location = 1;
+    vertexAttributes[1].buffer_slot = 0;
+    vertexAttributes[1].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4;
+    vertexAttributes[1].offset = sizeof(float) * 3;
+
+    SDL_GPUVertexInputState vertexInputState{};
+    vertexInputState.vertex_buffer_descriptions = &vertexBufferDesc;
+    vertexInputState.num_vertex_buffers = 1;
+    vertexInputState.vertex_attributes = vertexAttributes;
+    vertexInputState.num_vertex_attributes = 2;
+
+    SDL_GPUColorTargetDescription colorTarget{};
+    colorTarget.format = SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM;
+    // Enable alpha blending for overlay
+    colorTarget.blend_state.enable_blend = true;
+    colorTarget.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    colorTarget.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    colorTarget.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    colorTarget.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+    colorTarget.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ZERO;
+    colorTarget.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+
+    SDL_GPUGraphicsPipelineCreateInfo pipelineInfo{};
+    pipelineInfo.vertex_shader = m_overlayVertShader;
+    pipelineInfo.fragment_shader = m_overlayFragShader;
+    pipelineInfo.vertex_input_state = vertexInputState;
+    pipelineInfo.primitive_type = SDL_GPU_PRIMITIVETYPE_LINELIST;
+    pipelineInfo.target_info.num_color_targets = 1;
+    pipelineInfo.target_info.color_target_descriptions = &colorTarget;
+
+    // No depth testing - overlay draws on top
+    pipelineInfo.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
+    pipelineInfo.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE;
+    pipelineInfo.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
+
+    m_overlayPipeline = SDL_CreateGPUGraphicsPipeline(device, &pipelineInfo);
+    if (!m_overlayPipeline) {
+        SDL_Log("Failed to create overlay pipeline: %s", SDL_GetError());
+        return false;
+    }
+
+    // Create GPU vertex buffer (pre-allocated)
+    SDL_GPUBufferCreateInfo vbInfo{};
+    vbInfo.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
+    vbInfo.size = MAX_OVERLAY_VERTICES * sizeof(float) * 7;
+
+    m_overlayVertexBuffer = SDL_CreateGPUBuffer(device, &vbInfo);
+    if (!m_overlayVertexBuffer) {
+        SDL_Log("Failed to create overlay vertex buffer");
+        return false;
+    }
+
+    // Create transfer buffer for per-frame updates
+    SDL_GPUTransferBufferCreateInfo tbInfo{};
+    tbInfo.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+    tbInfo.size = MAX_OVERLAY_VERTICES * sizeof(float) * 7;
+
+    m_overlayTransferBuffer = SDL_CreateGPUTransferBuffer(device, &tbInfo);
+    if (!m_overlayTransferBuffer) {
+        SDL_Log("Failed to create overlay transfer buffer");
+        return false;
+    }
+
+    m_zoneBuildingInitialized = true;
+    SDL_Log("Zone/building demo initialized");
+    SDL_Log("  4=Habitation  5=Exchange  6=Fabrication  Z=Place  X=Demolish");
+
+    return true;
+}
+
+void Application::tickZoneBuilding() {
+    if (!m_zoneBuildingInitialized || !m_zoneSystem || !m_buildingSystem) return;
+
+    m_zoneBuildingTickCounter++;
+    m_zoneSystem->tick(0.05f);        // 50ms per tick at 20Hz
+    m_buildingSystem->tick(0.05f);
+}
+
+void Application::handleZoneBuildingInput() {
+    if (!m_zoneBuildingInitialized || !m_input || !m_zoneSystem) return;
+
+    // Zone mode selection
+    if (m_input->isActionPressed(Action::ZONE_HABITATION)) {
+        m_zoneMode = (m_zoneMode == 1) ? 0 : 1;
+        SDL_Log("Zone mode: %s", m_zoneMode == 1 ? "HABITATION" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::ZONE_EXCHANGE)) {
+        m_zoneMode = (m_zoneMode == 2) ? 0 : 2;
+        SDL_Log("Zone mode: %s", m_zoneMode == 2 ? "EXCHANGE" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::ZONE_FABRICATION)) {
+        m_zoneMode = (m_zoneMode == 3) ? 0 : 3;
+        SDL_Log("Zone mode: %s", m_zoneMode == 3 ? "FABRICATION" : "NONE");
+    }
+
+    // Place zone at camera focus
+    if (m_input->isActionPressed(Action::ZONE_PLACE) && m_zoneMode > 0) {
+        int32_t cx = static_cast<int32_t>(m_demoCamera.focus_point.x);
+        int32_t cy = static_cast<int32_t>(m_demoCamera.focus_point.z);
+
+        zone::ZoneType type = static_cast<zone::ZoneType>(m_zoneMode - 1);
+        zone::ZonePlacementRequest request{};
+        request.x = cx - 2;
+        request.y = cy - 2;
+        request.width = 5;
+        request.height = 5;
+        request.zone_type = type;
+        request.density = zone::ZoneDensity::LowDensity;
+        request.player_id = 0;
+
+        auto result = m_zoneSystem->place_zones(request);
+        SDL_Log("Placed %u zones at (%d,%d), skipped %u",
+                result.placed_count, cx, cy, result.skipped_count);
+    }
+
+    // Demolish zone at camera focus
+    if (m_input->isActionPressed(Action::ZONE_DEMOLISH)) {
+        int32_t cx = static_cast<int32_t>(m_demoCamera.focus_point.x);
+        int32_t cy = static_cast<int32_t>(m_demoCamera.focus_point.z);
+
+        auto result = m_zoneSystem->remove_zones(cx - 2, cy - 2, 5, 5, 0);
+        SDL_Log("Removed %u zones at (%d,%d), demolition requested: %u",
+                result.removed_count, cx, cy, result.demolition_requested_count);
+    }
+}
+
+void Application::renderZoneBuildingOverlay(SDL_GPUCommandBuffer* cmdBuffer, SDL_GPUTexture* swapchain) {
+    if (!m_zoneBuildingInitialized || !m_zoneSystem) return;
+
+    SDL_GPUDevice* device = m_gpuDevice->getHandle();
+
+    // Build overlay vertex data
+    // Vertex format: x, y, z, r, g, b, a (7 floats)
+    float* mapped = static_cast<float*>(
+        SDL_MapGPUTransferBuffer(device, m_overlayTransferBuffer, true)
+    );
+    if (!mapped) return;
+
+    uint32_t vertexIndex = 0;
+    const float ELEV_SCALE = terrain::ELEVATION_HEIGHT;
+    const float ZONE_LIFT = 0.15f;  // Lift zone lines above terrain
+
+    // Helper lambda to emit a line segment
+    auto emitLine = [&](float x0, float y0, float z0,
+                        float x1, float y1, float z1,
+                        float r, float g, float b, float a) {
+        if (vertexIndex + 2 > MAX_OVERLAY_VERTICES) return;
+        uint32_t base = vertexIndex * 7;
+        mapped[base + 0] = x0; mapped[base + 1] = y0; mapped[base + 2] = z0;
+        mapped[base + 3] = r;  mapped[base + 4] = g;  mapped[base + 5] = b; mapped[base + 6] = a;
+        base += 7;
+        mapped[base + 0] = x1; mapped[base + 1] = y1; mapped[base + 2] = z1;
+        mapped[base + 3] = r;  mapped[base + 4] = g;  mapped[base + 5] = b; mapped[base + 6] = a;
+        vertexIndex += 2;
+    };
+
+    // Get elevation at grid position (clamped)
+    auto getElevY = [&](int32_t x, int32_t z) -> float {
+        if (m_terrainInitialized) {
+            int32_t sx = std::max<int32_t>(0, std::min<int32_t>(x, m_terrainGrid.width - 1));
+            int32_t sz = std::max<int32_t>(0, std::min<int32_t>(z, m_terrainGrid.height - 1));
+            return static_cast<float>(m_terrainGrid.at(sx, sz).getElevation()) * ELEV_SCALE + ZONE_LIFT;
+        }
+        return ZONE_LIFT;
+    };
+
+    // Zone overlay colors
+    const float zoneColors[3][4] = {
+        {0.2f, 0.9f, 0.3f, 0.9f},  // Habitation = green
+        {0.3f, 0.5f, 0.95f, 0.9f}, // Exchange = blue
+        {0.95f, 0.55f, 0.1f, 0.9f} // Fabrication = orange
+    };
+
+    // Render zone cells as colored rectangles
+    const auto& zoneGrid = m_zoneSystem->get_grid();
+    uint16_t gridW = zoneGrid.getWidth();
+    uint16_t gridH = zoneGrid.getHeight();
+
+    // Only render zones near the camera focus (performance)
+    int32_t focusX = static_cast<int32_t>(m_demoCamera.focus_point.x);
+    int32_t focusZ = static_cast<int32_t>(m_demoCamera.focus_point.z);
+    int32_t viewRadius = static_cast<int32_t>(m_demoCamera.distance * 0.8f);
+
+    int32_t minX = std::max<int32_t>(0, focusX - viewRadius);
+    int32_t maxX = std::min<int32_t>(gridW, focusX + viewRadius);
+    int32_t minZ = std::max<int32_t>(0, focusZ - viewRadius);
+    int32_t maxZ = std::min<int32_t>(gridH, focusZ + viewRadius);
+
+    for (int32_t z = minZ; z < maxZ; ++z) {
+        for (int32_t x = minX; x < maxX; ++x) {
+            if (!zoneGrid.has_zone_at(x, z)) continue;
+
+            zone::ZoneType type;
+            if (!m_zoneSystem->get_zone_type(x, z, type)) continue;
+
+            uint8_t typeIdx = static_cast<uint8_t>(type);
+            if (typeIdx >= 3) continue;
+
+            float r = zoneColors[typeIdx][0];
+            float g = zoneColors[typeIdx][1];
+            float b = zoneColors[typeIdx][2];
+            float a = zoneColors[typeIdx][3];
+
+            float fx = static_cast<float>(x);
+            float fz = static_cast<float>(z);
+            float y = getElevY(x, z);
+
+            // Draw zone cell rectangle (4 line segments)
+            emitLine(fx, y, fz, fx + 1.0f, y, fz, r, g, b, a);
+            emitLine(fx + 1.0f, y, fz, fx + 1.0f, y, fz + 1.0f, r, g, b, a);
+            emitLine(fx + 1.0f, y, fz + 1.0f, fx, y, fz + 1.0f, r, g, b, a);
+            emitLine(fx, y, fz + 1.0f, fx, y, fz, r, g, b, a);
+        }
+    }
+
+    // Building wireframe colors by state
+    const float buildingColors[5][4] = {
+        {0.0f, 0.8f, 1.0f, 1.0f},  // Materializing = cyan
+        {1.0f, 1.0f, 1.0f, 1.0f},  // Active = white
+        {1.0f, 0.8f, 0.0f, 1.0f},  // Abandoned = yellow
+        {1.0f, 0.2f, 0.2f, 1.0f},  // Derelict = red
+        {0.5f, 0.5f, 0.5f, 0.7f},  // Deconstructed = gray
+    };
+
+    // Render building wireframe boxes
+    if (m_buildingSystem) {
+        const auto& entities = m_buildingSystem->get_factory().get_entities();
+        for (const auto& entity : entities) {
+            uint8_t stateIdx = entity.building.state;
+            if (stateIdx >= 5) continue;
+
+            float r = buildingColors[stateIdx][0];
+            float g = buildingColors[stateIdx][1];
+            float b = buildingColors[stateIdx][2];
+            float a = buildingColors[stateIdx][3];
+
+            float bx = static_cast<float>(entity.grid_x);
+            float bz = static_cast<float>(entity.grid_y);
+            float bw = static_cast<float>(entity.building.footprint_w);
+            float bh = static_cast<float>(entity.building.footprint_h);
+            float by = getElevY(entity.grid_x, entity.grid_y);
+
+            // Building height based on level (1-5)
+            float buildingHeight = 1.0f + static_cast<float>(entity.building.level) * 0.8f;
+
+            // If materializing, scale height by construction progress
+            if (entity.building.state == static_cast<uint8_t>(building::BuildingState::Materializing)
+                && entity.has_construction) {
+                float progress = static_cast<float>(entity.construction.ticks_elapsed)
+                               / static_cast<float>(std::max<uint16_t>(entity.construction.ticks_total, 1));
+                buildingHeight *= progress;
+            }
+
+            float topY = by + buildingHeight;
+
+            // Bottom rectangle
+            emitLine(bx, by, bz, bx + bw, by, bz, r, g, b, a);
+            emitLine(bx + bw, by, bz, bx + bw, by, bz + bh, r, g, b, a);
+            emitLine(bx + bw, by, bz + bh, bx, by, bz + bh, r, g, b, a);
+            emitLine(bx, by, bz + bh, bx, by, bz, r, g, b, a);
+
+            // Top rectangle
+            emitLine(bx, topY, bz, bx + bw, topY, bz, r, g, b, a);
+            emitLine(bx + bw, topY, bz, bx + bw, topY, bz + bh, r, g, b, a);
+            emitLine(bx + bw, topY, bz + bh, bx, topY, bz + bh, r, g, b, a);
+            emitLine(bx, topY, bz + bh, bx, topY, bz, r, g, b, a);
+
+            // Vertical edges
+            emitLine(bx, by, bz, bx, topY, bz, r, g, b, a);
+            emitLine(bx + bw, by, bz, bx + bw, topY, bz, r, g, b, a);
+            emitLine(bx + bw, by, bz + bh, bx + bw, topY, bz + bh, r, g, b, a);
+            emitLine(bx, by, bz + bh, bx, topY, bz + bh, r, g, b, a);
+        }
+    }
+
+    // Draw cursor crosshair at camera focus (shows where zones will be placed)
+    if (m_zoneMode > 0) {
+        float cx = m_demoCamera.focus_point.x;
+        float cz = m_demoCamera.focus_point.z;
+        float cy = getElevY(static_cast<int32_t>(cx), static_cast<int32_t>(cz)) + 0.3f;
+        float crossSize = 3.0f;
+
+        // White crosshair
+        emitLine(cx - crossSize, cy, cz, cx + crossSize, cy, cz, 1.0f, 1.0f, 1.0f, 1.0f);
+        emitLine(cx, cy, cz - crossSize, cx, cy, cz + crossSize, 1.0f, 1.0f, 1.0f, 1.0f);
+
+        // Zone placement preview (5x5 outline)
+        float px = std::floor(cx) - 2.0f;
+        float pz = std::floor(cz) - 2.0f;
+        float py = cy;
+        uint8_t typeIdx = static_cast<uint8_t>(m_zoneMode - 1);
+        float pr = zoneColors[typeIdx][0];
+        float pg = zoneColors[typeIdx][1];
+        float pb = zoneColors[typeIdx][2];
+
+        emitLine(px, py, pz, px + 5.0f, py, pz, pr, pg, pb, 0.6f);
+        emitLine(px + 5.0f, py, pz, px + 5.0f, py, pz + 5.0f, pr, pg, pb, 0.6f);
+        emitLine(px + 5.0f, py, pz + 5.0f, px, py, pz + 5.0f, pr, pg, pb, 0.6f);
+        emitLine(px, py, pz + 5.0f, px, py, pz, pr, pg, pb, 0.6f);
+    }
+
+    m_overlayVertexCount = vertexIndex;
+    SDL_UnmapGPUTransferBuffer(device, m_overlayTransferBuffer);
+
+    if (m_overlayVertexCount == 0) return;
+
+    // Upload vertex data to GPU
+    SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdBuffer);
+
+    SDL_GPUTransferBufferLocation src{};
+    src.transfer_buffer = m_overlayTransferBuffer;
+    src.offset = 0;
+
+    SDL_GPUBufferRegion dst{};
+    dst.buffer = m_overlayVertexBuffer;
+    dst.offset = 0;
+    dst.size = m_overlayVertexCount * sizeof(float) * 7;
+
+    SDL_UploadToGPUBuffer(copyPass, &src, &dst, false);
+    SDL_EndGPUCopyPass(copyPass);
+
+    // Calculate viewProjection matrix (same as terrain camera)
+    float pitchRad = glm::radians(m_demoCamera.pitch);
+    float yawRad = glm::radians(m_demoCamera.yaw);
+
+    glm::vec3 offset;
+    offset.x = m_demoCamera.distance * cos(pitchRad) * sin(yawRad);
+    offset.y = m_demoCamera.distance * sin(pitchRad);
+    offset.z = m_demoCamera.distance * cos(pitchRad) * cos(yawRad);
+
+    glm::vec3 cameraPos = m_demoCamera.focus_point + offset;
+    glm::vec3 target = m_demoCamera.focus_point;
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::mat4 view = glm::lookAt(cameraPos, target, up);
+
+    float aspectRatio = static_cast<float>(m_window->getWidth()) /
+                        static_cast<float>(m_window->getHeight());
+    glm::mat4 projection = glm::perspectiveRH_ZO(
+        glm::radians(45.0f),
+        aspectRatio,
+        0.1f,
+        1000.0f
+    );
+
+    glm::mat4 viewProjection = projection * view;
+
+    // Begin overlay render pass (LOAD existing color, no depth)
+    SDL_GPUColorTargetInfo colorTargetInfo = {};
+    colorTargetInfo.texture = swapchain;
+    colorTargetInfo.load_op = SDL_GPU_LOADOP_LOAD;
+    colorTargetInfo.store_op = SDL_GPU_STOREOP_STORE;
+
+    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(cmdBuffer, &colorTargetInfo, 1, nullptr);
+
+    SDL_BindGPUGraphicsPipeline(renderPass, m_overlayPipeline);
+
+    SDL_GPUBufferBinding vertexBinding{};
+    vertexBinding.buffer = m_overlayVertexBuffer;
+    vertexBinding.offset = 0;
+    SDL_BindGPUVertexBuffers(renderPass, 0, &vertexBinding, 1);
+
+    SDL_PushGPUVertexUniformData(cmdBuffer, 0, glm::value_ptr(viewProjection), sizeof(glm::mat4));
+
+    SDL_DrawGPUPrimitives(renderPass, m_overlayVertexCount, 1, 0, 0);
+
+    SDL_EndGPURenderPass(renderPass);
+}
+
+void Application::cleanupZoneBuilding() {
+    if (!m_gpuDevice) return;
+
+    SDL_GPUDevice* device = m_gpuDevice->getHandle();
+    if (!device) return;
+
+    SDL_WaitForGPUIdle(device);
+
+    if (m_overlayPipeline) {
+        SDL_ReleaseGPUGraphicsPipeline(device, m_overlayPipeline);
+        m_overlayPipeline = nullptr;
+    }
+
+    if (m_overlayVertexBuffer) {
+        SDL_ReleaseGPUBuffer(device, m_overlayVertexBuffer);
+        m_overlayVertexBuffer = nullptr;
+    }
+
+    if (m_overlayTransferBuffer) {
+        SDL_ReleaseGPUTransferBuffer(device, m_overlayTransferBuffer);
+        m_overlayTransferBuffer = nullptr;
+    }
+
+    if (m_overlayVertShader) {
+        SDL_ReleaseGPUShader(device, m_overlayVertShader);
+        m_overlayVertShader = nullptr;
+    }
+
+    if (m_overlayFragShader) {
+        SDL_ReleaseGPUShader(device, m_overlayFragShader);
+        m_overlayFragShader = nullptr;
+    }
+
+    m_buildingSystem.reset();
+    m_zoneSystem.reset();
+    m_zoneBuildingInitialized = false;
 }
 
 } // namespace sims3000

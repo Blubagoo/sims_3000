@@ -455,10 +455,19 @@ queue:
     sa_verified_at: "2026-02-07T20:30:00Z"
     notes: "SA PASS - Full pipeline: zone->spawn->construct->active->demolish->debris->cleared, 8 tests"
 
+  # Wave 11: Demo Integration (added post-review)
+  - id: "4-049"
+    title: "Demo Page Integration: Zone/Building Visualization"
+    system: "Application"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T21:00:00Z"
+    notes: "Wire zone/building systems into Application render loop. Zone overlay (colored rectangles), building wireframes (state-colored boxes), keyboard controls (4/5/6=zone type, Z=place, X=demolish). Simulation ticks drive building spawning/construction/lifecycle."
+
 # Summary stats
 stats:
-  total: 48
-  complete: 48
+  total: 49
+  complete: 49
   in_progress: 0
   pending: 0
   failed: 0

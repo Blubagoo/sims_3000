@@ -58,6 +58,13 @@ enum class Action {
     // View modes
     TOGGLE_UNDERGROUND,
 
+    // Zone/Building demo controls (Epic 4)
+    ZONE_HABITATION,    // Select habitation zone mode (1)
+    ZONE_EXCHANGE,      // Select exchange zone mode (2)
+    ZONE_FABRICATION,   // Select fabrication zone mode (3)
+    ZONE_PLACE,         // Place zone at camera focus (Z)
+    ZONE_DEMOLISH,      // Demolish zone at camera focus (X)
+
     // System
     FULLSCREEN,
     QUIT,

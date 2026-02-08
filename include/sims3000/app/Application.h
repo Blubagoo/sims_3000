@@ -27,6 +27,9 @@
 #include "sims3000/terrain/TerrainChunk.h"
 #include "sims3000/terrain/TerrainChunkMeshGenerator.h"
 #include "sims3000/terrain/TerrainVertex.h"
+#include "sims3000/zone/ZoneSystem.h"
+#include "sims3000/building/BuildingSystem.h"
+#include "sims3000/building/ForwardDependencyStubs.h"
 
 #include <memory>
 #include <string>
@@ -282,6 +285,36 @@ private:
     SDL_GPUShader* m_terrainVertShader = nullptr;
     SDL_GPUShader* m_terrainFragShader = nullptr;
     bool m_terrainInitialized = false;
+
+    // Zone/Building demo integration (Epic 4)
+    bool initZoneBuilding();
+    void tickZoneBuilding();
+    void handleZoneBuildingInput();
+    void renderZoneBuildingOverlay(SDL_GPUCommandBuffer* cmdBuffer, SDL_GPUTexture* swapchain);
+    void cleanupZoneBuilding();
+
+    std::unique_ptr<zone::ZoneSystem> m_zoneSystem;
+    std::unique_ptr<building::BuildingSystem> m_buildingSystem;
+    building::StubTransportProvider m_stubTransport;
+    building::StubEnergyProvider m_stubEnergy;
+    building::StubFluidProvider m_stubFluid;
+    building::StubLandValueProvider m_stubLandValue;
+    building::StubDemandProvider m_stubDemand;
+    building::StubCreditProvider m_stubCredits;
+
+    // Overlay rendering
+    SDL_GPUGraphicsPipeline* m_overlayPipeline = nullptr;
+    SDL_GPUShader* m_overlayVertShader = nullptr;
+    SDL_GPUShader* m_overlayFragShader = nullptr;
+    SDL_GPUBuffer* m_overlayVertexBuffer = nullptr;
+    SDL_GPUTransferBuffer* m_overlayTransferBuffer = nullptr;
+    uint32_t m_overlayVertexCount = 0;
+    static constexpr uint32_t MAX_OVERLAY_VERTICES = 65536;
+    bool m_zoneBuildingInitialized = false;
+
+    // Zone placement mode: 0=none, 1=hab, 2=exch, 3=fab
+    int m_zoneMode = 0;
+    uint32_t m_zoneBuildingTickCounter = 0;
 };
 
 } // namespace sims3000
