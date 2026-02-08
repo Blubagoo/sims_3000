@@ -161,8 +161,9 @@ int Application::run() {
     m_running = true;
     m_lastFrameTime = SDL_GetPerformanceCounter();
 
-    // Enter initial state
-    transitionState(m_serverMode ? AppState::Playing : AppState::Menu);
+    // Enter initial state — always start Playing so local simulation ticks run
+    // (server connection syncs separately)
+    transitionState(AppState::Playing);
 
     SDL_Log("Entering main loop");
 
@@ -360,10 +361,8 @@ void Application::onStateExit(AppState state) {
 void Application::processEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-        // Let input system handle first
-        if (m_input->processEvent(event)) {
-            continue;
-        }
+        // Let input system update its internal state
+        m_input->processEvent(event);
 
         switch (event.type) {
             case SDL_EVENT_QUIT:
@@ -1002,6 +1001,13 @@ void Application::updateDemoCamera(float deltaTime) {
         m_demoCamera.distance -= mouse.wheelY * 10.0f;  // Scroll up = zoom in
     }
 
+    // Right-click orbit: hold right mouse button and drag to orbit
+    if (m_input->isMouseButtonDown(MouseButton::Right)) {
+        const float orbitSensitivity = 0.3f;
+        m_demoCamera.yaw += mouse.deltaX * orbitSensitivity;
+        m_demoCamera.pitch -= mouse.deltaY * orbitSensitivity;
+    }
+
     // Apply constraints
     m_demoCamera.applyConstraints();
 }
@@ -1603,6 +1609,9 @@ bool Application::initZoneBuilding() {
     m_buildingSystem->set_land_value_provider(&m_stubLandValue);
     m_buildingSystem->set_demand_provider(&m_stubDemand);
     m_buildingSystem->set_credit_provider(&m_stubCredits);
+
+    // Wire demand provider to zone system so spawn checker sees positive demand
+    m_zoneSystem->set_external_demand_provider(&m_stubDemand);
 
     // Create shader compiler if not already created
     if (!m_shaderCompiler) {

@@ -362,10 +362,6 @@ PSOutput main(PSInput input)
 {
     PSOutput output;
 
-    // DEBUG: Output bright magenta to test if fragment shader runs
-    output.color = float4(1.0, 0.0, 1.0, 1.0);
-    return output;
-
     // Get terrain type (clamped to valid range)
     uint terrainType = min(input.terrainType, 9u);
 
