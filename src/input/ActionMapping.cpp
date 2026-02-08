@@ -110,6 +110,15 @@ void ActionMapping::resetToDefaults() {
     bind(Action::ZONE_PLACE, SDL_SCANCODE_Z);
     bind(Action::ZONE_DEMOLISH, SDL_SCANCODE_X);
 
+    // Energy demo controls (Epic 5)
+    bind(Action::ENERGY_NEXUS_CARBON, SDL_SCANCODE_7);
+    bind(Action::ENERGY_NEXUS_WIND, SDL_SCANCODE_8);
+    bind(Action::ENERGY_NEXUS_SOLAR, SDL_SCANCODE_9);
+    bind(Action::ENERGY_CONDUIT, SDL_SCANCODE_0);
+    bind(Action::ENERGY_PLACE, SDL_SCANCODE_C);
+    bind(Action::ENERGY_REMOVE, SDL_SCANCODE_V);
+    bind(Action::ENERGY_OVERLAY, SDL_SCANCODE_G);
+
     // System
     bind(Action::FULLSCREEN, SDL_SCANCODE_F11);
     bind(Action::QUIT, SDL_SCANCODE_ESCAPE);
@@ -151,6 +160,13 @@ const char* ActionMapping::getActionName(Action action) {
         case Action::ZONE_FABRICATION: return "Zone Fabrication";
         case Action::ZONE_PLACE: return "Zone Place";
         case Action::ZONE_DEMOLISH: return "Zone Demolish";
+        case Action::ENERGY_NEXUS_CARBON: return "Energy Nexus Carbon";
+        case Action::ENERGY_NEXUS_WIND: return "Energy Nexus Wind";
+        case Action::ENERGY_NEXUS_SOLAR: return "Energy Nexus Solar";
+        case Action::ENERGY_CONDUIT: return "Energy Conduit";
+        case Action::ENERGY_PLACE: return "Energy Place";
+        case Action::ENERGY_REMOVE: return "Energy Remove";
+        case Action::ENERGY_OVERLAY: return "Energy Overlay";
         case Action::FULLSCREEN:   return "Fullscreen";
         case Action::QUIT:         return "Quit";
         default:                   return "Unknown";

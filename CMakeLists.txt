@@ -453,6 +453,12 @@ set(SIMS3000_SOURCES
     src/zone/ZoneSerialization.cpp
     src/zone/ZoneNetworkMessages.cpp
     src/zone/ZoneServerHandler.cpp
+    src/energy/CoverageGrid.cpp
+    src/energy/EnergyRequirements.cpp
+    src/energy/EnergyPriorities.cpp
+    src/energy/NexusTypeConfig.cpp
+    src/energy/EnergySystem.cpp
+    src/energy/EnergySerialization.cpp
 )
 
 # Define header files (for IDE integration)
@@ -595,6 +601,18 @@ set(SIMS3000_HEADERS
     include/sims3000/building/BuildingTypes.h
     include/sims3000/building/BuildingComponents.h
     include/sims3000/building/BuildingGrid.h
+    include/sims3000/energy/EnergyEnums.h
+    include/sims3000/energy/EnergyConduitComponent.h
+    include/sims3000/energy/CoverageGrid.h
+    include/sims3000/energy/EnergyRequirements.h
+    include/sims3000/energy/EnergyPriorities.h
+    include/sims3000/energy/EnergyComponent.h
+    include/sims3000/energy/EnergyProducerComponent.h
+    include/sims3000/energy/PerPlayerEnergyPool.h
+    include/sims3000/energy/EnergyEvents.h
+    include/sims3000/energy/NexusTypeConfig.h
+    include/sims3000/energy/EnergySystem.h
+    include/sims3000/energy/EnergySerialization.h
 )
 
 # Create executable

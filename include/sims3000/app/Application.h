@@ -30,6 +30,7 @@
 #include "sims3000/zone/ZoneSystem.h"
 #include "sims3000/building/BuildingSystem.h"
 #include "sims3000/building/ForwardDependencyStubs.h"
+#include "sims3000/energy/EnergySystem.h"
 
 #include <memory>
 #include <string>
@@ -315,6 +316,17 @@ private:
     // Zone placement mode: 0=none, 1=hab, 2=exch, 3=fab
     int m_zoneMode = 0;
     uint32_t m_zoneBuildingTickCounter = 0;
+
+    // Energy demo integration (Epic 5)
+    bool initEnergy();
+    void tickEnergy();
+    void handleEnergyInput();
+    void cleanupEnergy();
+
+    std::unique_ptr<energy::EnergySystem> m_energySystem;
+    int m_energyMode = 0;  // 0=none, 1=carbon, 2=wind, 3=solar, 4=conduit
+    bool m_energyOverlayEnabled = true;
+    uint32_t m_energyTickLogCounter = 0;
 };
 
 } // namespace sims3000

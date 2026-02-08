@@ -12,6 +12,9 @@
 #include "sims3000/terrain/WaterDistanceField.h"
 #include "sims3000/terrain/TerrainTypeInfo.h"
 #include "sims3000/terrain/TerrainChunk.h"
+#include "sims3000/energy/EnergyConduitComponent.h"
+#include "sims3000/energy/EnergyProducerComponent.h"
+#include "sims3000/energy/EnergyEnums.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_log.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -107,6 +110,11 @@ Application::Application(const ApplicationConfig& config)
         // Initialize zone/building demo (Epic 4)
         if (!initZoneBuilding()) {
             SDL_Log("Warning: Zone/building demo failed to initialize");
+        }
+
+        // Initialize energy demo (Epic 5)
+        if (!initEnergy()) {
+            SDL_Log("Warning: Energy demo failed to initialize");
         }
     }
 
@@ -394,6 +402,8 @@ void Application::processEvents() {
                 }
                 // Zone/Building demo input (Epic 4)
                 handleZoneBuildingInput();
+                // Energy demo input (Epic 5)
+                handleEnergyInput();
                 break;
 
             default:
@@ -421,6 +431,9 @@ void Application::updateSimulation() {
     for (int i = 0; i < tickCount; ++i) {
         // Run all registered systems
         m_systems->tick(m_clock);
+
+        // Tick energy system (Epic 5 demo) - before zones/buildings
+        tickEnergy();
 
         // Tick zone/building systems (Epic 4 demo)
         tickZoneBuilding();
@@ -516,6 +529,9 @@ void Application::shutdown() {
     if (m_assets) {
         m_assets->clearAll();
     }
+
+    // Cleanup energy resources
+    cleanupEnergy();
 
     // Cleanup zone/building resources
     cleanupZoneBuilding();
@@ -1941,6 +1957,120 @@ void Application::renderZoneBuildingOverlay(SDL_GPUCommandBuffer* cmdBuffer, SDL
         }
     }
 
+    // =========================================================================
+    // Energy overlay rendering (Epic 5)
+    // =========================================================================
+    if (m_energyOverlayEnabled && m_energySystem) {
+        const float ENERGY_LIFT = ZONE_LIFT + 0.05f;
+
+        // 1. Coverage zones - colored rectangle outlines for covered tiles
+        for (int32_t z = minZ; z < maxZ; ++z) {
+            for (int32_t x = minX; x < maxX; ++x) {
+                uint8_t coverage = m_energySystem->get_coverage_at(
+                    static_cast<uint32_t>(x), static_cast<uint32_t>(z));
+                if (coverage == 0) continue;
+
+                // Coverage color: cyan for player 0 (owner_id=1)
+                float cr = 0.0f, cg = 0.8f, cb = 1.0f, ca = 0.3f;
+                if (coverage == 2) { cr = 1.0f; cg = 0.5f; cb = 0.0f; ca = 0.3f; }
+                else if (coverage == 3) { cr = 0.0f; cg = 1.0f; cb = 0.5f; ca = 0.3f; }
+                else if (coverage == 4) { cr = 1.0f; cg = 0.0f; cb = 1.0f; ca = 0.3f; }
+
+                float fx = static_cast<float>(x);
+                float fz = static_cast<float>(z);
+                float ey = getElevY(x, z) - ZONE_LIFT + ENERGY_LIFT;
+
+                emitLine(fx, ey, fz, fx + 1.0f, ey, fz, cr, cg, cb, ca);
+                emitLine(fx + 1.0f, ey, fz, fx + 1.0f, ey, fz + 1.0f, cr, cg, cb, ca);
+                emitLine(fx + 1.0f, ey, fz + 1.0f, fx, ey, fz + 1.0f, cr, cg, cb, ca);
+                emitLine(fx, ey, fz + 1.0f, fx, ey, fz, cr, cg, cb, ca);
+            }
+        }
+
+        // 2. Conduits - small squares using EnTT registry view
+        if (m_registry) {
+            auto& reg = m_registry->raw();
+            auto conduitView = reg.view<energy::EnergyConduitComponent>();
+            for (auto entity : conduitView) {
+                const auto& conduit = conduitView.get<energy::EnergyConduitComponent>(entity);
+                // Get position from energy system's conduit position count
+                // Since conduit positions are in private maps, we check coverage instead
+                // Use conduit active state for color
+                (void)conduit;  // Conduits rendered via coverage above
+            }
+        }
+
+        // 3. Nexuses - rendered using EnTT registry view of EnergyProducerComponent
+        if (m_registry) {
+            auto& reg = m_registry->raw();
+            auto producerView = reg.view<energy::EnergyProducerComponent>();
+            for (auto entity : producerView) {
+                const auto& producer = producerView.get<energy::EnergyProducerComponent>(entity);
+
+                // Determine color by nexus type
+                float nr, ng, nb, na;
+                energy::NexusType ntype = static_cast<energy::NexusType>(producer.nexus_type);
+                switch (ntype) {
+                    case energy::NexusType::Carbon:
+                    case energy::NexusType::Petrochemical:
+                    case energy::NexusType::Gaseous:
+                        nr = 1.0f; ng = 0.4f; nb = 0.1f; na = 1.0f;  // orange-red
+                        break;
+                    case energy::NexusType::Wind:
+                        nr = 0.5f; ng = 0.8f; nb = 1.0f; na = 1.0f;  // light blue
+                        break;
+                    case energy::NexusType::Solar:
+                        nr = 1.0f; ng = 0.9f; nb = 0.2f; na = 1.0f;  // yellow
+                        break;
+                    default:
+                        nr = 1.0f; ng = 1.0f; nb = 1.0f; na = 1.0f;  // white
+                        break;
+                }
+
+                // We don't have direct grid coords on the component, but we can
+                // try to find the entity in the nexus positions. Since place_nexus
+                // uses specific positions, we'll render at a known location by
+                // searching the registry view. For now, use the entity ID to
+                // look up from the energy system's nexus count.
+                // Alternative: iterate visible tiles and check nexus placement.
+                // Since we placed these ourselves, we know the positions.
+                // Best approach: the producer doesn't store position, so skip
+                // individual nexus rendering here - they show via coverage.
+                (void)nr; (void)ng; (void)nb; (void)na;
+                (void)entity;
+            }
+        }
+    }
+
+    // Energy cursor crosshair (Epic 5)
+    if (m_energyMode > 0) {
+        float cx = m_demoCamera.focus_point.x;
+        float cz = m_demoCamera.focus_point.z;
+        float cy = getElevY(static_cast<int32_t>(cx), static_cast<int32_t>(cz)) + 0.5f;
+        float crossSize = 2.5f;
+
+        // Color by energy mode
+        float er, eg, eb;
+        switch (m_energyMode) {
+            case 1: er = 1.0f; eg = 0.4f; eb = 0.1f; break;  // Carbon: orange-red
+            case 2: er = 0.5f; eg = 0.8f; eb = 1.0f; break;  // Wind: light blue
+            case 3: er = 1.0f; eg = 0.9f; eb = 0.2f; break;  // Solar: yellow
+            case 4: er = 0.0f; eg = 0.8f; eb = 1.0f; break;  // Conduit: cyan
+            default: er = 1.0f; eg = 1.0f; eb = 1.0f; break;
+        }
+
+        // Crosshair
+        emitLine(cx - crossSize, cy, cz, cx + crossSize, cy, cz, er, eg, eb, 1.0f);
+        emitLine(cx, cy, cz - crossSize, cx, cy, cz + crossSize, er, eg, eb, 1.0f);
+
+        // Diamond shape around cursor
+        float ds = 1.5f;
+        emitLine(cx, cy, cz - ds, cx + ds, cy, cz, er, eg, eb, 0.7f);
+        emitLine(cx + ds, cy, cz, cx, cy, cz + ds, er, eg, eb, 0.7f);
+        emitLine(cx, cy, cz + ds, cx - ds, cy, cz, er, eg, eb, 0.7f);
+        emitLine(cx - ds, cy, cz, cx, cy, cz - ds, er, eg, eb, 0.7f);
+    }
+
     // Draw cursor crosshair at camera focus (shows where zones will be placed)
     if (m_zoneMode > 0) {
         float cx = m_demoCamera.focus_point.x;
@@ -2070,6 +2200,162 @@ void Application::cleanupZoneBuilding() {
     m_buildingSystem.reset();
     m_zoneSystem.reset();
     m_zoneBuildingInitialized = false;
+}
+
+// =============================================================================
+// Energy Demo Integration (Epic 5)
+// =============================================================================
+
+bool Application::initEnergy() {
+    SDL_Log("Initializing energy demo...");
+
+    // Create EnergySystem (256x256 to match terrain grid, no terrain queryable)
+    m_energySystem = std::make_unique<energy::EnergySystem>(256, 256, nullptr);
+
+    // Wire ECS registry - must happen after m_registry is created
+    // Note: m_registry is created after initEnergy() in the constructor,
+    // so we defer registry wiring. We'll set it when we first tick.
+
+    SDL_Log("Energy demo initialized");
+    SDL_Log("  7=Carbon  8=Wind  9=Solar  0=Conduit  C=Place  V=Remove  G=Overlay");
+
+    return true;
+}
+
+void Application::tickEnergy() {
+    if (!m_energySystem) return;
+
+    // Deferred registry wiring: set registry on first tick if not already set
+    if (m_registry) {
+        static bool registryWired = false;
+        if (!registryWired) {
+            m_energySystem->set_registry(&m_registry->raw());
+            // Wire real energy provider to building system (replaces stub)
+            if (m_buildingSystem) {
+                m_buildingSystem->set_energy_provider(m_energySystem.get());
+                SDL_Log("Energy system wired to building system (replaced stub)");
+            }
+            registryWired = true;
+        }
+    }
+
+    m_energySystem->tick(0.05f);  // 50ms per tick at 20Hz
+
+    m_energyTickLogCounter++;
+    if (m_energyTickLogCounter % 100 == 0) {
+        const auto& pool = m_energySystem->get_pool(0);
+        const char* stateName = "Unknown";
+        switch (pool.state) {
+            case energy::EnergyPoolState::Healthy:  stateName = "Healthy"; break;
+            case energy::EnergyPoolState::Marginal: stateName = "Marginal"; break;
+            case energy::EnergyPoolState::Deficit:  stateName = "Deficit"; break;
+            case energy::EnergyPoolState::Collapse: stateName = "Collapse"; break;
+        }
+        SDL_Log("Energy Pool [P0]: generated=%u consumed=%u surplus=%d state=%s nexuses=%u conduits=%u",
+                pool.total_generated, pool.total_consumed, pool.surplus,
+                stateName, m_energySystem->get_nexus_count(0),
+                m_energySystem->get_conduit_position_count(0));
+    }
+}
+
+void Application::handleEnergyInput() {
+    if (!m_energySystem || !m_input) return;
+
+    // Energy mode selection
+    if (m_input->isActionPressed(Action::ENERGY_NEXUS_CARBON)) {
+        m_energyMode = (m_energyMode == 1) ? 0 : 1;
+        SDL_Log("Energy mode: %s", m_energyMode == 1 ? "CARBON NEXUS" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::ENERGY_NEXUS_WIND)) {
+        m_energyMode = (m_energyMode == 2) ? 0 : 2;
+        SDL_Log("Energy mode: %s", m_energyMode == 2 ? "WIND NEXUS" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::ENERGY_NEXUS_SOLAR)) {
+        m_energyMode = (m_energyMode == 3) ? 0 : 3;
+        SDL_Log("Energy mode: %s", m_energyMode == 3 ? "SOLAR NEXUS" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::ENERGY_CONDUIT)) {
+        m_energyMode = (m_energyMode == 4) ? 0 : 4;
+        SDL_Log("Energy mode: %s", m_energyMode == 4 ? "CONDUIT" : "NONE");
+    }
+
+    // Toggle energy overlay
+    if (m_input->isActionPressed(Action::ENERGY_OVERLAY)) {
+        m_energyOverlayEnabled = !m_energyOverlayEnabled;
+        SDL_Log("Energy overlay: %s", m_energyOverlayEnabled ? "ON" : "OFF");
+    }
+
+    // Place energy item at camera focus
+    if (m_input->isActionPressed(Action::ENERGY_PLACE) && m_energyMode > 0) {
+        uint32_t cx = static_cast<uint32_t>(std::max(0.0f, m_demoCamera.focus_point.x));
+        uint32_t cz = static_cast<uint32_t>(std::max(0.0f, m_demoCamera.focus_point.z));
+
+        if (m_energyMode >= 1 && m_energyMode <= 3) {
+            // Place nexus
+            energy::NexusType ntype;
+            switch (m_energyMode) {
+                case 1: ntype = energy::NexusType::Carbon; break;
+                case 2: ntype = energy::NexusType::Wind; break;
+                case 3: ntype = energy::NexusType::Solar; break;
+                default: ntype = energy::NexusType::Carbon; break;
+            }
+
+            uint32_t entityId = m_energySystem->place_nexus(ntype, cx, cz, 0);
+            if (entityId != 0) {
+                SDL_Log("Placed %s nexus at (%u, %u) -> entity %u",
+                        energy::nexus_type_to_string(ntype), cx, cz, entityId);
+            } else {
+                SDL_Log("Failed to place nexus at (%u, %u)", cx, cz);
+            }
+        } else if (m_energyMode == 4) {
+            // Place conduit
+            uint32_t entityId = m_energySystem->place_conduit(cx, cz, 0);
+            if (entityId != 0) {
+                SDL_Log("Placed conduit at (%u, %u) -> entity %u", cx, cz, entityId);
+            } else {
+                SDL_Log("Failed to place conduit at (%u, %u)", cx, cz);
+            }
+        }
+    }
+
+    // Remove energy item at camera focus
+    if (m_input->isActionPressed(Action::ENERGY_REMOVE)) {
+        uint32_t cx = static_cast<uint32_t>(std::max(0.0f, m_demoCamera.focus_point.x));
+        uint32_t cz = static_cast<uint32_t>(std::max(0.0f, m_demoCamera.focus_point.z));
+
+        // Try to find and remove a conduit near the focus position
+        // Check the exact position and immediate neighbors
+        bool removed = false;
+        for (int32_t dz = -1; dz <= 1 && !removed; ++dz) {
+            for (int32_t dx = -1; dx <= 1 && !removed; ++dx) {
+                uint32_t rx = static_cast<uint32_t>(std::max(0, static_cast<int32_t>(cx) + dx));
+                uint32_t rz = static_cast<uint32_t>(std::max(0, static_cast<int32_t>(cz) + dz));
+
+                // Check if there's a conduit at this position by trying to validate
+                // We can use the registry to find conduit entities near this position
+                if (m_registry) {
+                    auto& reg = m_registry->raw();
+                    auto conduitView = reg.view<energy::EnergyConduitComponent>();
+                    for (auto entity : conduitView) {
+                        // Try removing at this position - remove_conduit validates internally
+                        uint32_t eid = static_cast<uint32_t>(entity);
+                        if (m_energySystem->remove_conduit(eid, 0, rx, rz)) {
+                            SDL_Log("Removed conduit entity %u at (%u, %u)", eid, rx, rz);
+                            removed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (!removed) {
+            SDL_Log("No conduit found near (%u, %u) to remove", cx, cz);
+        }
+    }
+}
+
+void Application::cleanupEnergy() {
+    m_energySystem.reset();
 }
 
 } // namespace sims3000

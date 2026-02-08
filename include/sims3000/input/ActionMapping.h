@@ -65,6 +65,15 @@ enum class Action {
     ZONE_PLACE,         // Place zone at camera focus (Z)
     ZONE_DEMOLISH,      // Demolish zone at camera focus (X)
 
+    // Energy demo controls (Epic 5)
+    ENERGY_NEXUS_CARBON,    // Select carbon nexus mode (7)
+    ENERGY_NEXUS_WIND,      // Select wind nexus mode (8)
+    ENERGY_NEXUS_SOLAR,     // Select solar nexus mode (9)
+    ENERGY_CONDUIT,         // Select conduit mode (0)
+    ENERGY_PLACE,           // Place energy item at camera focus (C)
+    ENERGY_REMOVE,          // Remove energy item (V)
+    ENERGY_OVERLAY,         // Toggle energy overlay (G)
+
     // System
     FULLSCREEN,
     QUIT,

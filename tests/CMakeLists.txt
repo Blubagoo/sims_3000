@@ -2911,3 +2911,555 @@ target_link_libraries(test_zone_building_pipeline PRIVATE
     GTest::gtest_main
 )
 add_test(NAME ZoneBuildingPipeline COMMAND test_zone_building_pipeline)
+
+# ==============================================================================
+# Epic 5 Tests - Energy Infrastructure
+# ==============================================================================
+
+# Test executable for EnergyEnums (Ticket 5-001)
+add_executable(test_energy_enums
+    energy/test_energy_enums.cpp
+)
+target_include_directories(test_energy_enums PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME EnergyEnums COMMAND test_energy_enums)
+
+# Test executable for EnergyConduitComponent (Ticket 5-004)
+add_executable(test_energy_conduit_component
+    energy/test_energy_conduit_component.cpp
+)
+target_include_directories(test_energy_conduit_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME EnergyConduitComponent COMMAND test_energy_conduit_component)
+
+# Test executable for CoverageGrid (Ticket 5-007)
+add_executable(test_coverage_grid
+    energy/test_coverage_grid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+)
+target_include_directories(test_coverage_grid PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME CoverageGrid COMMAND test_coverage_grid)
+
+# Test executable for EnergyRequirements and EnergyPriorities (Tickets 5-037, 5-038)
+add_executable(test_energy_requirements
+    energy/test_energy_requirements.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergyRequirements.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergyPriorities.cpp
+)
+target_include_directories(test_energy_requirements PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME EnergyRequirements COMMAND test_energy_requirements)
+
+# Test executable for EnergyComponent (Ticket 5-002)
+add_executable(test_energy_component
+    energy/test_energy_component.cpp
+)
+target_include_directories(test_energy_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME EnergyComponent COMMAND test_energy_component)
+
+# Test executable for EnergyProducerComponent (Ticket 5-003)
+add_executable(test_energy_producer_component
+    energy/test_energy_producer_component.cpp
+)
+target_include_directories(test_energy_producer_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME EnergyProducerComponent COMMAND test_energy_producer_component)
+
+# Test executable for PerPlayerEnergyPool (Ticket 5-005)
+add_executable(test_per_player_energy_pool
+    energy/test_per_player_energy_pool.cpp
+)
+target_include_directories(test_per_player_energy_pool PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PerPlayerEnergyPool COMMAND test_per_player_energy_pool)
+
+# Test executable for EnergyEvents (Ticket 5-006)
+add_executable(test_energy_events
+    energy/test_energy_events.cpp
+)
+target_include_directories(test_energy_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME EnergyEvents COMMAND test_energy_events)
+
+# Test executable for NexusTypeConfig (Ticket 5-023)
+add_executable(test_nexus_type_config
+    energy/test_nexus_type_config.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_nexus_type_config PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME NexusTypeConfig COMMAND test_nexus_type_config)
+
+# Test executable for EnergySystem (Ticket 5-008, updated for 5-009/5-010/5-014)
+add_executable(test_energy_system
+    energy/test_energy_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_energy_system PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_energy_system PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME EnergySystem COMMAND test_energy_system)
+
+# Test executable for EnergySerialization (Tickets 5-034, 5-035)
+add_executable(test_energy_serialization
+    energy/test_energy_serialization.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySerialization.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergyPriorities.cpp
+)
+target_include_directories(test_energy_serialization PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME EnergySerialization COMMAND test_energy_serialization)
+
+# Test executable for EnergyProvider (Ticket 5-009)
+add_executable(test_energy_provider
+    energy/test_energy_provider.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_energy_provider PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_energy_provider PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME EnergyProvider COMMAND test_energy_provider)
+
+# Test executable for NexusOutput (Ticket 5-010)
+add_executable(test_nexus_output
+    energy/test_nexus_output.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_nexus_output PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_nexus_output PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME NexusOutput COMMAND test_nexus_output)
+
+# Test executable for CoverageBFS (Ticket 5-014)
+add_executable(test_coverage_bfs
+    energy/test_coverage_bfs.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_coverage_bfs PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_coverage_bfs PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME CoverageBFS COMMAND test_coverage_bfs)
+
+# Test executable for CoverageDirty (Tickets 5-015, 5-016)
+add_executable(test_coverage_dirty
+    energy/test_coverage_dirty.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_coverage_dirty PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_coverage_dirty PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME CoverageDirty COMMAND test_coverage_dirty)
+
+# Test executable for CoverageQueries (Ticket 5-017)
+add_executable(test_coverage_queries
+    energy/test_coverage_queries.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_coverage_queries PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_coverage_queries PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME CoverageQueries COMMAND test_coverage_queries)
+
+# Test executable for ConduitConnection (Ticket 5-028)
+add_executable(test_conduit_connection
+    energy/test_conduit_connection.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_conduit_connection PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_conduit_connection PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME ConduitConnection COMMAND test_conduit_connection)
+
+# Test executable for ConsumerAggregation (Ticket 5-011)
+add_executable(test_consumer_aggregation
+    energy/test_consumer_aggregation.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_consumer_aggregation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_consumer_aggregation PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME ConsumerAggregation COMMAND test_consumer_aggregation)
+
+# Test executable for NexusPlacement (Ticket 5-026)
+add_executable(test_nexus_placement
+    energy/test_nexus_placement.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_nexus_placement PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_nexus_placement PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME NexusPlacement COMMAND test_nexus_placement)
+
+# Test executable for ConduitPlacement (Ticket 5-027)
+add_executable(test_conduit_placement
+    energy/test_conduit_placement.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_conduit_placement PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_conduit_placement PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME ConduitPlacement COMMAND test_conduit_placement)
+
+# Test executable for PoolCalculation (Ticket 5-012)
+add_executable(test_pool_calculation
+    energy/test_pool_calculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_pool_calculation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_pool_calculation PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME PoolCalculation COMMAND test_pool_calculation)
+
+# Test executable for NexusAging (Ticket 5-022)
+add_executable(test_nexus_aging
+    energy/test_nexus_aging.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_nexus_aging PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_nexus_aging PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME NexusAging COMMAND test_nexus_aging)
+
+# Test executable for ConduitRemoval (Ticket 5-029)
+add_executable(test_conduit_removal
+    energy/test_conduit_removal.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_conduit_removal PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_conduit_removal PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME ConduitRemoval COMMAND test_conduit_removal)
+
+# Test executable for PoolStateMachine (Ticket 5-013)
+add_executable(test_pool_state_machine
+    energy/test_pool_state_machine.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_pool_state_machine PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_pool_state_machine PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME PoolStateMachine COMMAND test_pool_state_machine)
+
+# Test executable for EnergyDistribution (Ticket 5-018)
+add_executable(test_energy_distribution
+    energy/test_energy_distribution.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_energy_distribution PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_energy_distribution PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME EnergyDistribution COMMAND test_energy_distribution)
+
+# Test executable for ConduitActiveState (Ticket 5-030)
+add_executable(test_conduit_active_state
+    energy/test_conduit_active_state.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_conduit_active_state PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_conduit_active_state PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME ConduitActiveState COMMAND test_conduit_active_state)
+
+# Test executable for BuildingEventHandler (Ticket 5-032)
+add_executable(test_building_event_handler
+    energy/test_building_event_handler.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_building_event_handler PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_building_event_handler PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME BuildingEventHandler COMMAND test_building_event_handler)
+
+# Test executable for Rationing (Ticket 5-019)
+add_executable(test_rationing
+    energy/test_rationing.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_rationing PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_rationing PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME Rationing COMMAND test_rationing)
+
+# Test executable for StateChangeEvents (Ticket 5-020)
+add_executable(test_state_change_events
+    energy/test_state_change_events.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_state_change_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_state_change_events PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME StateChangeEvents COMMAND test_state_change_events)
+
+# Test executable for PoolTransitionEvents (Ticket 5-021)
+add_executable(test_pool_transition_events
+    energy/test_pool_transition_events.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_pool_transition_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_pool_transition_events PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME PoolTransitionEvents COMMAND test_pool_transition_events)
+
+# Test executable for BuildingDeconHandler (Ticket 5-033)
+add_executable(test_building_decon_handler
+    energy/test_building_decon_handler.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_building_decon_handler PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_building_decon_handler PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME BuildingDeconHandler COMMAND test_building_decon_handler)
+
+# Test executable for TerrainBonus (Ticket 5-024)
+add_executable(test_terrain_bonus
+    energy/test_terrain_bonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_terrain_bonus PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_terrain_bonus PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME TerrainBonus COMMAND test_terrain_bonus)
+
+# Test executable for ContaminationSource (Ticket 5-025)
+add_executable(test_contamination_source
+    energy/test_contamination_source.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_contamination_source PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_contamination_source PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME ContaminationSource COMMAND test_contamination_source)
+
+# Test executable for ConduitPreview (Ticket 5-031)
+add_executable(test_conduit_preview
+    energy/test_conduit_preview.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_conduit_preview PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_conduit_preview PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME ConduitPreview COMMAND test_conduit_preview)
+
+# Test executable for BuildingSystem Integration (Ticket 5-036)
+add_executable(test_building_integration
+    energy/test_building_integration.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSpawnChecker.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSpawningLoop.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/ConstructionProgressSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingStateTransitionSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/DemolitionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/DebrisClearSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/TemplateSelector.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/InitialTemplates.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingTemplateRegistry.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_building_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_building_integration PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME BuildingIntegration COMMAND test_building_integration)
+
+# Test executable for ThresholdBalance (Ticket 5-039)
+add_executable(test_threshold_balance
+    energy/test_threshold_balance.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+)
+target_include_directories(test_threshold_balance PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_threshold_balance PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME ThresholdBalance COMMAND test_threshold_balance)
+
+# Test executable for MultiplayerSync (Ticket 5-042)
+add_executable(test_multiplayer_sync
+    energy/test_multiplayer_sync.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySerialization.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergyPriorities.cpp
+)
+target_include_directories(test_multiplayer_sync PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_multiplayer_sync PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME MultiplayerSync COMMAND test_multiplayer_sync)
+
+# Test executable for EnergyIntegration (Ticket 5-041)
+add_executable(test_energy_integration
+    energy/test_energy_integration.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergyPriorities.cpp
+)
+target_include_directories(test_energy_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_energy_integration PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME EnergyIntegration COMMAND test_energy_integration)
+
+# Test executable for EnergyPerformance (Ticket 5-043)
+add_executable(test_energy_performance
+    energy/test_energy_performance.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/CoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/NexusTypeConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergyPriorities.cpp
+)
+target_include_directories(test_energy_performance PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_energy_performance PRIVATE
+    EnTT::EnTT
+)
+add_test(NAME EnergyPerformance COMMAND test_energy_performance)

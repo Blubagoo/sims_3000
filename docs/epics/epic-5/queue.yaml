@@ -1,0 +1,295 @@
+# Epic 5: Energy Infrastructure - Execution Queue
+# Generated: 2026-02-07
+# Status: IN PROGRESS
+
+waves:
+  # Wave 1: Foundational types (no dependencies)
+  - wave: 1
+    name: "Foundational Data Types & Content"
+    tickets:
+      - id: "5-001"
+        title: "Energy Type Enumerations"
+        status: pending
+        agent: services-engineer
+      - id: "5-004"
+        title: "EnergyConduitComponent Structure"
+        status: pending
+        agent: services-engineer
+      - id: "5-007"
+        title: "CoverageGrid Dense 2D Array"
+        status: pending
+        agent: services-engineer
+      - id: "5-037"
+        title: "Define Energy Requirements Per Structure Template"
+        status: pending
+        agent: game-designer
+      - id: "5-038"
+        title: "Define Priority Assignments Per Structure Type"
+        status: pending
+        agent: game-designer
+
+  # Wave 2: Components that depend on enums
+  - wave: 2
+    name: "Core Components & Events"
+    depends_on: [1]
+    tickets:
+      - id: "5-002"
+        title: "EnergyComponent Structure"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-001", "5-037", "5-038"]
+      - id: "5-003"
+        title: "EnergyProducerComponent Structure"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-001"]
+      - id: "5-005"
+        title: "PerPlayerEnergyPool Structure"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-001"]
+      - id: "5-006"
+        title: "Energy Event Definitions"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-001"]
+      - id: "5-023"
+        title: "Nexus Type Definitions and Base Stats"
+        status: pending
+        agent: game-designer
+        blocked_by: ["5-001"]
+
+  # Wave 3: System skeleton (depends on all components + coverage grid)
+  - wave: 3
+    name: "EnergySystem Skeleton"
+    depends_on: [2]
+    tickets:
+      - id: "5-008"
+        title: "EnergySystem Class Skeleton and ISimulatable"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-002", "5-003", "5-004", "5-005", "5-007"]
+
+  # Wave 4: Core algorithms (depend on skeleton)
+  - wave: 4
+    name: "Core Algorithms"
+    depends_on: [3]
+    tickets:
+      - id: "5-009"
+        title: "IEnergyProvider Interface Implementation"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-008"]
+      - id: "5-010"
+        title: "Nexus Registration and Output Calculation"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-008", "5-003"]
+      - id: "5-014"
+        title: "Coverage Zone BFS Flood-Fill Algorithm"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-007", "5-004", "5-003"]
+      - id: "5-034"
+        title: "Network Serialization for EnergyComponent"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-002"]
+      - id: "5-035"
+        title: "Network Serialization for Pool State"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-005"]
+
+  # Wave 5: Coverage subsystems + consumer registration
+  - wave: 5
+    name: "Coverage Subsystems & Consumer Registration"
+    depends_on: [4]
+    tickets:
+      - id: "5-015"
+        title: "Coverage Dirty Flag Tracking"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-014", "5-006"]
+      - id: "5-016"
+        title: "Ownership Boundary Enforcement in Coverage"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-014"]
+      - id: "5-017"
+        title: "Coverage Queries"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-007", "5-014"]
+      - id: "5-028"
+        title: "Conduit Connection Detection"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-014", "5-004"]
+
+  # Wave 6: Pool calculation + conduit placement + consumer registration
+  - wave: 6
+    name: "Pool Calculation & Conduit Mechanics"
+    depends_on: [5]
+    tickets:
+      - id: "5-011"
+        title: "Consumer Registration and Requirement Aggregation"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-008", "5-002", "5-017"]
+      - id: "5-027"
+        title: "Energy Conduit Placement and Validation"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-004", "5-006", "5-015"]
+      - id: "5-026"
+        title: "Nexus Placement Validation"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-023"]
+
+  # Wave 7: Pool + distribution
+  - wave: 7
+    name: "Pool Calculation & Distribution"
+    depends_on: [6]
+    tickets:
+      - id: "5-012"
+        title: "Pool Calculation (Generation - Consumption = Surplus)"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-010", "5-011", "5-005"]
+      - id: "5-029"
+        title: "Conduit Removal and Coverage Update"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-027", "5-006"]
+      - id: "5-022"
+        title: "Nexus Aging and Efficiency Degradation"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-010", "5-003", "5-006"]
+
+  # Wave 8: State machine + distribution + integration
+  - wave: 8
+    name: "State Machine & Distribution"
+    depends_on: [7]
+    tickets:
+      - id: "5-013"
+        title: "Pool State Machine (Healthy/Marginal/Deficit/Collapse)"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-012", "5-006"]
+      - id: "5-018"
+        title: "Energy Distribution (Powered = In Coverage AND Pool Surplus)"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-012", "5-002", "5-017"]
+      - id: "5-030"
+        title: "Conduit Active State for Rendering"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-028", "5-012"]
+      - id: "5-032"
+        title: "BuildingConstructedEvent Handler (Register Consumer/Producer)"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-010", "5-011"]
+
+  # Wave 9: Rationing + events + integration
+  - wave: 9
+    name: "Rationing & Events"
+    depends_on: [8]
+    tickets:
+      - id: "5-019"
+        title: "Priority-Based Rationing During Deficit"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-018", "5-012"]
+      - id: "5-020"
+        title: "EnergyStateChangedEvent Emission"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-018", "5-006"]
+      - id: "5-021"
+        title: "Pool State Transition Event Emission"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-013", "5-006"]
+      - id: "5-033"
+        title: "BuildingDeconstructedEvent Handler (Unregister)"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-032"]
+      - id: "5-024"
+        title: "Terrain Bonus Efficiency (Ridges for Wind)"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-010", "5-023"]
+      - id: "5-025"
+        title: "IContaminationSource Implementation for Dirty Nexuses"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-003", "5-023"]
+
+  # Wave 10: Full integration + preview
+  - wave: 10
+    name: "Integration & Preview"
+    depends_on: [9]
+    tickets:
+      - id: "5-036"
+        title: "Integration with Epic 4 BuildingSystem (Replace Stub)"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-009"]
+      - id: "5-031"
+        title: "Conduit Placement Preview (Coverage Delta)"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["5-014", "5-017"]
+      - id: "5-039"
+        title: "Balance Deficit/Collapse Thresholds"
+        status: pending
+        agent: game-designer
+        blocked_by: ["5-013"]
+
+  # Wave 11: Testing & Documentation
+  - wave: 11
+    name: "Testing & Documentation"
+    depends_on: [10]
+    tickets:
+      - id: "5-041"
+        title: "EnergySystem Integration Test Suite"
+        status: pending
+        agent: qa-engineer
+        blocked_by: ["all feature tickets"]
+      - id: "5-042"
+        title: "Multiplayer Sync Verification Tests"
+        status: pending
+        agent: qa-engineer
+        blocked_by: ["5-034", "5-035"]
+      - id: "5-043"
+        title: "Performance Benchmark Suite"
+        status: pending
+        agent: qa-engineer
+        blocked_by: ["5-014", "5-012"]
+      - id: "5-044"
+        title: "EnergySystem Technical Documentation"
+        status: pending
+        agent: services-engineer
+        blocked_by: ["all feature tickets"]
+      - id: "5-045"
+        title: "Energy Balance Design Document"
+        status: pending
+        agent: game-designer
+        blocked_by: ["5-023", "5-037", "5-038"]
+      - id: "5-040"
+        title: "Energy Overlay UI Requirements"
+        status: pending
+        agent: game-designer
+        blocked_by: ["5-017"]
+
+progress:
+  total: 48
+  completed: 0
+  in_progress: 0
+  current_wave: 1
