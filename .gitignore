@@ -29,3 +29,8 @@ Thumbs.db
 
 # vcpkg installed dependencies (regenerated from vcpkg.json)
 vcpkg_installed/
+
+# Temporary build/test artifacts
+build_temp_size/
+build_test/
+temp_size_check.cpp
