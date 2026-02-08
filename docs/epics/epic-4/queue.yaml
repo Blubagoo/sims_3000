@@ -1,0 +1,464 @@
+# Epic 4 Execution Queue
+# Generated: 2026-02-07T12:00:00Z
+# Last Updated: 2026-02-07T18:30:00Z
+
+epic: 4
+name: "Zoning & Building System"
+status: complete
+
+# Current position in queue
+current_index: 48
+current_ticket: "COMPLETE"
+
+# Execution queue (dependency-ordered)
+queue:
+  # Wave 1: Foundation types (no dependencies) - PARALLEL
+  - id: "4-001"
+    title: "Zone Type Enumerations and ZoneComponent Structure"
+    system: "ZoneSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T12:30:00Z"
+    sa_verified_at: "2026-02-07T13:00:00Z"
+    notes: "SA PASS - All criteria satisfied, 4-byte static_assert, canonical terms"
+
+  - id: "4-002"
+    title: "Building State and Type Enumerations"
+    system: "BuildingSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T12:30:00Z"
+    sa_verified_at: "2026-02-07T13:00:00Z"
+    notes: "SA PASS - All 5 enums defined, canonical alien terminology"
+
+  - id: "4-005"
+    title: "DebrisComponent Structure"
+    system: "BuildingSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T12:30:00Z"
+    sa_verified_at: "2026-02-07T13:00:00Z"
+    notes: "SA PASS - 8-byte struct, default clear_timer=60, trivially copyable"
+
+  - id: "4-007"
+    title: "BuildingGrid Dense Occupancy Array"
+    system: "BuildingSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T12:30:00Z"
+    sa_verified_at: "2026-02-07T13:00:00Z"
+    notes: "SA PASS - Dense grid, O(1) lookups, multi-sector footprint support"
+
+  # Design specs (no deps) - PARALLEL with Wave 1
+  - id: "4-043"
+    title: "Zone Color Specification and Overlay Design"
+    system: "Shared"
+    agent: "game-designer"
+    status: complete
+    implemented_at: "2026-02-07T12:45:00Z"
+    sa_verified_at: "2026-02-07T13:00:00Z"
+    notes: "SA PASS - Color spec complete, no hue overlap with terrain palette"
+
+  - id: "4-044"
+    title: "Materialization Animation Specification"
+    system: "Shared"
+    agent: "game-designer"
+    status: complete
+    implemented_at: "2026-02-07T12:45:00Z"
+    sa_verified_at: "2026-02-07T13:00:00Z"
+    notes: "SA PASS - 4-phase spec with timing, per-zone-type variation"
+
+  - id: "4-045"
+    title: "Demand Tuning Parameters"
+    system: "ZoneSystem"
+    agent: "game-designer"
+    status: complete
+    implemented_at: "2026-02-07T12:45:00Z"
+    sa_verified_at: "2026-02-07T13:00:00Z"
+    notes: "SA PASS - Full tuning doc with pacing targets"
+
+  - id: "4-046"
+    title: "Building Template Visual Briefs"
+    system: "BuildingSystem"
+    agent: "game-designer"
+    status: complete
+    implemented_at: "2026-02-07T12:45:00Z"
+    sa_verified_at: "2026-02-07T13:00:00Z"
+    notes: "SA PASS - 30 template briefs, canonical alien terminology"
+
+  # Wave 2: Depends on Wave 1 types
+  - id: "4-003"
+    title: "BuildingComponent Structure"
+    system: "BuildingSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T13:30:00Z"
+    sa_verified_at: "2026-02-07T14:00:00Z"
+    notes: "SA PASS - 28-byte struct, all fields per CCR-003, trivially copyable"
+
+  - id: "4-004"
+    title: "ConstructionComponent Structure"
+    system: "BuildingSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T13:30:00Z"
+    sa_verified_at: "2026-02-07T14:00:00Z"
+    notes: "SA PASS - 12-byte struct, 4-phase construction, trivially copyable"
+
+  - id: "4-006"
+    title: "ZoneGrid Sparse Spatial Index"
+    system: "ZoneSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T13:30:00Z"
+    sa_verified_at: "2026-02-07T14:00:00Z"
+    notes: "SA PASS - O(1) lookups, row-major, 128/256/512 sizes"
+
+  - id: "4-009"
+    title: "Zone Event Definitions"
+    system: "ZoneSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T13:30:00Z"
+    sa_verified_at: "2026-02-07T14:00:00Z"
+    notes: "SA PASS - 5 event types, DemolitionRequestEvent per CCR-012"
+
+  - id: "4-010"
+    title: "Building Event Definitions"
+    system: "BuildingSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T13:30:00Z"
+    sa_verified_at: "2026-02-07T14:00:00Z"
+    notes: "SA PASS - 8 event types, all fields per ticket spec"
+
+  - id: "4-019"
+    title: "Forward Dependency Interface Definitions"
+    system: "Shared"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T13:30:00Z"
+    sa_verified_at: "2026-02-07T14:00:00Z"
+    notes: "SA PASS - 6 interfaces, pure abstract, matches interfaces.yaml"
+
+  - id: "4-021"
+    title: "BuildingTemplate Data Structure and Registry"
+    system: "BuildingSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T13:30:00Z"
+    sa_verified_at: "2026-02-07T14:00:00Z"
+    notes: "SA PASS - Template + Registry + PoolKey, pool-based lookup"
+
+  # Wave 3: Depends on Wave 2
+  - id: "4-008"
+    title: "ZoneSystem Class Skeleton and ISimulatable"
+    system: "ZoneSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T15:00:00Z"
+    sa_verified_at: "2026-02-07T15:30:00Z"
+    notes: "SA PASS - ISimulatable, priority=30, zone tracking, 21 tests"
+
+  - id: "4-020"
+    title: "Forward Dependency Stub Implementations"
+    system: "Shared"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T15:00:00Z"
+    sa_verified_at: "2026-02-07T15:30:00Z"
+    notes: "SA PASS - 6 permissive stubs, polymorphic via interfaces, 18 tests"
+
+  - id: "4-022"
+    title: "Template Selection Algorithm"
+    system: "BuildingSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T15:00:00Z"
+    sa_verified_at: "2026-02-07T15:30:00Z"
+    notes: "SA PASS - Weighted random, seeded PRNG, neighbor penalty, 17 tests"
+
+  - id: "4-023"
+    title: "Initial Template Definitions (Content)"
+    system: "BuildingSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T15:00:00Z"
+    sa_verified_at: "2026-02-07T15:30:00Z"
+    notes: "SA PASS - 30 templates, 10 per zone type, 24 tests"
+
+  - id: "4-037"
+    title: "IBuildingTemplateQuery Interface"
+    system: "BuildingSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T15:00:00Z"
+    sa_verified_at: "2026-02-07T15:30:00Z"
+    notes: "SA PASS - Query interface wrapping registry, 14 tests"
+
+  - id: "4-041"
+    title: "Zone Serialization (Save/Load)"
+    system: "ZoneSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T15:00:00Z"
+    sa_verified_at: "2026-02-07T15:30:00Z"
+    notes: "SA PASS - Versioned binary format, round-trip, 16 tests"
+
+  - id: "4-042"
+    title: "Building Serialization (Save/Load)"
+    system: "BuildingSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T15:00:00Z"
+    sa_verified_at: "2026-02-07T15:30:00Z"
+    notes: "SA PASS - Versioned binary format, all components, 17 tests"
+
+  # Wave 4: Zone core operations
+  - id: "4-011"
+    title: "Zone Placement Validation Pipeline"
+    system: "ZoneSystem"
+    agent: "zone-engineer"
+    status: complete
+    implemented_at: "2026-02-07T16:00:00Z"
+    sa_verified_at: "2026-02-07T16:30:00Z"
+    notes: "SA PASS - 5-step validation pipeline, area validation, 23 tests"
+
+  - id: "4-015"
+    title: "Zone State Management"
+    system: "ZoneSystem"
+    agent: "zone-engineer"
+    status: complete
+    implemented_at: "2026-02-07T16:00:00Z"
+    sa_verified_at: "2026-02-07T16:30:00Z"
+    notes: "SA PASS - 4 valid transitions, event emission, counts tracking, 24 tests"
+
+  - id: "4-016"
+    title: "Basic Demand Calculation (Growth Pressure)"
+    system: "ZoneSystem"
+    agent: "zone-engineer"
+    status: complete
+    implemented_at: "2026-02-07T16:00:00Z"
+    sa_verified_at: "2026-02-07T16:30:00Z"
+    notes: "SA PASS - Per-overseer demand, soft cap, clamping, configurable, 21 tests"
+
+  - id: "4-018"
+    title: "Zone Desirability Calculation"
+    system: "ZoneSystem"
+    agent: "zone-engineer"
+    status: complete
+    implemented_at: "2026-02-07T16:00:00Z"
+    sa_verified_at: "2026-02-07T16:30:00Z"
+    notes: "SA PASS - Weighted factors, 10-tick interval, external override, 12 tests"
+
+  - id: "4-024"
+    title: "Building Spawn Condition Checks"
+    system: "BuildingSystem"
+    agent: "building-engineer"
+    status: complete
+    implemented_at: "2026-02-07T16:00:00Z"
+    sa_verified_at: "2026-02-07T16:30:00Z"
+    notes: "SA PASS - 7-condition check, multi-tile footprint, 16 tests"
+
+  # Wave 5: Zone placement + building creation
+  - id: "4-012"
+    title: "Zone Placement Execution"
+    system: "ZoneSystem"
+    agent: "zone-engineer"
+    status: complete
+    implemented_at: "2026-02-07T17:00:00Z"
+    sa_verified_at: "2026-02-07T17:30:00Z"
+    notes: "SA PASS - place_zones(), events, cost config, 26 tests"
+
+  - id: "4-013"
+    title: "De-zoning Implementation"
+    system: "ZoneSystem"
+    agent: "zone-engineer"
+    status: complete
+    implemented_at: "2026-02-07T17:00:00Z"
+    sa_verified_at: "2026-02-07T17:30:00Z"
+    notes: "SA PASS - remove_zones(), DemolitionRequestEvent, finalize, 23 tests"
+
+  - id: "4-025"
+    title: "Building Entity Creation"
+    system: "BuildingSystem"
+    agent: "building-engineer"
+    status: complete
+    implemented_at: "2026-02-07T17:00:00Z"
+    sa_verified_at: "2026-02-07T17:30:00Z"
+    notes: "SA PASS - BuildingFactory, entity creation, grid registration, 12 tests"
+
+  - id: "4-017"
+    title: "Demand Factor Extension Points (IDemandProvider)"
+    system: "Shared"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T17:00:00Z"
+    sa_verified_at: "2026-02-07T17:30:00Z"
+    notes: "SA PASS - External provider injection, fallback to internal, 19 tests"
+
+  # Wave 6: Core systems assembly
+  - id: "4-014"
+    title: "Redesignation (Zone Type/Density Change)"
+    system: "ZoneSystem"
+    agent: "zone-engineer"
+    status: complete
+    implemented_at: "2026-02-07T18:00:00Z"
+    sa_verified_at: "2026-02-07T18:30:00Z"
+    notes: "SA PASS - Empty/occupied redesignation, CCR-005 density change, 14 tests"
+
+  - id: "4-026"
+    title: "Building Spawning Loop"
+    system: "BuildingSystem"
+    agent: "building-engineer"
+    status: complete
+    implemented_at: "2026-02-07T18:00:00Z"
+    sa_verified_at: "2026-02-07T18:30:00Z"
+    notes: "SA PASS - Per-tick scan, stagger, demand-gated, 20 tests"
+
+  - id: "4-027"
+    title: "Construction Progress System"
+    system: "BuildingSystem"
+    agent: "building-engineer"
+    status: complete
+    implemented_at: "2026-02-07T17:00:00Z"
+    sa_verified_at: "2026-02-07T17:30:00Z"
+    notes: "SA PASS - Per-tick progress, phase transitions, completion, 12 tests"
+
+  - id: "4-030"
+    title: "Overseer Demolition Handler"
+    system: "BuildingSystem"
+    agent: "building-engineer"
+    status: complete
+    implemented_at: "2026-02-07T17:00:00Z"
+    sa_verified_at: "2026-02-07T17:30:00Z"
+    notes: "SA PASS - Cost calc, ownership validation, grid cleanup, 17 tests"
+
+  - id: "4-031"
+    title: "Debris Auto-Clear System"
+    system: "BuildingSystem"
+    agent: "building-engineer"
+    status: complete
+    implemented_at: "2026-02-07T17:00:00Z"
+    sa_verified_at: "2026-02-07T17:30:00Z"
+    notes: "SA PASS - Auto-clear timer, manual clear, entity removal, 13 tests"
+
+  # Wave 7: State machine + integration
+  - id: "4-028"
+    title: "Building State Transition System"
+    system: "BuildingSystem"
+    agent: "building-engineer"
+    status: complete
+    implemented_at: "2026-02-07T18:00:00Z"
+    sa_verified_at: "2026-02-07T18:30:00Z"
+    notes: "SA PASS - 5-state lifecycle, grace period, all transitions, 19 tests"
+
+  - id: "4-035"
+    title: "IZoneQueryable Interface and Implementation"
+    system: "ZoneSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T18:00:00Z"
+    sa_verified_at: "2026-02-07T18:30:00Z"
+    notes: "SA PASS - Interface + ZoneSystem implementation, 15 tests"
+
+  # Wave 8: Final assembly
+  - id: "4-029"
+    title: "Abandon Grace Period Logic"
+    system: "BuildingSystem"
+    agent: "building-engineer"
+    status: complete
+    implemented_at: "2026-02-07T19:00:00Z"
+    sa_verified_at: "2026-02-07T19:30:00Z"
+    notes: "SA PASS - Per-service grace periods, counter reset, independent tracking, 13 tests"
+
+  - id: "4-032"
+    title: "Building Upgrade System"
+    system: "BuildingSystem"
+    agent: "building-engineer"
+    status: complete
+    implemented_at: "2026-02-07T19:00:00Z"
+    sa_verified_at: "2026-02-07T19:30:00Z"
+    notes: "SA PASS - Level upgrades, cooldown, demand-gated, capacity scaling, 17 tests"
+
+  - id: "4-034"
+    title: "BuildingSystem Class (ISimulatable Integration)"
+    system: "BuildingSystem"
+    agent: "building-engineer"
+    status: complete
+    implemented_at: "2026-02-07T19:00:00Z"
+    sa_verified_at: "2026-02-07T19:30:00Z"
+    notes: "SA PASS - Priority=40, all subsystems assembled, full pipeline, 16 tests"
+
+  # Wave 9: Post-integration
+  - id: "4-033"
+    title: "Building Downgrade System"
+    system: "BuildingSystem"
+    agent: "building-engineer"
+    status: complete
+    implemented_at: "2026-02-07T20:00:00Z"
+    sa_verified_at: "2026-02-07T20:30:00Z"
+    notes: "SA PASS - Inverse of upgrade, sustained negative demand, min level, 15 tests"
+
+  - id: "4-036"
+    title: "IBuildingQueryable Interface and Implementation"
+    system: "BuildingSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T20:00:00Z"
+    sa_verified_at: "2026-02-07T20:30:00Z"
+    notes: "SA PASS - 10 query methods, BuildingSystem inherits interface, 18 tests"
+
+  - id: "4-038"
+    title: "Zone Network Messages"
+    system: "ZoneSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T18:00:00Z"
+    sa_verified_at: "2026-02-07T18:30:00Z"
+    notes: "SA PASS - 4 message types, versioned serialization, round-trip, 17 tests"
+
+  - id: "4-040"
+    title: "Building Network Messages"
+    system: "BuildingSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T20:00:00Z"
+    sa_verified_at: "2026-02-07T20:30:00Z"
+    notes: "SA PASS - 8 message types, little-endian serialization, round-trip, 16 tests"
+
+  - id: "4-048"
+    title: "ISimulatable Registration for ZoneSystem and BuildingSystem"
+    system: "Shared"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T20:00:00Z"
+    sa_verified_at: "2026-02-07T20:30:00Z"
+    notes: "SA PASS - SimulationPipeline, priority ordering verified (5/10/20/30/40), 11 tests"
+
+  # Wave 10: Final
+  - id: "4-039"
+    title: "Zone Server-Authoritative Validation Pipeline"
+    system: "ZoneSystem"
+    agent: "engine-developer"
+    status: complete
+    implemented_at: "2026-02-07T19:00:00Z"
+    sa_verified_at: "2026-02-07T19:30:00Z"
+    notes: "SA PASS - Server handler, input validation, null safety, 14 tests"
+
+  - id: "4-047"
+    title: "Integration Test: Zone-to-Building Pipeline"
+    system: "Shared"
+    agent: "qa-engineer"
+    status: complete
+    implemented_at: "2026-02-07T20:00:00Z"
+    sa_verified_at: "2026-02-07T20:30:00Z"
+    notes: "SA PASS - Full pipeline: zone->spawn->construct->active->demolish->debris->cleared, 8 tests"
+
+# Summary stats
+stats:
+  total: 48
+  complete: 48
+  in_progress: 0
+  pending: 0
+  failed: 0

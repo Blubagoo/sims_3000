@@ -11,6 +11,7 @@
         "entt",
         "nlohmann-json",
         "readerwriterqueue",
-        "stb"
+        "stb",
+        "gtest"
     ]
 }

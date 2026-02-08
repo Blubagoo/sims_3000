@@ -2165,3 +2165,749 @@ endif()
 
 # TerrainNetworkSync tests do NOT require GPU - pure network/sync logic tests
 add_test(NAME TerrainNetworkSync COMMAND test_terrain_network_sync)
+
+# ==============================================================================
+# Epic 4 Tests - Zoning & Building System
+# ==============================================================================
+
+# Test executable for ZoneTypes (Ticket 4-001)
+add_executable(test_zone_types
+    zone/test_zone_types.cpp
+)
+
+target_include_directories(test_zone_types PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# ZoneTypes tests do NOT require external libraries - pure data structure tests
+add_test(NAME ZoneTypes COMMAND test_zone_types)
+
+# Test executable for BuildingTypes (Ticket 4-002)
+add_executable(test_building_types
+    building/test_building_types.cpp
+)
+
+target_include_directories(test_building_types PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# BuildingTypes tests do NOT require external libraries - pure data structure tests
+add_test(NAME BuildingTypes COMMAND test_building_types)
+
+# Test executable for DebrisComponent (Ticket 4-005)
+add_executable(test_debris_component
+    building/test_debris_component.cpp
+)
+
+target_include_directories(test_debris_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# DebrisComponent tests do NOT require external libraries - pure data structure tests
+add_test(NAME DebrisComponent COMMAND test_debris_component)
+
+# Test executable for BuildingGrid (Ticket 4-007)
+add_executable(test_building_grid
+    building/test_building_grid.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+)
+
+target_include_directories(test_building_grid PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# BuildingGrid tests do NOT require external libraries - pure data structure tests
+add_test(NAME BuildingGrid COMMAND test_building_grid)
+
+# Test executable for BuildingComponent (Ticket 4-003)
+add_executable(test_building_component
+    building/test_building_component.cpp
+)
+
+target_include_directories(test_building_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# BuildingComponent tests do NOT require external libraries - pure data structure tests
+add_test(NAME BuildingComponent COMMAND test_building_component)
+
+# Test executable for ConstructionComponent (Ticket 4-004)
+add_executable(test_construction_component
+    building/test_construction_component.cpp
+)
+
+target_include_directories(test_construction_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# ConstructionComponent tests do NOT require external libraries - pure data structure tests
+add_test(NAME ConstructionComponent COMMAND test_construction_component)
+
+# Test executable for ZoneGrid (Ticket 4-006)
+add_executable(test_zone_grid
+    zone/test_zone_grid.cpp
+)
+
+target_include_directories(test_zone_grid PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# ZoneGrid tests do NOT require external libraries - pure data structure tests
+add_test(NAME ZoneGrid COMMAND test_zone_grid)
+
+# Test executable for ZoneEvents (Ticket 4-009)
+add_executable(test_zone_events
+    zone/test_zone_events.cpp
+)
+
+target_include_directories(test_zone_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# ZoneEvents tests do NOT require external libraries - pure data structure tests
+add_test(NAME ZoneEvents COMMAND test_zone_events)
+
+# Test executable for BuildingEvents (Ticket 4-010)
+add_executable(test_building_events
+    building/test_building_events.cpp
+)
+
+target_include_directories(test_building_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# BuildingEvents tests do NOT require external libraries - pure data structure tests
+add_test(NAME BuildingEvents COMMAND test_building_events)
+
+# Test executable for ForwardDependencyInterfaces (Ticket 4-019)
+add_executable(test_forward_interfaces
+    building/test_forward_interfaces.cpp
+)
+
+target_include_directories(test_forward_interfaces PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Find GTest
+find_package(GTest REQUIRED CONFIG)
+target_link_libraries(test_forward_interfaces PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# ForwardInterfaces tests do NOT require external libraries - pure interface tests
+add_test(NAME ForwardInterfaces COMMAND test_forward_interfaces)
+
+# Test executable for BuildingTemplate (Ticket 4-021)
+add_executable(test_building_template
+    building/test_building_template.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingTemplateRegistry.cpp
+)
+
+target_include_directories(test_building_template PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_building_template PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# BuildingTemplate tests do NOT require external libraries - pure data structure tests
+add_test(NAME BuildingTemplate COMMAND test_building_template)
+
+# Test executable for TemplateSelector (Ticket 4-022)
+add_executable(test_template_selector
+    building/test_template_selector.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/TemplateSelector.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingTemplateRegistry.cpp
+)
+
+target_include_directories(test_template_selector PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_template_selector PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# TemplateSelector tests do NOT require external libraries - pure algorithm tests
+add_test(NAME TemplateSelector COMMAND test_template_selector)
+
+# Test executable for ZoneSerialization (Ticket 4-041)
+add_executable(test_zone_serialization
+    zone/test_zone_serialization.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSerialization.cpp
+)
+
+target_include_directories(test_zone_serialization PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_zone_serialization PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# ZoneSerialization tests do NOT require external libraries - pure serialization tests
+add_test(NAME ZoneSerialization COMMAND test_zone_serialization)
+
+# Test executable for BuildingSerialization (Ticket 4-042)
+add_executable(test_building_serialization
+    building/test_building_serialization.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSerialization.cpp
+)
+
+target_include_directories(test_building_serialization PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_building_serialization PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# BuildingSerialization tests do NOT require external libraries - pure serialization tests
+add_test(NAME BuildingSerialization COMMAND test_building_serialization)
+
+# ==============================================================================
+# Epic 4 Wave 3 Tests
+# ==============================================================================
+
+# Test executable for ZoneSystem (Ticket 4-008)
+add_executable(test_zone_system
+    zone/test_zone_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+
+target_include_directories(test_zone_system PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_zone_system PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# ZoneSystem tests do NOT require external libraries - pure system logic tests
+add_test(NAME ZoneSystem COMMAND test_zone_system)
+
+# Test executable for ForwardDependencyStubs (Ticket 4-020)
+add_executable(test_forward_stubs
+    building/test_forward_stubs.cpp
+)
+
+target_include_directories(test_forward_stubs PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_forward_stubs PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# ForwardStubs tests do NOT require external libraries - pure stub tests
+add_test(NAME ForwardStubs COMMAND test_forward_stubs)
+
+# Test executable for InitialTemplates (Ticket 4-023)
+add_executable(test_initial_templates
+    building/test_initial_templates.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/InitialTemplates.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingTemplateRegistry.cpp
+)
+
+target_include_directories(test_initial_templates PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_initial_templates PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# InitialTemplates tests do NOT require external libraries - pure data tests
+add_test(NAME InitialTemplates COMMAND test_initial_templates)
+
+# Test executable for IBuildingTemplateQuery (Ticket 4-037)
+add_executable(test_building_template_query
+    building/test_building_template_query.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingTemplateRegistry.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/InitialTemplates.cpp
+)
+
+target_include_directories(test_building_template_query PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(test_building_template_query PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# IBuildingTemplateQuery tests do NOT require external libraries - pure interface tests
+add_test(NAME BuildingTemplateQuery COMMAND test_building_template_query)
+
+# ==============================================================================
+# Epic 4 Wave 4 Tests
+# ==============================================================================
+
+# Test executable for ZonePlacementValidation (Ticket 4-011)
+add_executable(test_zone_placement_validation
+    zone/test_zone_placement_validation.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_zone_placement_validation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_zone_placement_validation PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME ZonePlacementValidation COMMAND test_zone_placement_validation)
+
+# Test executable for ZoneStateManagement (Ticket 4-015)
+add_executable(test_zone_state_management
+    zone/test_zone_state_management.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_zone_state_management PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_zone_state_management PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME ZoneStateManagement COMMAND test_zone_state_management)
+
+# Test executable for ZoneDemand (Ticket 4-016)
+add_executable(test_zone_demand
+    zone/test_zone_demand.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_zone_demand PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_zone_demand PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME ZoneDemand COMMAND test_zone_demand)
+
+# Test executable for ZoneDesirability (Ticket 4-018)
+add_executable(test_zone_desirability
+    zone/test_zone_desirability.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_zone_desirability PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_zone_desirability PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME ZoneDesirability COMMAND test_zone_desirability)
+
+# Test executable for BuildingSpawnChecker (Ticket 4-024)
+add_executable(test_building_spawn_checker
+    building/test_building_spawn_checker.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSpawnChecker.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_building_spawn_checker PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_building_spawn_checker PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME BuildingSpawnChecker COMMAND test_building_spawn_checker)
+
+# ==============================================================================
+# Epic 4 Wave 5 Tests
+# ==============================================================================
+
+# Test executable for ZonePlacementExecution (Ticket 4-012)
+add_executable(test_zone_placement_execution
+    zone/test_zone_placement_execution.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_zone_placement_execution PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_zone_placement_execution PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME ZonePlacementExecution COMMAND test_zone_placement_execution)
+
+# Test executable for ZoneDezoning (Ticket 4-013)
+add_executable(test_zone_dezoning
+    zone/test_zone_dezoning.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_zone_dezoning PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_zone_dezoning PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME ZoneDezoning COMMAND test_zone_dezoning)
+
+# Test executable for ZoneDemandProvider (Ticket 4-017)
+add_executable(test_zone_demand_provider
+    zone/test_zone_demand_provider.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_zone_demand_provider PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_zone_demand_provider PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME ZoneDemandProvider COMMAND test_zone_demand_provider)
+
+# ==============================================================================
+# Epic 4 Wave 6 Tests - Building Systems
+# ==============================================================================
+
+# Test executable for BuildingFactory (Ticket 4-025)
+add_executable(test_building_factory
+    building/test_building_factory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_building_factory PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_building_factory PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME BuildingFactory COMMAND test_building_factory)
+
+# Test executable for ConstructionProgressSystem (Ticket 4-027)
+add_executable(test_construction_progress
+    building/test_construction_progress.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/ConstructionProgressSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_construction_progress PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_construction_progress PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME ConstructionProgress COMMAND test_construction_progress)
+
+# Test executable for DemolitionHandler (Ticket 4-030)
+add_executable(test_demolition_handler
+    building/test_demolition_handler.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/DemolitionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_demolition_handler PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_demolition_handler PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME DemolitionHandler COMMAND test_demolition_handler)
+
+# Test executable for DebrisClearSystem (Ticket 4-031)
+add_executable(test_debris_clear_system
+    building/test_debris_clear_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/DebrisClearSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_debris_clear_system PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_debris_clear_system PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME DebrisClearSystem COMMAND test_debris_clear_system)
+
+# ==============================================================================
+# Epic 4 Wave 7 Tests - Zone Redesignation, Queryable, Network Messages
+# ==============================================================================
+
+# Test executable for ZoneRedesignation (Ticket 4-014)
+add_executable(test_zone_redesignation
+    zone/test_zone_redesignation.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_zone_redesignation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_zone_redesignation PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME ZoneRedesignation COMMAND test_zone_redesignation)
+
+# Test executable for ZoneQueryable (Ticket 4-035)
+add_executable(test_zone_queryable
+    zone/test_zone_queryable.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_zone_queryable PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_zone_queryable PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME ZoneQueryable COMMAND test_zone_queryable)
+
+# Test executable for ZoneNetworkMessages (Ticket 4-038)
+add_executable(test_zone_network_messages
+    zone/test_zone_network_messages.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneNetworkMessages.cpp
+)
+target_include_directories(test_zone_network_messages PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_zone_network_messages PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME ZoneNetworkMessages COMMAND test_zone_network_messages)
+
+# ==============================================================================
+# Epic 4 Wave 8 Tests - Building Spawning Loop & State Transitions
+# ==============================================================================
+
+# Test executable for BuildingSpawningLoop (Ticket 4-026)
+add_executable(test_building_spawning_loop
+    building/test_building_spawning_loop.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSpawningLoop.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSpawnChecker.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/TemplateSelector.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingTemplateRegistry.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_building_spawning_loop PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_building_spawning_loop PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME BuildingSpawningLoop COMMAND test_building_spawning_loop)
+
+# Test executable for BuildingStateTransitionSystem (Ticket 4-028)
+add_executable(test_building_state_transitions
+    building/test_building_state_transitions.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingStateTransitionSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_building_state_transitions PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_building_state_transitions PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME BuildingStateTransitions COMMAND test_building_state_transitions)
+
+# ==============================================================================
+# Epic 4 Wave 9 Tests - BuildingSystem Integration
+# ==============================================================================
+
+# Test executable for BuildingSystem (Ticket 4-034)
+add_executable(test_building_system
+    building/test_building_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSpawnChecker.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSpawningLoop.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/ConstructionProgressSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingStateTransitionSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/DemolitionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/DebrisClearSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/TemplateSelector.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/InitialTemplates.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingTemplateRegistry.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_building_system PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_building_system PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME BuildingSystem COMMAND test_building_system)
+
+# ==============================================================================
+# Epic 4 Wave 8 Tests - Grace Period, Upgrade, Server Handler
+# ==============================================================================
+
+# Test executable for AbandonGracePeriod (Ticket 4-029)
+add_executable(test_abandon_grace_period
+    building/test_abandon_grace_period.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingStateTransitionSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_abandon_grace_period PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_abandon_grace_period PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME AbandonGracePeriod COMMAND test_abandon_grace_period)
+
+# Test executable for BuildingUpgradeSystem (Ticket 4-032)
+add_executable(test_building_upgrade
+    building/test_building_upgrade.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingUpgradeSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_building_upgrade PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_building_upgrade PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME BuildingUpgrade COMMAND test_building_upgrade)
+
+# Test executable for ZoneServerHandler (Ticket 4-039)
+add_executable(test_zone_server_handler
+    zone/test_zone_server_handler.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneServerHandler.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_zone_server_handler PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_zone_server_handler PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME ZoneServerHandler COMMAND test_zone_server_handler)
+
+# ==============================================================================
+# Epic 4 Wave 10 Tests - Downgrade, Queryable, SimulationPipeline
+# ==============================================================================
+
+# Test executable for BuildingDowngradeSystem (Ticket 4-033)
+add_executable(test_building_downgrade
+    building/test_building_downgrade.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingDowngradeSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingUpgradeSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_building_downgrade PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_building_downgrade PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME BuildingDowngrade COMMAND test_building_downgrade)
+
+# Test executable for IBuildingQueryable (Ticket 4-036)
+add_executable(test_building_queryable
+    building/test_building_queryable.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSpawnChecker.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSpawningLoop.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/ConstructionProgressSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingStateTransitionSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/DemolitionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/DebrisClearSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/TemplateSelector.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/InitialTemplates.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingTemplateRegistry.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_building_queryable PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_building_queryable PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME BuildingQueryable COMMAND test_building_queryable)
+
+# Test executable for SimulationPipeline (Ticket 4-048)
+add_executable(test_simulation_pipeline
+    sim/test_simulation_pipeline.cpp
+    ${CMAKE_SOURCE_DIR}/src/sim/SimulationPipeline.cpp
+)
+target_include_directories(test_simulation_pipeline PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_simulation_pipeline PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME SimulationPipeline COMMAND test_simulation_pipeline)
+
+# Test executable for BuildingNetworkMessages (Ticket 4-040)
+add_executable(test_building_network_messages
+    building/test_building_network_messages.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingNetworkMessages.cpp
+)
+target_include_directories(test_building_network_messages PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_building_network_messages PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME BuildingNetworkMessages COMMAND test_building_network_messages)
+
+# Test executable for ZoneBuildingPipeline integration (Ticket 4-047)
+add_executable(test_zone_building_pipeline
+    building/test_zone_building_pipeline.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSpawnChecker.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingSpawningLoop.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/ConstructionProgressSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingStateTransitionSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/DemolitionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/DebrisClearSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/TemplateSelector.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/InitialTemplates.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingTemplateRegistry.cpp
+    ${CMAKE_SOURCE_DIR}/src/building/BuildingGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/zone/ZoneSystem.cpp
+)
+target_include_directories(test_zone_building_pipeline PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(test_zone_building_pipeline PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+add_test(NAME ZoneBuildingPipeline COMMAND test_zone_building_pipeline)

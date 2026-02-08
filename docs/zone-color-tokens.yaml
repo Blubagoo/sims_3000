@@ -1,0 +1,514 @@
+# ============================================================================
+# ZONE COLOR TOKENS
+# ============================================================================
+# Color definitions for all zone types, states, and UI elements.
+# These values create the visual language for the zoning system.
+#
+# This document feeds into:
+#   - RenderingSystem: Zone overlay tints, structure glow colors
+#   - UISystem: Zone icons, demand indicators, sector scan (minimap)
+#   - EdgeDetectionPass: Per-zone outline colors
+#
+# Version: 1.0.0
+# Created: 2026-02-07
+# Ticket: 4-043
+# ============================================================================
+
+version: "1.0.0"
+
+# ============================================================================
+# DESIGN PRINCIPLES
+# ============================================================================
+
+design_principles:
+  color_separation:
+    description: |
+      No two zone types share a primary hue. Habitation = cyan (180-190),
+      Exchange = amber (40-50), Fabrication = magenta (320-330). This
+      ensures instant recognition at any zoom level or in colorblind mode.
+
+  consistency:
+    description: |
+      Each zone type maintains its color across all visual contexts:
+      - Zone overlay tints (semi-transparent ground plane)
+      - Structure glow colors (emissive accent)
+      - Sector scan (minimap) icons
+      - UI toolbar icons
+      - Demand indicator bars
+
+  emotional_register:
+    habitation: "Inviting, calm, organic — cyan evokes water/life"
+    exchange: "Prosperous, energetic, warm — amber evokes trade/activity"
+    fabrication: "Powerful, industrial, bold — magenta evokes energy/creation"
+
+# ============================================================================
+# ZONE TYPE BASE COLORS
+# ============================================================================
+
+zone_type_colors:
+
+  # --------------------------------------------------------------------------
+  # HABITATION (Residential equivalent)
+  # --------------------------------------------------------------------------
+  habitation:
+    primary_hue_range: "180-190 (cyan/teal)"
+
+    overlay:
+      base_color: "#00aaaa"           # Teal-cyan
+      rgb: [0, 170, 170]
+      alpha: 0.15                     # 15% opacity for ground overlay
+      description: "Semi-transparent teal wash over designated sectors"
+
+    structure_glow:
+      emissive_color: "#00ffee"       # Bright cyan with slight green
+      rgb: [0, 255, 238]
+      intensity_active: 0.65          # Active structures
+      intensity_materializing: 0.90   # During construction (brighter)
+      description: "Organic cyan glow — inviting, living presence"
+
+    minimap:
+      icon_color: "#00dddd"           # Bright cyan
+      rgb: [0, 221, 221]
+      description: "Sector scan icon color for habitation zones"
+
+    ui:
+      toolbar_icon_color: "#00cccc"   # Cyan icon tint
+      rgb: [0, 204, 204]
+      demand_bar_color: "#00aaaa"     # Demand indicator fill
+      rgb_demand: [0, 170, 170]
+
+  # --------------------------------------------------------------------------
+  # EXCHANGE (Commercial equivalent)
+  # --------------------------------------------------------------------------
+  exchange:
+    primary_hue_range: "40-50 (amber/gold)"
+
+    overlay:
+      base_color: "#ffaa00"           # Amber/gold
+      rgb: [255, 170, 0]
+      alpha: 0.15
+      description: "Semi-transparent amber wash over designated sectors"
+
+    structure_glow:
+      emissive_color: "#ffcc33"       # Bright golden amber
+      rgb: [255, 204, 51]
+      intensity_active: 0.70          # Active structures (slightly brighter than habitation)
+      intensity_materializing: 0.95   # During construction
+      description: "Warm amber glow — outward-facing, prosperous energy"
+
+    minimap:
+      icon_color: "#ffbb00"           # Bright amber
+      rgb: [255, 187, 0]
+      description: "Sector scan icon color for exchange zones"
+
+    ui:
+      toolbar_icon_color: "#ffaa00"   # Amber icon tint
+      rgb: [255, 170, 0]
+      demand_bar_color: "#ffaa00"     # Demand indicator fill
+      rgb_demand: [255, 170, 0]
+
+  # --------------------------------------------------------------------------
+  # FABRICATION (Industrial equivalent)
+  # --------------------------------------------------------------------------
+  fabrication:
+    primary_hue_range: "320-330 (magenta/pink)"
+
+    overlay:
+      base_color: "#ff00aa"           # Magenta
+      rgb: [255, 0, 170]
+      alpha: 0.15
+      description: "Semi-transparent magenta wash over designated sectors"
+
+    structure_glow:
+      emissive_color: "#ff44cc"       # Bright magenta-pink
+      rgb: [255, 68, 204]
+      intensity_active: 0.75          # Active structures (brightest of three types)
+      intensity_materializing: 1.00   # During construction (maximum intensity)
+      description: "Bold magenta glow — industrial power, angular energy"
+
+    minimap:
+      icon_color: "#ff22bb"           # Bright magenta
+      rgb: [255, 34, 187]
+      description: "Sector scan icon color for fabrication zones"
+
+    ui:
+      toolbar_icon_color: "#ff00aa"   # Magenta icon tint
+      rgb: [255, 0, 170]
+      demand_bar_color: "#ff00aa"     # Demand indicator fill
+      rgb_demand: [255, 0, 170]
+
+# ============================================================================
+# ZONE STATE MODIFIERS
+# ============================================================================
+
+zone_state_colors:
+  description: |
+    Zone state affects the visual treatment of the base colors.
+    Designated = full color overlay, Occupied = structure glow only (no overlay),
+    Stalled = dimmed/desaturated + icon indicator.
+
+  designated:
+    description: "Zone overlay visible, no structure present"
+    overlay_alpha: 0.15             # Full overlay visibility
+    overlay_saturation: 1.0         # Full color saturation
+    pulse_behavior: "slow_pulse"
+    pulse_period_seconds: 4.0
+    pulse_range: [0.12, 0.18]       # Alpha oscillates subtly
+    notes: "Gentle pulse suggests 'ready for development'"
+
+  occupied:
+    description: "Structure present, zone overlay hidden"
+    overlay_alpha: 0.0              # Overlay disabled
+    structure_glow_visible: true
+    notes: "Structure glow replaces zone overlay"
+
+  stalled:
+    description: "Zone designated but cannot develop (missing prerequisites)"
+    overlay_alpha: 0.10             # Dimmed overlay
+    overlay_saturation: 0.4         # Heavily desaturated
+    desaturation_method: "luminance blend toward grey"
+    prerequisite_icon: true
+    icon_description: |
+      Semi-transparent icon rendered above stalled zone sector:
+      - Missing energy: lightning bolt icon (amber #ffaa00)
+      - Missing fluid: droplet icon (cyan #00aaaa)
+      - Missing pathway: road icon (white #ffffff)
+      Icon pulses slowly (3 second period) to draw attention
+    notes: "Visual feedback that prerequisites are missing without being alarming"
+
+# ============================================================================
+# BUILDING STATE GLOW MODIFIERS
+# ============================================================================
+
+building_state_glow:
+  description: |
+    Building state affects the glow intensity and behavior.
+    Base emissive_color comes from zone type, but intensity/behavior changes.
+
+  materializing:
+    description: "Structure under construction (4 phases)"
+    intensity: "Per zone type intensity_materializing value (0.90-1.00)"
+    behavior: "brightening"
+    brightening_pattern: |
+      Intensity increases as construction progresses from Foundation to Finalization.
+      Foundation (0-25%): intensity * 0.6
+      Framework (25-50%): intensity * 0.75
+      Exterior (50-75%): intensity * 0.90
+      Finalization (75-100%): intensity * 1.0
+      Completion pulse: brief flash to intensity * 1.2 for 0.3 seconds
+    notes: "Brightest state — construction should be visually exciting"
+
+  active:
+    description: "Structure fully operational"
+    intensity: "Per zone type intensity_active value (0.65-0.75)"
+    behavior: "static or subtle pulse"
+    pulse_period_seconds: 6.0
+    pulse_range_factor: 0.90-1.05   # Gentle 5% intensity variation
+    notes: "Steady, calm glow — the baseline visual state"
+
+  abandoned:
+    description: "Structure losing power/population, grace period active"
+    intensity_factor: 0.50          # 50% of active intensity
+    behavior: "irregular flicker"
+    flicker_pattern: |
+      Random intensity drops (30-70% of base) with 0.5-2.0 second intervals.
+      Creates unstable, failing appearance.
+    saturation_factor: 0.70         # Slightly desaturated
+    notes: "Visual warning that structure is in trouble"
+
+  derelict:
+    description: "Structure fully failed, no longer functional"
+    intensity_factor: 0.15          # 15% of active intensity (barely glowing embers)
+    behavior: "slow irregular pulse"
+    pulse_period_seconds: 8.0
+    pulse_range_factor: 0.10-0.20   # Very dim, occasional flicker
+    saturation_factor: 0.30         # Heavily desaturated (greyish)
+    notes: "Almost dark — ghost of former structure"
+
+  deconstructed:
+    description: "Structure demolished, debris remains"
+    intensity_factor: 0.0           # No glow
+    debris_color: "#3a3a3a"         # Dark grey debris
+    debris_rgb: [58, 58, 58]
+    notes: "Debris has no glow — inert rubble"
+
+# ============================================================================
+# DENSITY-SPECIFIC COLOR VARIATIONS
+# ============================================================================
+
+density_variations:
+  description: |
+    Low density vs. high density structures use the same base zone color
+    but may vary in glow pattern or secondary accents.
+
+  low_density:
+    glow_pattern: "uniform"
+    description: "Single consistent glow across structure"
+    accent_distribution: "sparse"
+    notes: "Simpler structures, single focal point"
+
+  high_density:
+    glow_pattern: "multi_point"
+    description: "Multiple glow points across structure surface"
+    accent_distribution: "dense"
+    accent_variation: |
+      High-density structures may have 2-4 separate glow zones with
+      slightly phase-shifted pulse timings (0.2-0.5 second offsets)
+      to create organic, layered effect.
+    notes: "Complex structures, multiple focal points, more visual energy"
+
+# ============================================================================
+# TERRAIN COLOR PALETTE SEPARATION
+# ============================================================================
+
+terrain_separation:
+  description: |
+    Zone colors must remain distinct from terrain glow colors.
+    This table validates no collisions with terrain-visuals.yaml.
+
+  terrain_hues_reserved:
+    - terrain: substrate
+      hue: "240-270 (deep blue-purple)"
+      zone_conflict: none
+
+    - terrain: ridge
+      hue: "270-285 (purple)"
+      zone_conflict: none
+
+    - terrain: deep_void
+      hue: "200-210 (ocean blue)"
+      zone_conflict: none
+
+    - terrain: flow_channel
+      hue: "180-190 (teal)"
+      zone_conflict: "habitation (cyan/teal)"
+      resolution: "Habitation cyan (#00aaaa) is brighter/more saturated than flow_channel (#00aaaa). Structure glow (#00ffee) is distinct from water teal. Acceptable overlap."
+
+    - terrain: still_basin
+      hue: "210-220 (soft blue-purple)"
+      zone_conflict: none
+
+    - terrain: biolume_grove
+      hue: "150-165 (green-cyan)"
+      zone_conflict: none
+
+    - terrain: prisma_fields
+      hue: "300-320 (magenta)"
+      zone_conflict: "fabrication (magenta)"
+      resolution: "Fabrication magenta (#ff00aa) is less saturated than prisma_fields (#ff00ff). PrismaFields are rare terrain (2-4% of map) with 0.60 intensity. Fabrication structures at 0.75 intensity will be brighter. Acceptable overlap — buildings dominate visually."
+
+    - terrain: spore_flats
+      hue: "80-95 (chartreuse)"
+      zone_conflict: none
+
+    - terrain: blight_mires
+      hue: "70-80 (toxic lime)"
+      zone_conflict: none
+
+    - terrain: ember_crust
+      hue: "15-25 (orange-red)"
+      zone_conflict: none
+
+  validation_summary: |
+    Two minor overlaps identified (habitation/flow_channel, fabrication/prisma_fields).
+    Both resolved by intensity difference and context (buildings always dominate terrain).
+    No critical color collisions.
+
+# ============================================================================
+# SECTOR SCAN (MINIMAP) ICON DESIGN
+# ============================================================================
+
+minimap_icons:
+  description: |
+    Sector scan displays zone presence as colored pixels/icons.
+    Each zone type has a distinct color matching its glow identity.
+
+  icon_style: "filled square"
+  icon_size_pixels: "2x2 per sector at 1:1 scale"
+
+  icon_colors_by_state:
+    designated:
+      habitation: "#00dddd"         # Bright cyan
+      exchange: "#ffbb00"           # Bright amber
+      fabrication: "#ff22bb"        # Bright magenta
+      alpha: 0.80                   # Slightly transparent
+      notes: "Pulsing icons (matches designated overlay pulse)"
+
+    occupied:
+      habitation: "#00ffee"         # Structure glow color
+      exchange: "#ffcc33"           # Structure glow color
+      fabrication: "#ff44cc"        # Structure glow color
+      alpha: 1.00                   # Fully opaque
+      notes: "Solid icons, no pulse"
+
+    stalled:
+      habitation: "#00dddd"         # Base color
+      exchange: "#ffbb00"           # Base color
+      fabrication: "#ff22bb"        # Base color
+      alpha: 0.40                   # Heavily dimmed
+      desaturate: 0.50              # Greyish tint
+      notes: "Dimmed/greyed to match stalled overlay appearance"
+
+# ============================================================================
+# UI TOOLBAR ICON TINTS
+# ============================================================================
+
+toolbar_icons:
+  description: |
+    Zone designation tool icons use base zone colors as tints.
+    Icons are white silhouettes tinted with zone color.
+
+  icon_design:
+    habitation: "Dwelling silhouette (rounded organic shape)"
+    exchange: "Market pod silhouette (outward-facing structure)"
+    fabrication: "Fabricator silhouette (angular industrial form)"
+
+  tint_colors:
+    habitation: "#00cccc"           # Cyan tint
+    exchange: "#ffaa00"             # Amber tint
+    fabrication: "#ff00aa"          # Magenta tint
+
+  selected_state:
+    tint_brightness_boost: 1.3      # 30% brighter when tool is selected
+    border_glow: true
+    border_color: "same as tint"
+    border_width: "2px"
+
+  disabled_state:
+    tint_saturation: 0.2            # Desaturated to grey
+    tint_brightness: 0.5            # Dimmed
+    notes: "Tool disabled when prerequisites not met (e.g., insufficient credits)"
+
+# ============================================================================
+# DEMAND INDICATOR DESIGN
+# ============================================================================
+
+demand_indicators:
+  description: |
+    Zone pressure (demand) indicators in UI use zone colors for fill bars.
+    Positive demand = fill bar, negative demand = empty bar with red tint.
+
+  bar_fill_colors:
+    habitation: "#00aaaa"           # Cyan fill
+    exchange: "#ffaa00"             # Amber fill
+    fabrication: "#ff00aa"          # Magenta fill
+
+  demand_magnitude_to_fill:
+    formula: "fill_percentage = clamp((demand + 100) / 200, 0.0, 1.0)"
+    range: "demand -100 to +100 maps to fill 0% to 100%"
+    zero_demand: "50% fill (neutral)"
+
+  negative_demand_tint:
+    overlay_color: "#ff3333"        # Red tint
+    overlay_alpha: 0.30
+    notes: "Red tint overlays zone color when demand is negative"
+
+  soft_cap_indicator:
+    threshold: 80                   # Demand value
+    visual: "Horizontal line at 80% fill"
+    line_color: "#ffffff"           # White marker
+    line_alpha: 0.60
+    notes: "Shows where diminishing returns begin"
+
+# ============================================================================
+# COLORBLIND ACCESSIBILITY
+# ============================================================================
+
+accessibility:
+  pattern_differentiation:
+    description: |
+      In addition to color, each zone type has unique visual patterns
+      to support colorblind players.
+
+    habitation:
+      pattern: "Organic rounded shapes, smooth curves"
+      icon_shape: "Circle or rounded square"
+      glow_pattern: "Uniform soft glow"
+
+    exchange:
+      pattern: "Outward-facing geometry, asymmetric features"
+      icon_shape: "Diamond or star"
+      glow_pattern: "Multi-point glow with bright edges"
+
+    fabrication:
+      pattern: "Angular hard edges, geometric forms"
+      icon_shape: "Square or hexagon"
+      glow_pattern: "Sharp-edged glow panels"
+
+  color_impairment_modes:
+    description: "Future feature - boost saturation/contrast for specific impairments"
+    notes: "Deferred to accessibility epic"
+
+# ============================================================================
+# SHADER UNIFORM BUFFER LAYOUT
+# ============================================================================
+
+shader_uniforms:
+  description: |
+    Zone color data for shader consumption. Parallel arrays indexed by zone type.
+
+  cbuffer_layout:
+    name: ZoneColors
+    size_bytes: 128
+    contents:
+      - field: overlay_colors
+        type: "vec4[3]"
+        offset: 0
+        size: 48
+        description: "RGB overlay color + alpha per zone type"
+
+      - field: structure_glow_colors
+        type: "vec4[3]"
+        offset: 48
+        size: 48
+        description: "RGB emissive + intensity_active per zone type"
+
+      - field: state_intensity_factors
+        type: "vec4"
+        offset: 96
+        size: 16
+        description: "x=materializing, y=active(1.0), z=abandoned, w=derelict"
+
+      - field: glow_time
+        type: float
+        offset: 112
+        size: 4
+        description: "Global animation time for pulse behaviors"
+
+      - field: padding
+        type: "float[3]"
+        offset: 116
+        size: 12
+        description: "16-byte alignment padding"
+
+# ============================================================================
+# COLOR VALUE SUMMARY TABLE
+# ============================================================================
+
+color_summary:
+  description: "Quick reference for all hex color values"
+
+  zone_overlays:
+    habitation: "#00aaaa"
+    exchange: "#ffaa00"
+    fabrication: "#ff00aa"
+
+  structure_glows:
+    habitation: "#00ffee"
+    exchange: "#ffcc33"
+    fabrication: "#ff44cc"
+
+  minimap_icons:
+    habitation: "#00dddd"
+    exchange: "#ffbb00"
+    fabrication: "#ff22bb"
+
+  ui_toolbar:
+    habitation: "#00cccc"
+    exchange: "#ffaa00"
+    fabrication: "#ff00aa"
+
+  stalled_icon_colors:
+    energy: "#ffaa00"               # Amber lightning bolt
+    fluid: "#00aaaa"                # Cyan droplet
+    pathway: "#ffffff"              # White road icon

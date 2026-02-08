@@ -433,6 +433,8 @@ set(SIMS3000_SOURCES
     src/terrain/TerrainChunkCuller.cpp
     src/terrain/TerrainGridSerializer.cpp
     src/terrain/TerrainNetworkSync.cpp
+    src/building/BuildingGrid.cpp
+    src/building/BuildingTemplateRegistry.cpp
 )
 
 # Define header files (for IDE integration)
@@ -571,6 +573,10 @@ set(SIMS3000_HEADERS
     include/sims3000/terrain/TerrainChunkCuller.h
     include/sims3000/terrain/TerrainGridSerializer.h
     include/sims3000/terrain/TerrainNetworkSync.h
+    include/sims3000/zone/ZoneTypes.h
+    include/sims3000/building/BuildingTypes.h
+    include/sims3000/building/BuildingComponents.h
+    include/sims3000/building/BuildingGrid.h
 )
 
 # Create executable

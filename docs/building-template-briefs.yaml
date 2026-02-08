@@ -1,0 +1,1121 @@
+# ============================================================================
+# BUILDING TEMPLATE VISUAL BRIEFS
+# ============================================================================
+# Visual design briefs for 30 structure templates (5 per zone_type+density).
+# Each brief describes silhouette, glow character, mood, and identity.
+#
+# This document feeds into:
+#   - Art pipeline: 3D model creation (glTF .glb files)
+#   - Procedural generation: Immediate geometry fallback
+#   - BuildingTemplateRegistry: Template data population (ticket 4-023)
+#
+# Version: 1.0.0
+# Created: 2026-02-07
+# Ticket: 4-046
+# ============================================================================
+
+version: "1.0.0"
+
+# ============================================================================
+# DESIGN PRINCIPLES
+# ============================================================================
+
+design_principles:
+  visual_identity:
+    habitation: |
+      Organic, rounded forms. Asymmetric, natural silhouettes. Evokes living
+      growth — dwellings appear grown, not built. Soft curves, cellular patterns,
+      bioluminescent veining. Inviting, warm presence.
+
+    exchange: |
+      Outward-facing, displaying. Asymmetric with emphasis on exterior surfaces
+      (windows, panels, signage). Structures "unfurl" to show their wares.
+      Bright accent panels, energetic character. Welcoming to customers.
+
+    fabrication: |
+      Angular, geometric, industrial. Hard edges, 90-degree angles, modular
+      blocks. Metallic or matte surfaces. Vents, exhausts, visible machinery.
+      Powerful, utilitarian aesthetic.
+
+  density_distinction:
+    low_density: |
+      Smaller footprint (1x1 sectors), lower height, simpler forms.
+      Single focal point, fewer details. Quicker to materialize (2-4 seconds).
+      Visual impression: individual units, spread out.
+
+    high_density: |
+      Larger footprint (1x1 or 2x2 sectors), taller structures, complex forms.
+      Multiple focal points, layered details. Slower to materialize (5-10 seconds).
+      Visual impression: concentrated growth, vertical expansion.
+
+  sector_value_tiers:
+    poor: |
+      Basic structures — functional, minimal ornamentation. Lower glow intensity,
+      simpler geometry. Desirability 0-85. These materialize in low-value sectors.
+
+    moderate: |
+      Standard structures — balanced design, moderate detail. Medium glow
+      intensity, moderate complexity. Desirability 85-170. The default tier.
+
+    wealthy: |
+      Premium structures — elaborate design, high detail. Bright glow intensity,
+      complex geometry. Desirability 170-255. High-value sectors only.
+
+  alien_terminology:
+    description: |
+      All template names use canonical alien terms from terminology.yaml.
+      NO human terms (house, apartment, shop, factory).
+
+# ============================================================================
+# HABITATION TEMPLATES (Low Density)
+# ============================================================================
+
+habitation_low_density:
+  count: 5
+  zone_type: Habitation
+  density: LowDensity
+  footprint: "1x1 sector"
+  height_range: "2-4 units"
+  glow_color: "Cyan (#00ffee)"
+
+  # --------------------------------------------------------------------------
+  # Template H-L-1: Spore Dwelling (Poor)
+  # --------------------------------------------------------------------------
+  h_l_1_spore_dwelling:
+    template_id: 1001
+    name: "Spore Dwelling"
+    sector_value_tier: poor
+
+    silhouette: |
+      Low, bulbous structure resembling a large mushroom cap or fungal pod.
+      Single rounded dome (3 units tall) with thin stalk base. Asymmetric
+      lean (5-10 degrees off vertical). Surface has cellular texture.
+
+    glow_character: |
+      Soft cyan glow concentrated around base and rim of cap. Veining pattern
+      on cap surface glows subtly. Low intensity (active = 0.60). Gentle pulse
+      (6 second period) like breathing.
+
+    mood: "Humble, organic, simple shelter"
+
+    materials: |
+      Matte organic surface (fungal/membranous). Dark teal base color with
+      cyan bioluminescent veins.
+
+    details: |
+      Small circular openings (windows) around mid-cap. No hard edges — all
+      curves. Occasional surface irregularities (natural growth imperfections).
+
+    height: 3.0
+
+  # --------------------------------------------------------------------------
+  # Template H-L-2: Tendril Hab (Poor)
+  # --------------------------------------------------------------------------
+  h_l_2_tendril_hab:
+    template_id: 1002
+    name: "Tendril Hab"
+    sector_value_tier: poor
+
+    silhouette: |
+      Vertical ovoid (egg-shaped) structure (3.5 units tall) with thin tendrils
+      or roots extending from base into ground. Narrow at top, wider at bottom.
+      Slight asymmetry.
+
+    glow_character: |
+      Cyan glow pulses upward from base through tendril connections. Vertical
+      veining glows along body. Moderate pulse (5 second period). Intensity 0.62.
+
+    mood: "Rooted, connected, minimal"
+
+    materials: |
+      Semi-translucent organic membrane. Dark green-teal base with glowing
+      cyan veins running vertically.
+
+    details: |
+      Tendril roots glow where they enter ground. Small slits (windows) in upper
+      half. Surface has subtle ridges (growth rings).
+
+    height: 3.5
+
+  # --------------------------------------------------------------------------
+  # Template H-L-3: Cluster Pod (Moderate)
+  # --------------------------------------------------------------------------
+  h_l_3_cluster_pod:
+    template_id: 1003
+    name: "Cluster Pod"
+    sector_value_tier: moderate
+
+    silhouette: |
+      Three connected bulbous pods arranged in triangular cluster (tallest
+      pod 4 units). Each pod is rounded with slight taper at top. Asymmetric
+      heights create organic skyline.
+
+    glow_character: |
+      Each pod glows independently with slight phase offset (0.3 second stagger).
+      Cyan glow at connections between pods brightens. Intensity 0.65. Multi-point
+      glow pattern.
+
+    mood: "Communal, clustered, harmonious"
+
+    materials: |
+      Smooth organic shell (coral-like). Teal base with bright cyan glow at
+      pod seams and openings.
+
+    details: |
+      Circular openings (windows) on each pod. Glowing connection nodes where
+      pods meet. Subtle surface texture (coral pitting).
+
+    height: 4.0
+
+  # --------------------------------------------------------------------------
+  # Template H-L-4: Bloom Dwelling (Moderate)
+  # --------------------------------------------------------------------------
+  h_l_4_bloom_dwelling:
+    template_id: 1004
+    name: "Bloom Dwelling"
+    sector_value_tier: moderate
+
+    silhouette: |
+      Flower-like structure with central stalk (3 units) topped by petal-like
+      canopy (total height 4 units). Petals curve outward and upward. Radial
+      symmetry (5-6 petals).
+
+    glow_character: |
+      Cyan glow at petal edges and central stalk. Glow ripples from center
+      outward along petal veins (wave pattern, 4 second period). Intensity 0.68.
+
+    mood: "Open, welcoming, flourishing"
+
+    materials: |
+      Translucent petal membranes. Central stalk is darker (woody analogue).
+      Bright cyan veining on petals.
+
+    details: |
+      Petal undersides glow brighter than tops. Small openings between petals
+      (access points). Central stalk has spiral texture.
+
+    height: 4.0
+
+  # --------------------------------------------------------------------------
+  # Template H-L-5: Spiral Hab (Wealthy)
+  # --------------------------------------------------------------------------
+  h_l_5_spiral_hab:
+    template_id: 1005
+    name: "Spiral Hab"
+    sector_value_tier: wealthy
+
+    silhouette: |
+      Elegant spiral tower (5 units tall). Structure curves upward in gentle
+      helix. Wider at base, tapers at top. Smooth flowing curves, no hard edges.
+
+    glow_character: |
+      Cyan glow spirals upward along the helix path. Bright accent glows at
+      regular intervals (windows). Smooth flowing pulse upward (5 second cycle).
+      Intensity 0.72.
+
+    mood: "Graceful, ascending, refined"
+
+    materials: |
+      Smooth semi-translucent shell (glass-like organic material). Deep teal
+      with bright cyan spiral veining.
+
+    details: |
+      Regular window openings along spiral. Glow brightens at openings. Subtle
+      ribbing texture following spiral path. Top terminates in elegant point.
+
+    height: 5.0
+
+# ============================================================================
+# HABITATION TEMPLATES (High Density)
+# ============================================================================
+
+habitation_high_density:
+  count: 5
+  zone_type: Habitation
+  density: HighDensity
+  footprint: "1x1 or 2x2 sectors"
+  height_range: "6-12 units"
+  glow_color: "Cyan (#00ffee)"
+
+  # --------------------------------------------------------------------------
+  # Template H-H-1: Hive Cluster (Poor)
+  # --------------------------------------------------------------------------
+  h_h_1_hive_cluster:
+    template_id: 1011
+    name: "Hive Cluster"
+    sector_value_tier: poor
+    footprint: "1x1"
+
+    silhouette: |
+      Vertical stack of bulbous chambers (6 units tall). Each chamber is rounded
+      pod (4-5 chambers stacked). Slight irregular offsets create asymmetric
+      tower. Narrow base, slightly wider middle.
+
+    glow_character: |
+      Each chamber glows independently. Cyan glow at chamber seams. Irregular
+      pulse pattern (chambers pulse at different rates). Intensity 0.63.
+
+    mood: "Crowded, vertical, efficient stacking"
+
+    materials: |
+      Matte organic shell. Dark teal with cyan seams where chambers connect.
+
+    details: |
+      Small circular openings on each chamber. Connecting nodes glow brightly.
+      Surface has cellular texture. Utilitarian, dense housing.
+
+    height: 6.0
+
+  # --------------------------------------------------------------------------
+  # Template H-H-2: Tendril Spire (Poor)
+  # --------------------------------------------------------------------------
+  h_h_2_tendril_spire:
+    template_id: 1012
+    name: "Tendril Spire"
+    sector_value_tier: poor
+    footprint: "1x1"
+
+    silhouette: |
+      Tall narrow spire (7 units) with vertical tendril-like ribs running from
+      base to top. Slightly tapered (wider at base). Tendrils create textured
+      vertical lines. Minimal horizontal features.
+
+    glow_character: |
+      Cyan glow flows upward through tendril ribs. Slow upward pulse (7 second
+      cycle). Intensity 0.64. Vertical emphasis.
+
+    mood: "Reaching upward, cramped, vertical growth"
+
+    materials: |
+      Rough organic texture (bark-like). Tendrils are slightly translucent,
+      core is opaque. Dark green-teal base.
+
+    details: |
+      Small slit windows between tendril ribs. Tendrils glow more than core.
+      Base has root-like anchors. Top tapers to point.
+
+    height: 7.0
+
+  # --------------------------------------------------------------------------
+  # Template H-H-3: Biolume Tower (Moderate)
+  # --------------------------------------------------------------------------
+  h_h_3_biolume_tower:
+    template_id: 1013
+    name: "Biolume Tower"
+    sector_value_tier: moderate
+    footprint: "1x1"
+
+    silhouette: |
+      Graceful tower (9 units tall) with multiple bulges/swellings at different
+      heights. Tapered top. Organic curves throughout. Asymmetric bulges create
+      interesting skyline.
+
+    glow_character: |
+      Multi-point glow — each bulge glows independently with phase offsets.
+      Cyan glow ripples vertically through tower (wave propagation). Intensity 0.68.
+
+    mood: "Elegant, layered, organic verticality"
+
+    materials: |
+      Smooth semi-translucent shell. Teal base with bright cyan glow at bulges
+      and seams.
+
+    details: |
+      Window openings at each bulge level. Glowing veins connect bulges vertically.
+      Top has antenna-like protrusion with bright glow point.
+
+    height: 9.0
+
+  # --------------------------------------------------------------------------
+  # Template H-H-4: Grove Spire (Moderate)
+  # --------------------------------------------------------------------------
+  h_h_4_grove_spire:
+    template_id: 1014
+    name: "Grove Spire"
+    sector_value_tier: moderate
+    footprint: "2x2"
+
+    silhouette: |
+      Cluster of four intertwined spires (tallest 10 units). Spires wind around
+      each other in organic braid pattern. Asymmetric heights (7-10 units).
+      Wide base (2x2 footprint).
+
+    glow_character: |
+      Cyan glow spirals around the intertwined spires. Each spire pulses with
+      slight phase offset. Bright glow at connection points. Intensity 0.70.
+
+    mood: "Communal, intertwined, flourishing"
+
+    materials: |
+      Smooth organic columns (tree-trunk analogue). Deep teal with bright cyan
+      spiral glow patterns.
+
+    details: |
+      Spires merge and separate at multiple heights. Windows in gaps between
+      spires. Top canopy element connects all spires. Base has root anchors.
+
+    height: 10.0
+
+  # --------------------------------------------------------------------------
+  # Template H-H-5: Radiance Spire (Wealthy)
+  # --------------------------------------------------------------------------
+  h_h_5_radiance_spire:
+    template_id: 1015
+    name: "Radiance Spire"
+    sector_value_tier: wealthy
+    footprint: "1x1"
+
+    silhouette: |
+      Elegant slender tower (12 units tall). Smooth curves, gentle spiral.
+      Wider petal-like elements at top create crown. Graceful taper from base
+      to mid-height, then flared crown.
+
+    glow_character: |
+      Bright cyan glow throughout. Spiral glow pattern flows upward continuously.
+      Crown petals glow brightest (beacon effect). Intensity 0.75 (brightest
+      habitation template).
+
+    mood: "Majestic, beacon, aspirational"
+
+    materials: |
+      Highly polished organic shell (glass-like). Translucent teal with brilliant
+      cyan internal glow.
+
+    details: |
+      Regular window tiers along height. Crown petals are translucent with bright
+      edge glow. Spiral veining visible through shell. Top has bright glow point
+      (antenna/beacon).
+
+    height: 12.0
+
+# ============================================================================
+# EXCHANGE TEMPLATES (Low Density)
+# ============================================================================
+
+exchange_low_density:
+  count: 5
+  zone_type: Exchange
+  density: LowDensity
+  footprint: "1x1 sector"
+  height_range: "2-4 units"
+  glow_color: "Amber (#ffcc33)"
+
+  # --------------------------------------------------------------------------
+  # Template E-L-1: Market Pod (Poor)
+  # --------------------------------------------------------------------------
+  e_l_1_market_pod:
+    template_id: 2001
+    name: "Market Pod"
+    sector_value_tier: poor
+
+    silhouette: |
+      Low, wide pod (2.5 units tall) with flared base. Outward-facing panels
+      (awning-like). Asymmetric — one side has larger panel overhang. Squat,
+      utilitarian form.
+
+    glow_character: |
+      Amber glow concentrated on outward-facing panels (signage/display).
+      Brighter at panel edges. Moderate pulse (5 second period). Intensity 0.65.
+
+    mood: "Humble market stall, open for trade"
+
+    materials: |
+      Matte panels (canvas-like analogue). Dark bronze base with bright amber
+      panel edges and accents.
+
+    details: |
+      Large openings on outward side (display windows). Panel overhang creates
+      shelter. Small accent lights on panel corners. Minimal vertical height.
+
+    height: 2.5
+
+  # --------------------------------------------------------------------------
+  # Template E-L-2: Trade Shrine (Poor)
+  # --------------------------------------------------------------------------
+  e_l_2_trade_shrine:
+    template_id: 2002
+    name: "Trade Shrine"
+    sector_value_tier: poor
+
+    silhouette: |
+      Small shrine-like structure (3 units tall). Central pillar with four
+      outward-facing display panels. Radial symmetry. Simple geometric form
+      (square base, tapered pillar).
+
+    glow_character: |
+      Amber glow on display panels. Bright glow at pillar top (beacon). Static
+      glow with occasional flicker (attention-grabbing). Intensity 0.66.
+
+    mood: "Simple exchange point, beacon for traders"
+
+    materials: |
+      Stone-like panels (solid, permanent). Dark grey with bright amber glow
+      on panel faces and pillar top.
+
+    details: |
+      Four panels face cardinal directions. Small offerings/goods visible on
+      panels. Pillar top has bright beacon light. Base has simple platform.
+
+    height: 3.0
+
+  # --------------------------------------------------------------------------
+  # Template E-L-3: Display Pavilion (Moderate)
+  # --------------------------------------------------------------------------
+  e_l_3_display_pavilion:
+    template_id: 2003
+    name: "Display Pavilion"
+    sector_value_tier: moderate
+
+    silhouette: |
+      Pavilion structure (3.5 units tall) with open sides and canopy roof.
+      Four corner pillars support curved canopy. Outward-facing display surfaces
+      on pillars. Elegant proportions.
+
+    glow_character: |
+      Amber glow on pillar display surfaces and canopy edge. Bright accent lights
+      at canopy corners. Gentle pulse (6 second period). Intensity 0.70.
+
+    mood: "Welcoming pavilion, open commerce"
+
+    materials: |
+      Smooth pillars (polished organic material). Translucent canopy. Dark
+      bronze base with bright amber accents.
+
+    details: |
+      Canopy has organic curve (petal-like). Pillars have display panels with
+      glowing edges. Open sides invite entry. Ground has platform base.
+
+    height: 3.5
+
+  # --------------------------------------------------------------------------
+  # Template E-L-4: Lantern Exchange (Moderate)
+  # --------------------------------------------------------------------------
+  e_l_4_lantern_exchange:
+    template_id: 2004
+    name: "Lantern Exchange"
+    sector_value_tier: moderate
+
+    silhouette: |
+      Lantern-shaped structure (4 units tall). Wide middle, narrow top and bottom.
+      Translucent panels on all sides. Outward-radiating glow. Symmetrical but
+      with decorative asymmetric accents.
+
+    glow_character: |
+      Bright amber glow radiates from central core through translucent panels.
+      Multi-point glow with bright accents at panel seams. Intensity 0.72.
+
+    mood: "Beacon of commerce, warm invitation"
+
+    materials: |
+      Translucent panels (glass-like). Dark frame with brilliant amber internal
+      glow shining through panels.
+
+    details: |
+      Panels have geometric patterns. Bright glow seams between panels. Top has
+      decorative finial. Base has ornamental platform. Very visible at night.
+
+    height: 4.0
+
+  # --------------------------------------------------------------------------
+  # Template E-L-5: Prism Bazaar (Wealthy)
+  # --------------------------------------------------------------------------
+  e_l_5_prism_bazaar:
+    template_id: 2005
+    name: "Prism Bazaar"
+    sector_value_tier: wealthy
+
+    silhouette: |
+      Multi-faceted structure (4 units tall) resembling cut gemstone. Outward-
+      facing facets catch light. Asymmetric faceting creates dynamic form.
+      Wide base, narrower top.
+
+    glow_character: |
+      Amber glow refracts through facets creating prismatic effect. Each facet
+      glows at different intensity (shimmer pattern). Bright edge highlights.
+      Intensity 0.75.
+
+    mood: "Luxurious marketplace, dazzling display"
+
+    materials: |
+      Crystalline faceted surfaces. Dark amber base with bright golden glow
+      refracting through facets.
+
+    details: |
+      Facets have beveled edges that glow brightly. Internal light creates
+      refraction patterns. Base has ornate platform. Top has crown-like facets.
+
+    height: 4.0
+
+# ============================================================================
+# EXCHANGE TEMPLATES (High Density)
+# ============================================================================
+
+exchange_high_density:
+  count: 5
+  zone_type: Exchange
+  density: HighDensity
+  footprint: "1x1 or 2x2 sectors"
+  height_range: "6-12 units"
+  glow_color: "Amber (#ffcc33)"
+
+  # --------------------------------------------------------------------------
+  # Template E-H-1: Merchant Stack (Poor)
+  # --------------------------------------------------------------------------
+  e_h_1_merchant_stack:
+    template_id: 2011
+    name: "Merchant Stack"
+    sector_value_tier: poor
+    footprint: "1x1"
+
+    silhouette: |
+      Vertical stack of market tiers (6 units tall). Each tier is box-like with
+      outward-facing display panels. Tiers slightly offset create staggered
+      profile. Utilitarian stacking.
+
+    glow_character: |
+      Each tier has amber glow on outward panels. Tiers pulse independently
+      (irregular pattern — attention-grabbing). Intensity 0.66.
+
+    mood: "Vertical marketplace, stacked commerce"
+
+    materials: |
+      Matte panels (modular construction). Dark bronze with bright amber panel
+      accents per tier.
+
+    details: |
+      Outward-facing panels per tier (signage/displays). Connecting seams between
+      tiers glow. Minimal ornamentation. Dense vertical layout.
+
+    height: 6.0
+
+  # --------------------------------------------------------------------------
+  # Template E-H-2: Banner Tower (Poor)
+  # --------------------------------------------------------------------------
+  e_h_2_banner_tower:
+    template_id: 2012
+    name: "Banner Tower"
+    sector_value_tier: poor
+    footprint: "1x1"
+
+    silhouette: |
+      Tall narrow tower (7 units) with vertical banner-like panels extending
+      outward at multiple heights. Panels flutter visually (asymmetric placement).
+      Central pillar with radiating banners.
+
+    glow_character: |
+      Amber glow on banner panels (both sides). Panels pulse with wave pattern
+      (top to bottom). Bright pillar glow. Intensity 0.68.
+
+    mood: "Advertising tower, vertical signage"
+
+    materials: |
+      Solid pillar with translucent banner panels. Dark core with bright amber
+      glowing banners.
+
+    details: |
+      Banners at irregular heights. Each banner has glowing edges. Pillar has
+      accent lights between banners. Top has bright beacon.
+
+    height: 7.0
+
+  # --------------------------------------------------------------------------
+  # Template E-H-3: Exchange Spire (Moderate)
+  # --------------------------------------------------------------------------
+  e_h_3_exchange_spire:
+    template_id: 2013
+    name: "Exchange Spire"
+    sector_value_tier: moderate
+    footprint: "1x1"
+
+    silhouette: |
+      Elegant tower (9 units tall) with outward-flaring elements at multiple
+      tiers. Each tier has petal-like display panels. Tapered form with rhythmic
+      flares. Graceful asymmetry.
+
+    glow_character: |
+      Multi-tier amber glow. Each tier pulses independently with bright panel
+      edges. Upward flowing glow pattern. Intensity 0.72.
+
+    mood: "Prosperous exchange, tiered marketplace"
+
+    materials: |
+      Smooth tower core with translucent petal panels at tiers. Polished bronze
+      with bright amber glowing petals.
+
+    details: |
+      Petal panels at regular height intervals. Panels glow brighter at edges.
+      Tower core has vertical accent lines. Top has crown of petals.
+
+    height: 9.0
+
+  # --------------------------------------------------------------------------
+  # Template E-H-4: Commerce Nexus (Moderate)
+  # --------------------------------------------------------------------------
+  e_h_4_commerce_nexus:
+    template_id: 2014
+    name: "Commerce Nexus"
+    sector_value_tier: moderate
+    footprint: "2x2"
+
+    silhouette: |
+      Multi-tower complex (tallest 10 units). Four towers arranged in square
+      (2x2 footprint) connected by skybridge elements. Towers have different
+      heights (7-10 units). Central courtyard.
+
+    glow_character: |
+      Each tower glows independently. Amber glow flows between towers via
+      skybridges. Multi-point glow with bright connection nodes. Intensity 0.74.
+
+    mood: "Bustling commerce hub, interconnected trade"
+
+    materials: |
+      Polished towers with translucent skybridge connections. Bronze towers
+      with bright amber glow at connections and tower tops.
+
+    details: |
+      Skybridges at mid-height connect towers. Each tower has outward-facing
+      display panels. Central courtyard has ground-level glow. Tower tops vary.
+
+    height: 10.0
+
+  # --------------------------------------------------------------------------
+  # Template E-H-5: Golden Pavilion (Wealthy)
+  # --------------------------------------------------------------------------
+  e_h_5_golden_pavilion:
+    template_id: 2015
+    name: "Golden Pavilion"
+    sector_value_tier: wealthy
+    footprint: "1x1"
+
+    silhouette: |
+      Majestic tower (12 units tall) with elaborate tiered design. Each tier
+      has ornate outward-flaring elements. Top has grand pavilion structure.
+      Highly decorative, luxurious proportions.
+
+    glow_character: |
+      Brilliant amber glow throughout. Each tier has bright edge highlights.
+      Top pavilion blazes with golden light (brightest exchange template).
+      Intensity 0.78.
+
+    mood: "Opulent trade center, beacon of wealth"
+
+    materials: |
+      Highly polished surfaces with golden reflective finish. Ornate decorative
+      elements. Brilliant amber/gold internal glow.
+
+    details: |
+      Multiple ornate tiers with decorative elements. Top pavilion has intricate
+      geometry. Bright accent lights at every tier. Base has ornamental plaza.
+
+    height: 12.0
+
+# ============================================================================
+# FABRICATION TEMPLATES (Low Density)
+# ============================================================================
+
+fabrication_low_density:
+  count: 5
+  zone_type: Fabrication
+  density: LowDensity
+  footprint: "1x1 sector"
+  height_range: "2-4 units"
+  glow_color: "Magenta (#ff44cc)"
+
+  # --------------------------------------------------------------------------
+  # Template F-L-1: Fabricator Pod (Poor)
+  # --------------------------------------------------------------------------
+  f_l_1_fabricator_pod:
+    template_id: 3001
+    name: "Fabricator Pod"
+    sector_value_tier: poor
+
+    silhouette: |
+      Squat cylindrical pod (2.5 units tall) with flat top. Hard geometric form.
+      Small exhaust vents on sides. Utilitarian industrial block. Minimal detail.
+
+    glow_character: |
+      Magenta glow from exhaust vents and top seam. Irregular pulse (industrial
+      rhythm). Vent glow flickers slightly. Intensity 0.70.
+
+    mood: "Basic fabrication unit, functional"
+
+    materials: |
+      Matte metallic surfaces. Dark grey with bright magenta glow at vents and
+      panel seams.
+
+    details: |
+      Exhaust vents emit magenta glow (4-6 vents around sides). Top has access
+      hatch with seam glow. No windows. Angular panel construction.
+
+    height: 2.5
+
+  # --------------------------------------------------------------------------
+  # Template F-L-2: Assembly Block (Poor)
+  # --------------------------------------------------------------------------
+  f_l_2_assembly_block:
+    template_id: 3002
+    name: "Assembly Block"
+    sector_value_tier: poor
+
+    silhouette: |
+      Rectangular block (3 units tall, 3 units wide). Pure geometric form — no
+      curves. Flat roof with small protrusions (vents/machinery). Hard edges.
+
+    glow_character: |
+      Magenta glow from panel seams (grid pattern on walls). Vent glow on roof.
+      Static glow with occasional bright flares. Intensity 0.71.
+
+    mood: "Industrial block, modular fabrication"
+
+    materials: |
+      Paneled metal construction. Dark gunmetal grey with magenta seam glow and
+      vent highlights.
+
+    details: |
+      Panel grid pattern (seams glow). Roof vents emit magenta light. Access
+      door (large rectangular opening). No windows. Purely functional.
+
+    height: 3.0
+
+  # --------------------------------------------------------------------------
+  # Template F-L-3: Forge Dome (Moderate)
+  # --------------------------------------------------------------------------
+  f_l_3_forge_dome:
+    template_id: 3003
+    name: "Forge Dome"
+    sector_value_tier: moderate
+
+    silhouette: |
+      Dome structure (3.5 units tall) with flat base. Geometric dome (faceted,
+      not smooth). Central exhaust stack protrudes from apex. Industrial symmetry.
+
+    glow_character: |
+      Magenta glow from dome facet seams and exhaust stack. Pulsing glow suggests
+      internal forge activity. Intensity 0.74.
+
+    mood: "Industrial forge, contained energy"
+
+    materials: |
+      Faceted metallic dome. Dark steel with bright magenta glow at seams and
+      exhaust.
+
+    details: |
+      Faceted dome segments (8-10 facets) with glowing seams. Central exhaust
+      stack emits brightest glow. Base has large access doors. Heat distortion
+      effect around exhaust (visual suggestion).
+
+    height: 3.5
+
+  # --------------------------------------------------------------------------
+  # Template F-L-4: Reactor Shell (Moderate)
+  # --------------------------------------------------------------------------
+  f_l_4_reactor_shell:
+    template_id: 3004
+    name: "Reactor Shell"
+    sector_value_tier: moderate
+
+    silhouette: |
+      Cylindrical core (4 units tall) with surrounding ring of vertical ribs.
+      Ribs create cage-like appearance. Hard industrial geometry. Symmetrical.
+
+    glow_character: |
+      Magenta glow from gaps between ribs (internal light visible). Core top
+      emits bright glow. Rhythmic pulse (power cycle). Intensity 0.76.
+
+    mood: "Contained power, industrial reactor"
+
+    materials: |
+      Metallic ribs (structural) with glowing core visible between. Dark metal
+      ribs, bright magenta core glow.
+
+    details: |
+      Vertical ribs evenly spaced. Core visible through gaps (bright magenta).
+      Top has exhaust vents. Base has power conduit connections. Clean industrial
+      aesthetic.
+
+    height: 4.0
+
+  # --------------------------------------------------------------------------
+  # Template F-L-5: Crystalline Forge (Wealthy)
+  # --------------------------------------------------------------------------
+  f_l_5_crystalline_forge:
+    template_id: 3005
+    name: "Crystalline Forge"
+    sector_value_tier: wealthy
+
+    silhouette: |
+      Angular crystalline structure (4 units tall). Geometric facets create
+      dynamic form. Sharp edges, 90-degree angles. Resembles geometric crystal
+      cluster but industrial in character.
+
+    glow_character: |
+      Brilliant magenta glow from facet edges and seams. Sharp-edged glow
+      (not soft). Shimmer pattern (like crystal refraction). Intensity 0.78.
+
+    mood: "High-tech fabrication, precision industry"
+
+    materials: |
+      Polished metallic facets. Dark steel/chrome with brilliant magenta edge
+      glow and internal light.
+
+    details: |
+      Sharp faceted geometry (crystal-like but industrial). Each facet edge glows
+      brightly. Internal magenta light visible through translucent facets. Top
+      has antenna-like protrusions.
+
+    height: 4.0
+
+# ============================================================================
+# FABRICATION TEMPLATES (High Density)
+# ============================================================================
+
+fabrication_high_density:
+  count: 5
+  zone_type: Fabrication
+  density: HighDensity
+  footprint: "1x1 or 2x2 sectors"
+  height_range: "6-12 units"
+  glow_color: "Magenta (#ff44cc)"
+
+  # --------------------------------------------------------------------------
+  # Template F-H-1: Factory Stack (Poor)
+  # --------------------------------------------------------------------------
+  f_h_1_factory_stack:
+    template_id: 3011
+    name: "Factory Stack"
+    sector_value_tier: poor
+    footprint: "1x1"
+
+    silhouette: |
+      Vertical stack of rectangular modules (6 units tall). Each module is box-like,
+      stacked with slight offsets. Multiple exhaust stacks protrude from sides.
+      Utilitarian industrial tower.
+
+    glow_character: |
+      Magenta glow from exhaust stacks and module seams. Irregular pulse pattern
+      (industrial activity). Intensity 0.72.
+
+    mood: "Vertical factory, stacked production"
+
+    materials: |
+      Modular metal panels. Dark industrial grey with magenta glow at seams and
+      exhaust ports.
+
+    details: |
+      Stacked rectangular modules with visible seams. Multiple exhaust stacks at
+      different heights. Vent glow and seam glow. No windows. Purely industrial.
+
+    height: 6.0
+
+  # --------------------------------------------------------------------------
+  # Template F-H-2: Rig Tower (Poor)
+  # --------------------------------------------------------------------------
+  f_h_2_rig_tower:
+    template_id: 3012
+    name: "Rig Tower"
+    sector_value_tier: poor
+    footprint: "1x1"
+
+    silhouette: |
+      Tall skeletal tower (7 units tall). Open framework construction (visible
+      structural beams). Central core with surrounding framework. Industrial
+      crane-like aesthetic.
+
+    glow_character: |
+      Magenta glow from central core visible through framework. Structural beams
+      have accent lights at joints. Core pulses. Intensity 0.73.
+
+    mood: "Industrial rig, heavy fabrication"
+
+    materials: |
+      Exposed metal framework. Dark structural beams with glowing magenta core
+      and joint accents.
+
+    details: |
+      Open framework reveals glowing core. Beams form geometric grid. Joints
+      have accent lights. Top has machinery elements. Base has heavy anchors.
+
+    height: 7.0
+
+  # --------------------------------------------------------------------------
+  # Template F-H-3: Fabrication Spire (Moderate)
+  # --------------------------------------------------------------------------
+  f_h_3_fabrication_spire:
+    template_id: 3013
+    name: "Fabrication Spire"
+    sector_value_tier: moderate
+    footprint: "1x1"
+
+    silhouette: |
+      Angular tower (9 units tall) with stepped geometric profile. Each tier is
+      smaller than below (ziggurat-like). Sharp edges, flat surfaces. Vents at
+      each tier level.
+
+    glow_character: |
+      Multi-tier magenta glow. Each tier has bright vent glow. Upward pulsing
+      pattern (power flow). Intensity 0.76.
+
+    mood: "Efficient fabrication, tiered production"
+
+    materials: |
+      Paneled metal construction. Dark steel with bright magenta glow at tier
+      vents and edges.
+
+    details: |
+      Stepped tiers with flat surfaces. Each tier has exhaust vents (magenta glow).
+      Sharp geometric edges. Top has machinery crown. Clean industrial lines.
+
+    height: 9.0
+
+  # --------------------------------------------------------------------------
+  # Template F-H-4: Industrial Complex (Moderate)
+  # --------------------------------------------------------------------------
+  f_h_4_industrial_complex:
+    template_id: 3014
+    name: "Industrial Complex"
+    sector_value_tier: moderate
+    footprint: "2x2"
+
+    silhouette: |
+      Multi-structure complex (tallest 10 units). Four angular buildings arranged
+      in 2x2 grid connected by enclosed conduits. Varying heights (7-10 units).
+      Central machinery courtyard.
+
+    glow_character: |
+      Each building glows independently. Magenta glow flows through connecting
+      conduits. Bright machinery glow in central courtyard. Intensity 0.78.
+
+    mood: "Integrated fabrication hub, industrial power"
+
+    materials: |
+      Angular metal buildings with glowing conduit connections. Dark industrial
+      grey with bright magenta conduits and vents.
+
+    details: |
+      Four distinct buildings with connecting conduits at mid-height. Central
+      courtyard has visible machinery. Each building has exhaust stacks. Geometric
+      industrial aesthetic throughout.
+
+    height: 10.0
+
+  # --------------------------------------------------------------------------
+  # Template F-H-5: Resonance Foundry (Wealthy)
+  # --------------------------------------------------------------------------
+  f_h_5_resonance_foundry:
+    template_id: 3015
+    name: "Resonance Foundry"
+    sector_value_tier: wealthy
+    footprint: "1x1"
+
+    silhouette: |
+      Majestic angular tower (12 units tall). Sharp geometric form with prominent
+      vertical ribs. Top has elaborate machinery crown. Powerful industrial monument.
+
+    glow_character: |
+      Brilliant magenta glow throughout. Vertical ribs glow brightly. Top machinery
+      blazes with light. Brightest fabrication template. Intensity 0.82.
+
+    mood: "Advanced fabrication, industrial monument"
+
+    materials: |
+      Polished metallic surfaces with chrome/steel finish. Elaborate geometric
+      detailing. Brilliant magenta glow from ribs, seams, and machinery.
+
+    details: |
+      Vertical ribs run full height (bright glow). Geometric paneling between ribs.
+      Top has elaborate machinery crown with multiple bright glow points. Base has
+      massive power conduits. Most visually impressive fabrication structure.
+
+    height: 12.0
+
+# ============================================================================
+# TEMPLATE SUMMARY TABLE
+# ============================================================================
+
+template_summary:
+  description: |
+    Quick reference for all 30 templates organized by zone type and density.
+
+  habitation_low_density:
+    count: 5
+    templates: ["Spore Dwelling", "Tendril Hab", "Cluster Pod", "Bloom Dwelling", "Spiral Hab"]
+    tier_distribution: "2 poor, 2 moderate, 1 wealthy"
+
+  habitation_high_density:
+    count: 5
+    templates: ["Hive Cluster", "Tendril Spire", "Biolume Tower", "Grove Spire", "Radiance Spire"]
+    tier_distribution: "2 poor, 2 moderate, 1 wealthy"
+
+  exchange_low_density:
+    count: 5
+    templates: ["Market Pod", "Trade Shrine", "Display Pavilion", "Lantern Exchange", "Prism Bazaar"]
+    tier_distribution: "2 poor, 2 moderate, 1 wealthy"
+
+  exchange_high_density:
+    count: 5
+    templates: ["Merchant Stack", "Banner Tower", "Exchange Spire", "Commerce Nexus", "Golden Pavilion"]
+    tier_distribution: "2 poor, 2 moderate, 1 wealthy"
+
+  fabrication_low_density:
+    count: 5
+    templates: ["Fabricator Pod", "Assembly Block", "Forge Dome", "Reactor Shell", "Crystalline Forge"]
+    tier_distribution: "2 poor, 2 moderate, 1 wealthy"
+
+  fabrication_high_density:
+    count: 5
+    templates: ["Factory Stack", "Rig Tower", "Fabrication Spire", "Industrial Complex", "Resonance Foundry"]
+    tier_distribution: "2 poor, 2 moderate, 1 wealthy"
+
+  total_count: 30
+  tier_distribution_overall: "12 poor, 12 moderate, 6 wealthy"
+
+# ============================================================================
+# ART PIPELINE NOTES
+# ============================================================================
+
+art_pipeline:
+  3d_model_creation:
+    description: |
+      These briefs guide creation of glTF 2.0 (.glb) 3D models for each template.
+      Models should be optimized for real-time rendering (low-poly, baked lighting).
+
+    polygon_budget:
+      low_density: "200-500 triangles per structure"
+      high_density: "500-1200 triangles per structure"
+
+    texture_resolution:
+      low_density: "512x512 or 1024x1024"
+      high_density: "1024x1024 or 2048x2048"
+
+    emissive_mapping:
+      description: |
+        Emissive texture maps define glow regions. Shader reads emissive map
+        and applies zone color (cyan/amber/magenta) at runtime.
+
+  procedural_fallback:
+    description: |
+      Until 3D models are created, procedural geometry generates placeholder
+      structures based on these briefs. Simple geometric primitives (cylinders,
+      boxes, spheres) with approximate silhouettes.
+
+    priority: "Low density templates first (simpler geometry)"
+
+# ============================================================================
+# FUTURE EXPANSION
+# ============================================================================
+
+future_expansion:
+  additional_templates:
+    description: |
+      30 templates is the minimum. Future content updates can add more templates
+      for greater visual variety. Target 50-100 templates long-term.
+
+  special_buildings:
+    description: |
+      Epic 14 (Progression) adds unique reward buildings (monuments, arcologies).
+      These are distinct from zone templates and have custom designs.
+
+  seasonal_variants:
+    description: |
+      Optional: Seasonal or event-themed variants (holiday decorations, special
+      lighting). Deferred to post-launch content.

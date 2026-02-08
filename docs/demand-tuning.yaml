@@ -1,0 +1,566 @@
+# ============================================================================
+# DEMAND TUNING PARAMETERS
+# ============================================================================
+# Configuration values for zone pressure (demand) system.
+# All values are starting points for playtesting — expect iteration.
+#
+# This document feeds into:
+#   - ZoneSystem: Demand calculation (tickets 4-015, 4-016)
+#   - BuildingSystem: Spawn rate, upgrade triggers (tickets 4-026, 4-032)
+#   - UISystem: Demand indicator visualization
+#
+# Version: 1.0.0
+# Created: 2026-02-07
+# Ticket: 4-045
+# ============================================================================
+
+version: "1.0.0"
+
+# ============================================================================
+# DEMAND OVERVIEW
+# ============================================================================
+
+demand_system:
+  description: |
+    Demand (zone pressure) drives colony growth. Positive demand = structures
+    spawn in designated zones. Negative demand = no spawning, existing
+    structures may decline. Demand ranges from -100 to +100 per zone type.
+
+  core_formula:
+    description: |
+      demand = base_pressure + stub_factor - saturation_factor
+      Result is clamped to [-100, +100] and subject to soft cap at +80.
+
+  refresh_rate:
+    description: "Demand recalculated every 20 ticks (1 second real time)"
+    constant: DEMAND_REFRESH_INTERVAL = 20
+
+# ============================================================================
+# BASE PRESSURE VALUES
+# ============================================================================
+
+base_pressure:
+  description: |
+    Intrinsic growth desire per zone type. This is the "natural" demand
+    before any other factors. Habitation has higher base — beings need
+    housing. Exchange and Fabrication follow population.
+
+  constants:
+    HABITATION_BASE_PRESSURE: 10
+    EXCHANGE_BASE_PRESSURE: 5
+    FABRICATION_BASE_PRESSURE: 5
+
+  rationale:
+    habitation: |
+      +10 baseline ensures habitation zones develop first. Beings arrive
+      and need dwellings before they need shops or factories.
+
+    exchange: |
+      +5 baseline represents moderate commercial demand. Exchange zones
+      serve existing population, so lower than habitation.
+
+    fabrication: |
+      +5 baseline matches exchange. Industrial growth follows population
+      but doesn't lead it.
+
+  tuning_notes: |
+    If playtesting shows fabrication lagging too far behind, consider
+    increasing FABRICATION_BASE_PRESSURE to +7 or +8.
+
+# ============================================================================
+# STUB FACTORS (Forward Dependencies)
+# ============================================================================
+
+stub_factors:
+  description: |
+    Stub factors represent future epic systems that will influence demand.
+    For Epic 4, these are stubbed at permissive defaults (no penalty).
+    Later epics will provide real implementations.
+
+  # --------------------------------------------------------------------------
+  # ENERGY (Epic 5)
+  # --------------------------------------------------------------------------
+  energy_stub:
+    description: |
+      Future: Powered sectors have demand boost. Unpowered sectors have
+      demand penalty. For Epic 4, stub returns +0 (neutral).
+
+    epic_4_stub_value: 0
+    constant: ENERGY_STUB_FACTOR = 0
+
+    future_implementation: |
+      Epic 5 will implement:
+      if sector_is_powered:
+        energy_factor = +5
+      else:
+        energy_factor = -10  // Strong penalty for unpowered zones
+
+  # --------------------------------------------------------------------------
+  # FLUID (Epic 6)
+  # --------------------------------------------------------------------------
+  fluid_stub:
+    description: |
+      Future: Sectors with fluid access have demand boost. No fluid = penalty.
+      For Epic 4, stub returns +0 (neutral).
+
+    epic_4_stub_value: 0
+    constant: FLUID_STUB_FACTOR = 0
+
+    future_implementation: |
+      Epic 6 will implement:
+      if sector_has_fluid:
+        fluid_factor = +5
+      else:
+        fluid_factor = -8  // Penalty for no fluid
+
+  # --------------------------------------------------------------------------
+  # PATHWAY PROXIMITY (Epic 7)
+  # --------------------------------------------------------------------------
+  pathway_stub:
+    description: |
+      Future: Sectors within pathway proximity (3 sectors Chebyshev distance)
+      have demand boost. Isolated sectors have penalty. For Epic 4, stub
+      returns +0 (neutral).
+
+    epic_4_stub_value: 0
+    constant: PATHWAY_STUB_FACTOR = 0
+
+    future_implementation: |
+      Epic 7 will implement:
+      if within_pathway_proximity(3):
+        pathway_factor = +8  // Strong boost for accessible sectors
+      else:
+        pathway_factor = -15  // Heavy penalty for isolated sectors
+
+  # --------------------------------------------------------------------------
+  # LAND VALUE (Epic 10)
+  # --------------------------------------------------------------------------
+  land_value_stub:
+    description: |
+      Future: High sector value boosts demand (desirable location). Low
+      value penalizes demand. For Epic 4, stub returns +0 (neutral).
+
+    epic_4_stub_value: 0
+    constant: LAND_VALUE_STUB_FACTOR = 0
+
+    future_implementation: |
+      Epic 10 will implement:
+      land_value_factor = (sector_value - 50) / 5
+      // Range: -10 to +10 for sector value 0-100
+
+  # --------------------------------------------------------------------------
+  # SERVICES (Epic 9)
+  # --------------------------------------------------------------------------
+  services_stub:
+    description: |
+      Future: Service coverage (enforcers, hazard response, medical, education)
+      boosts demand. Poor coverage penalizes demand. For Epic 4, stub
+      returns +0 (neutral).
+
+    epic_4_stub_value: 0
+    constant: SERVICES_STUB_FACTOR = 0
+
+    future_implementation: |
+      Epic 9 will implement:
+      services_factor = (service_coverage_percentage - 50) / 5
+      // Range: -10 to +10 for coverage 0-100%
+
+  # --------------------------------------------------------------------------
+  # CONTAMINATION (Epic 10)
+  # --------------------------------------------------------------------------
+  contamination_stub:
+    description: |
+      Future: High contamination penalizes habitation/exchange demand,
+      neutral for fabrication. For Epic 4, stub returns +0 (neutral).
+
+    epic_4_stub_value: 0
+    constant: CONTAMINATION_STUB_FACTOR = 0
+
+    future_implementation: |
+      Epic 10 will implement:
+      if zone_type == Habitation or zone_type == Exchange:
+        contamination_factor = -contamination_level / 10  // -10 at max contamination
+      else:
+        contamination_factor = 0  // Fabrication unaffected
+
+  # --------------------------------------------------------------------------
+  # STUB FACTOR TOTAL (Epic 4)
+  # --------------------------------------------------------------------------
+  epic_4_total:
+    description: |
+      In Epic 4, all stub factors are 0. Total stub contribution = 0.
+      This ensures demand is driven purely by base_pressure and saturation.
+
+    total_stub_factor: 0
+    formula: |
+      stub_factor = energy_stub + fluid_stub + pathway_stub +
+                    land_value_stub + services_stub + contamination_stub
+      // Epic 4: stub_factor = 0 + 0 + 0 + 0 + 0 + 0 = 0
+
+# ============================================================================
+# SATURATION FACTOR (Supply vs Demand)
+# ============================================================================
+
+saturation_factor:
+  description: |
+    Saturation penalizes demand when zone supply (number of structures)
+    is high relative to colony size. Prevents runaway growth in one zone type.
+
+  formula: |
+    saturation_factor = (zone_structure_count * SATURATION_MULTIPLIER) / colony_population
+    saturation_factor = clamp(saturation_factor, 0, 50)
+
+  constants:
+    SATURATION_MULTIPLIER_HABITATION: 40
+    SATURATION_MULTIPLIER_EXCHANGE: 30
+    SATURATION_MULTIPLIER_FABRICATION: 30
+
+  rationale:
+    description: |
+      Each structure "consumes" demand proportional to its capacity.
+      High structure count -> high saturation -> demand penalty.
+      This creates negative feedback: as zones develop, demand drops,
+      preventing infinite growth.
+
+  example_calculation:
+    scenario: "100 population, 10 habitation structures"
+    calculation: |
+      saturation = (10 * 40) / 100 = 400 / 100 = 4
+      demand penalty = -4
+
+    scenario_2: "100 population, 40 habitation structures"
+    calculation: |
+      saturation = (40 * 40) / 100 = 1600 / 100 = 16
+      demand penalty = -16
+
+  tuning_notes: |
+    Saturation multiplier is the primary pacing knob. Lower values = slower
+    saturation (more growth). Higher values = faster saturation (controlled growth).
+    Expect significant adjustment during playtesting.
+
+# ============================================================================
+# SOFT CAP (Diminishing Returns)
+# ============================================================================
+
+soft_cap:
+  description: |
+    Demand above +80 enters diminishing returns. This prevents explosive
+    growth while still allowing high demand to exist. Soft cap applies
+    AFTER all other factors are summed.
+
+  threshold: 80
+  constant: DEMAND_SOFT_CAP_THRESHOLD = 80
+
+  formula: |
+    if raw_demand > SOFT_CAP_THRESHOLD:
+      excess = raw_demand - SOFT_CAP_THRESHOLD
+      capped_demand = SOFT_CAP_THRESHOLD + (excess * DIMINISHING_FACTOR)
+    else:
+      capped_demand = raw_demand
+
+  diminishing_factor: 0.5
+  constant: DEMAND_DIMINISHING_FACTOR = 0.5
+
+  example:
+    raw_demand: 100
+    calculation: |
+      excess = 100 - 80 = 20
+      capped_demand = 80 + (20 * 0.5) = 80 + 10 = 90
+
+  result_range:
+    description: "Soft cap allows demand to reach +100 but slows growth above +80"
+    effective_cap: "Asymptotically approaches +100 but never exceeds"
+
+  ui_indicator:
+    description: |
+      Demand indicator bar shows a white line at 80% to visualize the
+      soft cap threshold (from zone-color-tokens.yaml).
+
+# ============================================================================
+# SPAWN RATE MAPPING
+# ============================================================================
+
+spawn_rate:
+  description: |
+    Demand magnitude controls how many structures spawn per scan.
+    BuildingSystem runs spawn scan every 20 ticks (1 second). Max 3 spawns
+    per scan per overseer to prevent visual spam.
+
+  scan_interval: 20
+  constant: SPAWN_SCAN_INTERVAL = 20
+
+  max_spawns_per_scan: 3
+  constant: MAX_SPAWNS_PER_SCAN = 3
+
+  # --------------------------------------------------------------------------
+  # Demand-to-Spawn Mapping
+  # --------------------------------------------------------------------------
+  spawn_probability:
+    description: |
+      Each eligible zone sector rolls for spawn based on demand magnitude.
+      Higher demand = higher spawn probability per sector per scan.
+
+    formula: |
+      spawn_chance = (demand / 100) * BASE_SPAWN_CHANCE
+      spawn_chance = clamp(spawn_chance, 0.0, 1.0)
+
+    constants:
+      BASE_SPAWN_CHANCE_LOW_DEMAND: 0.05      # 5% per sector at demand=+100
+      BASE_SPAWN_CHANCE_MEDIUM_DEMAND: 0.10   # 10% per sector at demand=+100
+      BASE_SPAWN_CHANCE_HIGH_DEMAND: 0.15     # 15% per sector at demand=+100
+
+  demand_thresholds:
+    low_demand:
+      range: "0 to +40"
+      spawn_chance_formula: "(demand / 100) * 0.05"
+      expected_spawns: "1-2 structures per minute (5-10 designated zones)"
+
+    medium_demand:
+      range: "+40 to +80"
+      spawn_chance_formula: "(demand / 100) * 0.10"
+      expected_spawns: "3-5 structures per minute (5-10 designated zones)"
+
+    high_demand:
+      range: "+80 to +100"
+      spawn_chance_formula: "(demand / 100) * 0.15"
+      expected_spawns: "6-9 structures per minute (5-10 designated zones, soft cap applies)"
+
+  negative_demand:
+    range: "-100 to 0"
+    spawn_chance: 0.0
+    description: "No spawning when demand is negative or zero"
+
+  # --------------------------------------------------------------------------
+  # Per-Overseer Spawn Budget
+  # --------------------------------------------------------------------------
+  per_overseer_budget:
+    description: |
+      Each overseer has independent spawn budget (max 3 per scan).
+      Prevents one overseer from monopolizing spawn slots in multiplayer.
+
+    allocation: |
+      Each scan, for each overseer:
+        eligible_zones = zones with state=Designated and demand > 0
+        spawn_candidates = eligible_zones.filter(random() < spawn_chance)
+        spawns = min(spawn_candidates.count, MAX_SPAWNS_PER_SCAN)
+
+# ============================================================================
+# PACING TARGETS
+# ============================================================================
+
+pacing_targets:
+  description: |
+    Expected structure growth rates at various colony stages.
+    These are targets for playtesting validation.
+
+  early_game:
+    colony_population: "0-200 beings"
+    demand_level: "+60 to +80 (high)"
+    expected_growth: "15-20 structures in first 5 minutes"
+    rationale: |
+      Early game should feel active — colony is emerging, structures
+      materializing frequently. High demand, low saturation.
+
+  mid_game:
+    colony_population: "200-1000 beings"
+    demand_level: "+40 to +60 (medium)"
+    expected_growth: "30-50 structures per 10 minutes"
+    rationale: |
+      Mid-game slows as saturation increases. Player shifts focus from
+      pure growth to optimization (services, infrastructure).
+
+  late_game:
+    colony_population: "1000+ beings"
+    demand_level: "+20 to +40 (low, soft cap applies)"
+    expected_growth: "10-20 structures per 10 minutes"
+    rationale: |
+      Late game is slow, deliberate expansion. Player fine-tuning layout,
+      upgrading structures, pursuing milestones (Epic 14).
+
+  plateau:
+    colony_population: "5000+ beings"
+    demand_level: "0 to +20 (near equilibrium)"
+    expected_growth: "Minimal, occasional replacement"
+    rationale: |
+      Colony reaches stable state. Growth driven by player expanding
+      territory or redesigning districts, not passive demand.
+
+# ============================================================================
+# UPGRADE COOLDOWN
+# ============================================================================
+
+upgrade_cooldown:
+  description: |
+    After a structure upgrades (level increase), there's a cooldown before
+    it can upgrade again. Prevents rapid chaining of upgrades.
+
+  cooldown_ticks: 200
+  constant: UPGRADE_COOLDOWN_TICKS = 200
+
+  cooldown_seconds: 10
+  description: "10 seconds real time at 20 TPS"
+
+  rationale: |
+    Upgrade cooldown spreads upgrades over time, preventing visual spam
+    and giving player time to appreciate each upgrade event.
+
+  tracking:
+    description: |
+      BuildingComponent.state_changed_tick tracks last upgrade tick.
+      Upgrade eligibility check: current_tick - state_changed_tick > cooldown.
+
+# ============================================================================
+# DESIRABILITY SCORE (Per-Sector Cache)
+# ============================================================================
+
+desirability:
+  description: |
+    Each zone sector has a desirability score (0-255) cached in ZoneComponent.
+    This score aggregates all demand factors for that specific sector,
+    used by BuildingSystem for template selection and spawn prioritization.
+
+  calculation:
+    description: |
+      desirability = base_pressure + stub_factors_for_this_sector - local_saturation
+      Result normalized to 0-255 range.
+
+    normalization: |
+      raw_desirability = base_pressure + stub_factors - saturation
+      normalized = clamp((raw_desirability + 100) * 1.275, 0, 255)
+      // Maps [-100, +100] to [0, 255]
+
+  refresh_rate:
+    description: "Updated every DEMAND_REFRESH_INTERVAL (20 ticks)"
+
+  usage:
+    spawn_prioritization: |
+      When multiple zones are eligible for spawn, higher desirability
+      zones spawn first (within the MAX_SPAWNS_PER_SCAN budget).
+
+    template_selection: |
+      BuildingSystem uses desirability to select template tier:
+      - desirability 0-85: poor tier templates
+      - desirability 85-170: moderate tier templates
+      - desirability 170-255: wealthy tier templates
+
+# ============================================================================
+# CONFIGURATION CONSTANTS SUMMARY
+# ============================================================================
+
+constants_summary:
+  description: |
+    All tuning constants in one place for easy playtesting iteration.
+    These should be externalized to a config file (not hardcoded).
+
+  demand_refresh:
+    DEMAND_REFRESH_INTERVAL: 20                # ticks
+
+  base_pressure:
+    HABITATION_BASE_PRESSURE: 10
+    EXCHANGE_BASE_PRESSURE: 5
+    FABRICATION_BASE_PRESSURE: 5
+
+  stub_factors_epic_4:
+    ENERGY_STUB_FACTOR: 0
+    FLUID_STUB_FACTOR: 0
+    PATHWAY_STUB_FACTOR: 0
+    LAND_VALUE_STUB_FACTOR: 0
+    SERVICES_STUB_FACTOR: 0
+    CONTAMINATION_STUB_FACTOR: 0
+
+  saturation:
+    SATURATION_MULTIPLIER_HABITATION: 40
+    SATURATION_MULTIPLIER_EXCHANGE: 30
+    SATURATION_MULTIPLIER_FABRICATION: 30
+
+  soft_cap:
+    DEMAND_SOFT_CAP_THRESHOLD: 80
+    DEMAND_DIMINISHING_FACTOR: 0.5
+
+  spawn_rate:
+    SPAWN_SCAN_INTERVAL: 20                    # ticks
+    MAX_SPAWNS_PER_SCAN: 3
+    BASE_SPAWN_CHANCE_LOW_DEMAND: 0.05
+    BASE_SPAWN_CHANCE_MEDIUM_DEMAND: 0.10
+    BASE_SPAWN_CHANCE_HIGH_DEMAND: 0.15
+
+  upgrade:
+    UPGRADE_COOLDOWN_TICKS: 200                # 10 seconds
+
+# ============================================================================
+# PLAYTESTING NOTES
+# ============================================================================
+
+playtesting_notes:
+  iteration_priority:
+    description: |
+      These are the knobs to turn during playtesting, in priority order:
+
+    1_saturation_multipliers:
+      description: "PRIMARY PACING KNOB"
+      effect: "Controls how quickly growth slows"
+      current_values: "40/30/30"
+      adjustment: "Increase to slow growth, decrease to speed up"
+
+    2_base_pressure:
+      description: "Early game growth rate"
+      effect: "Controls initial demand before saturation kicks in"
+      current_values: "10/5/5"
+      adjustment: "Increase to accelerate early game"
+
+    3_spawn_chance:
+      description: "Responsiveness of spawn system to demand"
+      effect: "Higher = more structures per unit of demand"
+      current_values: "0.05/0.10/0.15"
+      adjustment: "Increase if growth feels sluggish"
+
+    4_soft_cap_threshold:
+      description: "Point where diminishing returns begin"
+      effect: "Lower threshold = tighter pacing control"
+      current_values: "80"
+      adjustment: "Unlikely to need change"
+
+  expected_adjustments:
+    description: |
+      After initial playtesting, expect:
+      - Saturation multipliers may need 20-50% adjustment
+      - Base pressure may need zone type rebalancing
+      - Spawn chance may need small tweaks (±0.02)
+
+  validation_questions:
+    - "Does early game feel active and exciting (15-20 structures in 5 min)?"
+    - "Does mid-game slow appropriately (not too abrupt)?"
+    - "Does late game feel stable (not stagnant or runaway)?"
+    - "Are all three zone types growing proportionally?"
+    - "Do stub factors (all 0) create boring early game?"
+
+# ============================================================================
+# FUTURE TUNING (Post-Epic 4)
+# ============================================================================
+
+future_tuning:
+  epic_5_energy:
+    description: "Enable ENERGY_STUB_FACTOR (+5 powered, -10 unpowered)"
+    impact: "Strong demand for energy infrastructure, powered zones develop faster"
+
+  epic_6_fluid:
+    description: "Enable FLUID_STUB_FACTOR (+5 fluid, -8 no fluid)"
+    impact: "Habitation/Exchange require fluid, fabrication less affected"
+
+  epic_7_pathways:
+    description: "Enable PATHWAY_STUB_FACTOR (+8 accessible, -15 isolated)"
+    impact: "LARGEST impact — pathway proximity becomes critical"
+
+  epic_9_services:
+    description: "Enable SERVICES_STUB_FACTOR (-10 to +10 based on coverage)"
+    impact: "Service buildings become essential for sustained growth"
+
+  epic_10_land_value_contamination:
+    description: "Enable LAND_VALUE and CONTAMINATION stub factors"
+    impact: "High-value sectors premium, contaminated sectors penalty"
+
+  combined_effect:
+    description: |
+      When all stub factors are enabled (post-Epic 10), demand will be
+      highly responsive to infrastructure quality. Early Epic 4 demand
+      (stub=0) will feel simple by comparison.

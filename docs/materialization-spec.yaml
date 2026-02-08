@@ -1,0 +1,587 @@
+# ============================================================================
+# MATERIALIZATION ANIMATION SPECIFICATION
+# ============================================================================
+# Visual design for structure construction (materializing state).
+# Defines timing, phases, per-zone-type variations, and emotional targets.
+#
+# This document feeds into:
+#   - RenderingSystem: Construction shader effects, phase rendering
+#   - BuildingSystem: Timing constants, phase transition logic
+#   - AudioSystem: Construction sound effect triggers
+#
+# Version: 1.0.0
+# Created: 2026-02-07
+# Ticket: 4-044
+# ============================================================================
+
+version: "1.0.0"
+
+# ============================================================================
+# DESIGN PHILOSOPHY
+# ============================================================================
+
+design_philosophy:
+  core_concept:
+    description: |
+      Materialization is NOT human construction (workers, scaffolding, cranes).
+      It is ALIEN EMERGENCE — structures grow organically from energy points,
+      crystallize from light, or assemble from geometric patterns.
+
+      This is one of the most visually delightful moments in the game.
+      The player should feel wonder, not just "waiting for construction to finish."
+
+  emotional_targets:
+    - wonder: "The colony feels alive, not mechanical"
+    - organic_growth: "Structures emerge naturally, not built by hand"
+    - anticipation: "Each phase builds excitement toward completion"
+    - satisfaction: "Completion pulse delivers payoff"
+
+  thematic_alignment:
+    description: |
+      Aliens don't "build" — they channel energy, shape matter, manifest form.
+      Each zone type has a distinct materialization character that reflects
+      its purpose: habitation = living growth, exchange = unfolding display,
+      fabrication = geometric assembly.
+
+# ============================================================================
+# CONSTRUCTION PHASES (4-Phase System)
+# ============================================================================
+
+construction_phases:
+  description: |
+    Construction progress (0-100%) is divided into 4 equal phases.
+    Each phase has distinct visual treatment. ConstructionComponent.phase
+    enum value updates at 25%, 50%, 75%, 100%. ConstructionComponent.phase_progress
+    (0-255) provides smooth interpolation within each phase.
+
+  phase_enum_mapping:
+    foundation: 0           # 0-25% progress
+    framework: 1            # 25-50% progress
+    exterior: 2             # 50-75% progress
+    finalization: 3         # 75-100% progress
+
+  # --------------------------------------------------------------------------
+  # PHASE 0: FOUNDATION (0-25%)
+  # --------------------------------------------------------------------------
+  foundation:
+    progress_range: "0-25%"
+    duration_low_density: "0.5-1.0 seconds"
+    duration_high_density: "1.25-2.5 seconds"
+
+    visual_description: |
+      The structure begins as a single bright glow point at the sector center.
+      As progress increases, the glow point expands and brightens. Energy
+      pulses radiate outward from the center point. By 25%, the glow has
+      defined the structure's footprint outline.
+
+    shader_effects:
+      - "Point light at sector center"
+      - "Expanding radius: 0.0 -> footprint_radius"
+      - "Pulsing ring waves emanating from center (0.5 second intervals)"
+      - "Intensity ramps from 0.6 -> 0.8 of materializing_intensity"
+
+    geometric_visibility:
+      vertices_visible: "0%"
+      description: "No geometry yet — pure light effect"
+
+    glow_intensity_curve: "0.6 at 0% -> 0.8 at 25%"
+
+    audio_cue:
+      trigger: "phase start (0%)"
+      sound: "emergence_begin.ogg"
+      description: "Soft hum or resonance starting"
+
+  # --------------------------------------------------------------------------
+  # PHASE 1: FRAMEWORK (25-50%)
+  # --------------------------------------------------------------------------
+  framework:
+    progress_range: "25-50%"
+    duration_low_density: "0.5-1.0 seconds"
+    duration_high_density: "1.25-2.5 seconds"
+
+    visual_description: |
+      The structure's skeletal framework materializes. Edges and major
+      structural lines appear first, glowing brightly. The framework is
+      translucent, with energy flowing along the edges. By 50%, the full
+      skeleton is visible and solidifying.
+
+    shader_effects:
+      - "Wireframe or edge-only rendering of structure geometry"
+      - "Edge glow brighter than face glow"
+      - "Energy flow animation along edges (scrolling UV or vertex color pulse)"
+      - "Opacity increases from 0.3 -> 0.6"
+
+    geometric_visibility:
+      vertices_visible: "100% (as wireframe/edges)"
+      faces_visible: "0-30% opacity"
+      description: "Skeleton structure, translucent"
+
+    glow_intensity_curve: "0.8 at 25% -> 0.9 at 50%"
+
+    audio_cue:
+      trigger: "phase transition (25%)"
+      sound: "framework_form.ogg"
+      description: "Crystalline chime or structural resonance"
+
+  # --------------------------------------------------------------------------
+  # PHASE 2: EXTERIOR (50-75%)
+  # --------------------------------------------------------------------------
+  exterior:
+    progress_range: "50-75%"
+    duration_low_density: "0.5-1.0 seconds"
+    duration_high_density: "1.25-2.5 seconds"
+
+    visual_description: |
+      The structure's shell crystallizes around the framework. Surface
+      panels or walls appear, growing from the edges inward. The glow
+      shifts from edges to the full surface. By 75%, the structure is
+      nearly opaque and fully formed.
+
+    shader_effects:
+      - "Face opacity increases 0.6 -> 0.95"
+      - "Surface glow spreads from edges to full surface"
+      - "Translucent-to-opaque transition (crystallization)"
+      - "Edge glow dims as surface glow brightens"
+
+    geometric_visibility:
+      vertices_visible: "100%"
+      faces_visible: "60-95% opacity"
+      description: "Structure taking solid form"
+
+    glow_intensity_curve: "0.9 at 50% -> 1.0 at 75%"
+
+    audio_cue:
+      trigger: "phase transition (50%)"
+      sound: "exterior_crystallize.ogg"
+      description: "Glass-like or crystalline solidification sound"
+
+  # --------------------------------------------------------------------------
+  # PHASE 3: FINALIZATION (75-100%)
+  # --------------------------------------------------------------------------
+  finalization:
+    progress_range: "75-100%"
+    duration_low_density: "0.5-1.0 seconds"
+    duration_high_density: "1.25-2.5 seconds"
+
+    visual_description: |
+      The structure is fully formed and opaque. Glow intensity remains high
+      (peak brightness). Fine details appear: windows/accents light up,
+      surface textures finalize. At 100%, a brief completion pulse signals
+      the transition to Active state.
+
+    shader_effects:
+      - "Full opacity (1.0)"
+      - "Glow at maximum intensity (materializing_intensity from zone-color-tokens.yaml)"
+      - "Secondary accent lights activate (windows, panels)"
+      - "Surface normal/specular details fully visible"
+
+    geometric_visibility:
+      vertices_visible: "100%"
+      faces_visible: "100% opacity"
+      description: "Fully solid, all details visible"
+
+    glow_intensity_curve: "1.0 at 75% -> 1.0 at 100% (constant peak)"
+
+    audio_cue:
+      trigger: "phase transition (75%)"
+      sound: "finalization_detail.ogg"
+      description: "Soft power-on hum or activation tone"
+
+  # --------------------------------------------------------------------------
+  # COMPLETION PULSE (100%)
+  # --------------------------------------------------------------------------
+  completion:
+    trigger: "100% progress reached"
+    duration: "0.3 seconds"
+
+    visual_description: |
+      A brief bright flash — the structure's glow intensity spikes to 120%
+      of materializing_intensity, then smoothly fades down to active_intensity
+      over 0.3 seconds. This signals "construction complete, now active."
+
+    shader_effects:
+      - "Glow intensity: materializing_intensity * 1.2 for first frame"
+      - "Smooth fade over 0.3 seconds to active_intensity"
+      - "Radial pulse wave emanates from structure (1-tile radius)"
+
+    audio_cue:
+      trigger: "100% progress"
+      sound: "completion_pulse.ogg"
+      description: "Satisfying 'chime' or 'activation' sound — completion payoff"
+
+    state_transition:
+      description: |
+        ConstructionComponent is removed. BuildingState transitions to Active.
+        BuildingConstructedEvent emitted. ZoneState transitions to Occupied.
+
+# ============================================================================
+# TIMING TARGETS
+# ============================================================================
+
+timing_targets:
+  description: |
+    Total materialization time varies by density. Low density structures
+    materialize quickly (2-4 seconds), high density structures take longer
+    (5-10 seconds). These are real-time targets at 20 TPS.
+
+  low_density:
+    total_time_seconds: "2-4"
+    total_time_ticks: "40-80 ticks at 20 TPS"
+    per_phase_seconds: "0.5-1.0"
+    per_phase_ticks: "10-20 ticks"
+    notes: "Quick, satisfying emergence — small structures don't overstay"
+
+  high_density:
+    total_time_seconds: "5-10"
+    total_time_ticks: "100-200 ticks at 20 TPS"
+    per_phase_seconds: "1.25-2.5"
+    per_phase_ticks: "25-50 ticks"
+    notes: "Longer animation emphasizes scale and importance of large structures"
+
+  configuration:
+    description: "Timing is configurable per density level"
+    config_constants:
+      - LOW_DENSITY_CONSTRUCTION_TICKS: 60        # 3 seconds default
+      - HIGH_DENSITY_CONSTRUCTION_TICKS: 140      # 7 seconds default
+
+# ============================================================================
+# PER-ZONE-TYPE VISUAL VARIATIONS
+# ============================================================================
+
+zone_type_variations:
+  description: |
+    Each zone type (habitation, exchange, fabrication) has a distinct
+    materialization character that reflects its thematic identity.
+
+  # --------------------------------------------------------------------------
+  # HABITATION (Residential) — Organic Growth
+  # --------------------------------------------------------------------------
+  habitation:
+    theme: "Organic, living emergence"
+    color: "Cyan (#00ffee from zone-color-tokens.yaml)"
+
+    foundation:
+      description: |
+        Glow point pulses like a heartbeat. Soft, warm, inviting energy.
+        Radiating waves are gentle and slow (1 second intervals).
+      glow_pattern: "Heartbeat pulse — expand/contract rhythm"
+      particle_effect: "Bioluminescent motes rising from glow point"
+
+    framework:
+      description: |
+        Skeletal structure grows like vines or coral — organic curves,
+        asymmetric branching. Energy flows along curves smoothly.
+      edge_style: "Curved, organic paths (Bezier-like)"
+      flow_animation: "Smooth vine-like growth along edges"
+
+    exterior:
+      description: |
+        Shell crystallizes like a membrane forming — translucent at first,
+        then solidifying. Surface has organic texture (cellular, scaled).
+      surface_pattern: "Organic cellular or scale-like texture"
+      crystallization_style: "Membrane solidification (biological)"
+
+    finalization:
+      description: |
+        Windows/openings glow softly (invitation to beings). Surface
+        settles into calm cyan glow. Rounded, welcoming form.
+      accent_lights: "Soft warm glows in window-like openings"
+      final_form: "Rounded, asymmetric, organic silhouette"
+
+  # --------------------------------------------------------------------------
+  # EXCHANGE (Commercial) — Unfurling Display
+  # --------------------------------------------------------------------------
+  exchange:
+    theme: "Outward-facing, displaying, unfurling like a flower"
+    color: "Amber (#ffcc33 from zone-color-tokens.yaml)"
+
+    foundation:
+      description: |
+        Glow point is energetic and bright. Pulses are faster (0.5 second
+        intervals), more dynamic. Energy suggests activity and trade.
+      glow_pattern: "Rapid energetic pulses"
+      particle_effect: "Sparks or light motes radiating outward"
+
+    framework:
+      description: |
+        Structure unfurls from center outward — petals or panels opening.
+        Asymmetric, outward-facing geometry (display windows, signs).
+      edge_style: "Outward-radiating segments (flower petals, banners)"
+      flow_animation: "Unfurling motion from center to edges"
+
+    exterior:
+      description: |
+        Panels/surfaces lock into place with bright edge highlights.
+        Surface is reflective or translucent (glass-like for display).
+      surface_pattern: "Reflective panels, sharp highlights"
+      crystallization_style: "Panel-by-panel locking (modular assembly)"
+
+    finalization:
+      description: |
+        Display elements activate — bright accent panels, signage glows.
+        Structure feels outward-focused, inviting customers.
+      accent_lights: "Bright amber panels (display windows, signage)"
+      final_form: "Asymmetric, outward-facing, energetic silhouette"
+
+  # --------------------------------------------------------------------------
+  # FABRICATION (Industrial) — Angular Assembly
+  # --------------------------------------------------------------------------
+  fabrication:
+    theme: "Geometric, angular, powerful assembly"
+    color: "Magenta (#ff44cc from zone-color-tokens.yaml)"
+
+    foundation:
+      description: |
+        Glow point is sharp and intense. Pulses are strong, mechanical.
+        Energy suggests power and industry.
+      glow_pattern: "Sharp mechanical pulses (hard on/off)"
+      particle_effect: "Geometric shards or energy arcs"
+
+    framework:
+      description: |
+        Structure assembles geometrically — straight edges, 90-degree angles,
+        modular blocks. Energy flows are linear and sharp.
+      edge_style: "Hard geometric edges (cubes, beams, struts)"
+      flow_animation: "Linear segment-by-segment assembly"
+
+    exterior:
+      description: |
+        Panels snap into place with sharp edges. Surface is metallic or
+        matte (industrial material). Strong angular forms.
+      surface_pattern: "Paneled metal, hard-edged facets"
+      crystallization_style: "Snap-fit geometric assembly (modular blocks)"
+
+    finalization:
+      description: |
+        Vents/exhausts activate with bright magenta glow. Structure feels
+        powerful, industrial, angular. Hard edges dominate.
+      accent_lights: "Bright magenta vents, exhaust ports, panel seams"
+      final_form: "Angular, geometric, industrial silhouette"
+
+# ============================================================================
+# GLOW INTENSITY PROGRESSION
+# ============================================================================
+
+glow_intensity:
+  description: |
+    Glow intensity increases through construction phases to build anticipation.
+    Peak brightness at finalization, then completion pulse, then settle to active.
+
+  intensity_curve:
+    foundation_start: "0.60 * materializing_intensity"
+    foundation_end: "0.80 * materializing_intensity"
+    framework_end: "0.90 * materializing_intensity"
+    exterior_end: "1.00 * materializing_intensity"
+    finalization: "1.00 * materializing_intensity (constant)"
+    completion_pulse: "1.20 * materializing_intensity (0.3 second spike)"
+    active_settle: "active_intensity (fade over 0.3 seconds)"
+
+  zone_type_base_values:
+    description: "From zone-color-tokens.yaml"
+    habitation_materializing: 0.90
+    habitation_active: 0.65
+    exchange_materializing: 0.95
+    exchange_active: 0.70
+    fabrication_materializing: 1.00
+    fabrication_active: 0.75
+
+  attention_grabbing:
+    description: |
+      Materializing structures are intentionally brighter than active structures
+      to draw the player's attention. The completion pulse is the brightest
+      moment — a satisfying visual payoff.
+
+# ============================================================================
+# SHADER IMPLEMENTATION GUIDANCE
+# ============================================================================
+
+shader_implementation:
+  description: |
+    RenderingSystem uses ConstructionComponent.phase and phase_progress
+    to drive shader effects. This section provides implementation notes.
+
+  phase_vertex_masking:
+    description: |
+      Vertices can be progressively revealed based on phase_progress.
+      Foundation: vertices hidden or scaled to zero.
+      Framework: vertices visible but faces translucent.
+      Exterior/Finalization: full geometry visible.
+
+  opacity_calculation:
+    formula: |
+      if phase == Foundation:
+        opacity = 0.0  // Geometry hidden, only point light
+      else if phase == Framework:
+        opacity = mix(0.3, 0.6, (phase_progress / 255.0))
+      else if phase == Exterior:
+        opacity = mix(0.6, 0.95, (phase_progress / 255.0))
+      else if phase == Finalization:
+        opacity = 1.0
+
+  emissive_intensity_calculation:
+    formula: |
+      base_intensity = zone_type_materializing_intensity
+      if phase == Foundation:
+        intensity = mix(0.6, 0.8, progress_in_phase) * base_intensity
+      else if phase == Framework:
+        intensity = mix(0.8, 0.9, progress_in_phase) * base_intensity
+      else if phase == Exterior:
+        intensity = mix(0.9, 1.0, progress_in_phase) * base_intensity
+      else if phase == Finalization:
+        intensity = 1.0 * base_intensity
+
+  completion_pulse:
+    formula: |
+      if completion_pulse_timer > 0.0:
+        pulse_factor = 1.2 * (completion_pulse_timer / 0.3)  // Fade from 1.2 to 1.0
+        intensity *= pulse_factor
+
+  edge_glow_vs_surface_glow:
+    description: |
+      Framework phase: edge glow >> surface glow
+      Exterior phase: edge glow diminishes, surface glow increases
+      Finalization phase: surface glow dominant
+
+    edge_intensity_formula: |
+      if phase == Framework:
+        edge_factor = 1.5  // Edges 50% brighter
+      else if phase == Exterior:
+        edge_factor = mix(1.5, 1.0, progress_in_phase)
+      else:
+        edge_factor = 1.0
+
+  particle_effects:
+    description: |
+      Optional particle systems (not required for MVP).
+      Foundation: glow motes/sparks rising from center point
+      Framework: energy flow particles along edges
+      Exterior: crystallization sparkles
+      Completion: radial pulse burst
+
+# ============================================================================
+# AUDIO INTEGRATION
+# ============================================================================
+
+audio_integration:
+  description: |
+    AudioSystem consumes construction events to trigger sound effects.
+    4 phase transitions + 1 completion sound = 5 sound cues per structure.
+
+  sound_cues:
+    - phase: foundation_start
+      trigger: "ConstructionComponent added (phase = 0, progress = 0)"
+      sound_file: "emergence_begin.ogg"
+      volume: 0.6
+      spatial: true
+      description: "Soft emergence hum or resonance"
+
+    - phase: framework_transition
+      trigger: "phase transitions from 0 -> 1 (25% progress)"
+      sound_file: "framework_form.ogg"
+      volume: 0.7
+      spatial: true
+      description: "Crystalline chime or structural resonance"
+
+    - phase: exterior_transition
+      trigger: "phase transitions from 1 -> 2 (50% progress)"
+      sound_file: "exterior_crystallize.ogg"
+      volume: 0.7
+      spatial: true
+      description: "Glass-like solidification"
+
+    - phase: finalization_transition
+      trigger: "phase transitions from 2 -> 3 (75% progress)"
+      sound_file: "finalization_detail.ogg"
+      volume: 0.5
+      spatial: true
+      description: "Soft activation hum"
+
+    - phase: completion_pulse
+      trigger: "BuildingConstructedEvent (100% progress, state -> Active)"
+      sound_file: "completion_pulse.ogg"
+      volume: 0.8
+      spatial: true
+      description: "Satisfying completion chime — payoff moment"
+
+  spatial_audio:
+    description: |
+      All construction sounds are positional (3D audio at structure location).
+      Volume attenuates with distance. Multiple simultaneous constructions
+      should blend naturally (no jarring overlap).
+
+  zone_type_variations:
+    description: |
+      Optional: Each zone type could have subtly different sound profiles.
+      Habitation = organic/warm tones, Exchange = bright/energetic,
+      Fabrication = mechanical/industrial. Deferred to audio polish epic.
+
+# ============================================================================
+# PACING AND PLAYER PERCEPTION
+# ============================================================================
+
+pacing:
+  player_perception:
+    description: |
+      Materialization time affects game pacing. Too fast feels cheap (no
+      weight), too slow feels tedious (waiting simulator). 2-4 seconds for
+      low density, 5-10 seconds for high density is the sweet spot.
+
+  batch_construction:
+    description: |
+      When multiple structures materialize simultaneously (high demand),
+      stagger their start times by 0.5-1.0 seconds to avoid visual chaos.
+      Each structure should have its moment to shine.
+
+  stagger_formula:
+    description: "SpawnSystem staggers spawn times when multiple zones are eligible"
+    implementation: "spawn_tick = base_tick + (spawn_index * 10 ticks)"
+
+  camera_attraction:
+    description: |
+      When a new structure begins materializing, UI could optionally
+      pulse a subtle notification or minimap icon to draw player's attention.
+      Deferred to UI epic.
+
+# ============================================================================
+# FEEL VALIDATION CHECKLIST
+# ============================================================================
+
+feel_validation:
+  description: |
+    Validation questions to ensure materialization meets emotional targets.
+    If any answer is "no," visual design needs iteration.
+
+  checklist:
+    - question: "Does watching a structure materialize feel exciting (not tedious)?"
+      target: "Yes — animation is dynamic, not just a progress bar"
+
+    - question: "Does each zone type feel thematically distinct?"
+      target: "Yes — habitation/exchange/fabrication have unique visual character"
+
+    - question: "Does the completion pulse feel satisfying?"
+      target: "Yes — clear payoff moment with visual/audio feedback"
+
+    - question: "Can you identify materialization phase at a glance?"
+      target: "Yes — Foundation/Framework/Exterior/Finalization are visually distinct"
+
+    - question: "Does it feel alien (not human construction)?"
+      target: "Yes — organic growth/unfurling/assembly, not workers with tools"
+
+    - question: "Is the timing appropriate (not too fast or slow)?"
+      target: "Yes — 2-4s low density, 5-10s high density feels right"
+
+# ============================================================================
+# FUTURE ENHANCEMENTS (Out of Scope for Epic 4)
+# ============================================================================
+
+future_enhancements:
+  description: "Deferred visual polish for later epics"
+
+  ideas:
+    - "Particle systems (motes, sparks, energy trails)"
+    - "Ground decals during construction (glow ring on terrain)"
+    - "Camera shake or screen flash on completion pulse (subtle)"
+    - "Per-template construction variations (unique animations for special buildings)"
+    - "Weather interaction (rain affects materialization visuals)"
+    - "Time-of-day lighting interaction (construction at night more dramatic)"
+    - "Multi-sector footprint structures materialize from center outward"
