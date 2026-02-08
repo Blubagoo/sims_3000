@@ -557,6 +557,204 @@ TEST(clear_transition_events_clears_all_buffers) {
 }
 
 // =============================================================================
+// Marginal began on Healthy -> Marginal
+// =============================================================================
+
+TEST(marginal_began_on_healthy_to_marginal) {
+    FluidSystem sys(64, 64);
+    entt::registry reg;
+    sys.set_registry(&reg);
+
+    // Tick 1: Healthy (extractor only, no consumers)
+    sys.place_extractor(10, 10, 0);
+    sys.tick(0.016f);
+    ASSERT_EQ(static_cast<uint8_t>(sys.get_pool_state(0)),
+              static_cast<uint8_t>(FluidPoolState::Healthy));
+
+    // Tick 2: Add consumer that leaves < 10% surplus -> Marginal
+    FluidExtractorConfig config = get_default_extractor_config();
+    // Demand = 95% of supply -> surplus = 5% < 10% threshold -> Marginal
+    uint32_t marginal_demand = config.base_output - (config.base_output / 20);
+    create_consumer_near_extractor(reg, sys, 0, marginal_demand, 10, 11);
+    sys.tick(0.016f);
+
+    ASSERT_EQ(static_cast<uint8_t>(sys.get_pool_state(0)),
+              static_cast<uint8_t>(FluidPoolState::Marginal));
+
+    const auto& events = sys.get_marginal_began_events();
+    ASSERT(events.size() > 0u);
+    ASSERT_EQ(events[0].owner_id, 0u);
+}
+
+// =============================================================================
+// Marginal ended on Marginal -> Healthy
+// =============================================================================
+
+TEST(marginal_ended_on_marginal_to_healthy) {
+    FluidSystem sys(64, 64);
+    entt::registry reg;
+    sys.set_registry(&reg);
+
+    // Tick 1: Healthy
+    sys.place_extractor(10, 10, 0);
+    sys.tick(0.016f);
+
+    // Tick 2: Marginal
+    FluidExtractorConfig config = get_default_extractor_config();
+    uint32_t marginal_demand = config.base_output - (config.base_output / 20);
+    uint32_t consumer_eid = create_consumer_near_extractor(reg, sys, 0, marginal_demand, 10, 11);
+    sys.tick(0.016f);
+    ASSERT_EQ(static_cast<uint8_t>(sys.get_pool_state(0)),
+              static_cast<uint8_t>(FluidPoolState::Marginal));
+
+    // Tick 3: Reduce demand to recover to Healthy (demand < 90% of supply)
+    auto consumer_entity = static_cast<entt::entity>(consumer_eid);
+    auto* fc = reg.try_get<FluidComponent>(consumer_entity);
+    fc->fluid_required = 10;
+    sys.tick(0.016f);
+
+    ASSERT_EQ(static_cast<uint8_t>(sys.get_pool_state(0)),
+              static_cast<uint8_t>(FluidPoolState::Healthy));
+
+    const auto& events = sys.get_marginal_ended_events();
+    ASSERT(events.size() > 0u);
+    ASSERT_EQ(events[0].owner_id, 0u);
+}
+
+// =============================================================================
+// Marginal ended on Marginal -> Deficit
+// =============================================================================
+
+TEST(marginal_ended_on_marginal_to_deficit) {
+    FluidSystem sys(64, 64);
+    entt::registry reg;
+    sys.set_registry(&reg);
+
+    // Tick 1: Healthy
+    sys.place_extractor(10, 10, 0);
+    sys.tick(0.016f);
+
+    // Tick 2: Marginal
+    FluidExtractorConfig config = get_default_extractor_config();
+    uint32_t marginal_demand = config.base_output - (config.base_output / 20);
+    uint32_t consumer_eid = create_consumer_near_extractor(reg, sys, 0, marginal_demand, 10, 11);
+    sys.tick(0.016f);
+    ASSERT_EQ(static_cast<uint8_t>(sys.get_pool_state(0)),
+              static_cast<uint8_t>(FluidPoolState::Marginal));
+
+    // Tick 3: Push demand above supply to trigger deficit or collapse
+    auto consumer_entity = static_cast<entt::entity>(consumer_eid);
+    auto* fc = reg.try_get<FluidComponent>(consumer_entity);
+    fc->fluid_required = config.base_output + 500;
+    sys.tick(0.016f);
+
+    // Pool should be in Deficit or Collapse (no reservoir -> Collapse)
+    FluidPoolState after = sys.get_pool_state(0);
+    ASSERT(after == FluidPoolState::Deficit || after == FluidPoolState::Collapse);
+
+    // MarginalEndedEvent should have been emitted (leaving Marginal)
+    const auto& events = sys.get_marginal_ended_events();
+    ASSERT(events.size() > 0u);
+    ASSERT_EQ(events[0].owner_id, 0u);
+}
+
+// =============================================================================
+// Marginal began on Deficit -> Marginal (recovery through Marginal)
+// =============================================================================
+
+TEST(marginal_began_on_deficit_to_marginal) {
+    FluidSystem sys(64, 64);
+    entt::registry reg;
+    sys.set_registry(&reg);
+
+    // Tick 1: Healthy
+    sys.place_extractor(10, 10, 0);
+    sys.tick(0.016f);
+
+    // Tick 2: Push into collapse (high demand, no reservoir)
+    FluidExtractorConfig config = get_default_extractor_config();
+    uint32_t consumer_eid = create_consumer_near_extractor(reg, sys, 0,
+        config.base_output * 10, 10, 11);
+    sys.tick(0.016f);
+
+    FluidPoolState after_deficit = sys.get_pool_state(0);
+    ASSERT(after_deficit == FluidPoolState::Deficit ||
+           after_deficit == FluidPoolState::Collapse);
+
+    // Tick 3: Reduce demand to Marginal (surplus >= 0 but < 10% threshold)
+    auto consumer_entity = static_cast<entt::entity>(consumer_eid);
+    auto* fc = reg.try_get<FluidComponent>(consumer_entity);
+    // Set demand so surplus is between 0 and 10% of available -> Marginal
+    uint32_t marginal_demand = config.base_output - (config.base_output / 20);
+    fc->fluid_required = marginal_demand;
+    sys.tick(0.016f);
+
+    ASSERT_EQ(static_cast<uint8_t>(sys.get_pool_state(0)),
+              static_cast<uint8_t>(FluidPoolState::Marginal));
+
+    const auto& events = sys.get_marginal_began_events();
+    ASSERT(events.size() > 0u);
+    ASSERT_EQ(events[0].owner_id, 0u);
+}
+
+// =============================================================================
+// Marginal events cleared each tick
+// =============================================================================
+
+TEST(marginal_events_cleared_each_tick) {
+    FluidSystem sys(64, 64);
+    entt::registry reg;
+    sys.set_registry(&reg);
+
+    // Tick 1: Healthy
+    sys.place_extractor(10, 10, 0);
+    sys.tick(0.016f);
+
+    // Tick 2: Marginal (generates marginal_began event)
+    FluidExtractorConfig config = get_default_extractor_config();
+    uint32_t marginal_demand = config.base_output - (config.base_output / 20);
+    create_consumer_near_extractor(reg, sys, 0, marginal_demand, 10, 11);
+    sys.tick(0.016f);
+    ASSERT_EQ(static_cast<uint8_t>(sys.get_pool_state(0)),
+              static_cast<uint8_t>(FluidPoolState::Marginal));
+    ASSERT(sys.get_marginal_began_events().size() > 0u);
+
+    // Tick 3: Still Marginal - events from tick 2 should be cleared
+    sys.tick(0.016f);
+    ASSERT_EQ(sys.get_marginal_began_events().size(), 0u);
+    ASSERT_EQ(sys.get_marginal_ended_events().size(), 0u);
+}
+
+// =============================================================================
+// Marginal began has correct fields
+// =============================================================================
+
+TEST(marginal_began_has_correct_fields) {
+    FluidSystem sys(64, 64);
+    entt::registry reg;
+    sys.set_registry(&reg);
+
+    // Tick 1: Healthy
+    sys.place_extractor(10, 10, 0);
+    sys.tick(0.016f);
+
+    // Tick 2: Marginal
+    FluidExtractorConfig config = get_default_extractor_config();
+    uint32_t marginal_demand = config.base_output - (config.base_output / 20);
+    create_consumer_near_extractor(reg, sys, 0, marginal_demand, 10, 11);
+    sys.tick(0.016f);
+
+    ASSERT_EQ(static_cast<uint8_t>(sys.get_pool_state(0)),
+              static_cast<uint8_t>(FluidPoolState::Marginal));
+
+    const auto& events = sys.get_marginal_began_events();
+    ASSERT(events.size() > 0u);
+    ASSERT_EQ(events[0].owner_id, 0u);
+    // surplus_amount should be >= 0 (still positive, just below 10% threshold)
+    ASSERT(events[0].surplus_amount >= 0);
+}
+
+// =============================================================================
 // Main Entry Point
 // =============================================================================
 
@@ -599,6 +797,14 @@ int main() {
 
     // Clear events
     RUN_TEST(clear_transition_events_clears_all_buffers);
+
+    // Marginal events (FF-FLUID-001)
+    RUN_TEST(marginal_began_on_healthy_to_marginal);
+    RUN_TEST(marginal_ended_on_marginal_to_healthy);
+    RUN_TEST(marginal_ended_on_marginal_to_deficit);
+    RUN_TEST(marginal_began_on_deficit_to_marginal);
+    RUN_TEST(marginal_events_cleared_each_tick);
+    RUN_TEST(marginal_began_has_correct_fields);
 
     printf("\n=== Results: %d passed, %d failed ===\n",
            tests_passed, tests_failed);

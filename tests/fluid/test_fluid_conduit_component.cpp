@@ -29,7 +29,7 @@ void test_conduit_default_initialization() {
     printf("Testing default initialization...\n");
 
     FluidConduitComponent conduit{};
-    assert(conduit.coverage_radius == 2);
+    assert(conduit.coverage_radius == 3);
     assert(conduit.is_connected == false);
     assert(conduit.is_active == false);
     assert(conduit.conduit_level == 1);

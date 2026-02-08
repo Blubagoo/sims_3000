@@ -90,7 +90,7 @@ static uint32_t create_reservoir(entt::registry& registry) {
 // =============================================================================
 // Helper: Create a conduit entity
 // =============================================================================
-static uint32_t create_conduit(entt::registry& registry, uint8_t coverage_radius = 2) {
+static uint32_t create_conduit(entt::registry& registry, uint8_t coverage_radius = 3) {
     auto entity = registry.create();
     FluidConduitComponent conduit{};
     conduit.coverage_radius = coverage_radius;

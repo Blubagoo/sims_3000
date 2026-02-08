@@ -13,6 +13,8 @@
  */
 
 #include <sims3000/fluid/FluidSerialization.h>
+#include <sims3000/fluid/FluidProducerComponent.h>
+#include <sims3000/fluid/FluidConduitComponent.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -447,11 +449,147 @@ TEST(pool_sync_reservoir_fields) {
 }
 
 // ============================================================================
+// FluidProducerComponent Serialization Tests (Ticket F6-SR-01)
+// ============================================================================
+
+TEST(fluid_producer_round_trip_defaults) {
+    FluidProducerComponent original;
+
+    std::vector<uint8_t> buffer;
+    serialize_fluid_producer(original, buffer);
+
+    ASSERT_EQ(buffer.size(), FLUID_PRODUCER_SERIALIZED_SIZE);
+    ASSERT_EQ(buffer[0], FLUID_SERIALIZATION_VERSION);
+
+    FluidProducerComponent deserialized;
+    size_t consumed = deserialize_fluid_producer(buffer.data(), buffer.size(), deserialized);
+
+    ASSERT_EQ(consumed, FLUID_PRODUCER_SERIALIZED_SIZE);
+    ASSERT_EQ(deserialized.base_output, 0u);
+    ASSERT_EQ(deserialized.current_output, 0u);
+    ASSERT_EQ(deserialized.max_water_distance, 5u);
+    ASSERT_EQ(deserialized.current_water_distance, 0u);
+    ASSERT_EQ(deserialized.is_operational, false);
+    ASSERT_EQ(deserialized.producer_type, 0u);
+}
+
+TEST(fluid_producer_round_trip_max_values) {
+    FluidProducerComponent original;
+    original.base_output = UINT32_MAX;
+    original.current_output = UINT32_MAX;
+    original.max_water_distance = 255;
+    original.current_water_distance = 255;
+    original.is_operational = true;
+    original.producer_type = 255;
+
+    std::vector<uint8_t> buffer;
+    serialize_fluid_producer(original, buffer);
+
+    ASSERT_EQ(buffer.size(), FLUID_PRODUCER_SERIALIZED_SIZE);
+
+    FluidProducerComponent deserialized;
+    size_t consumed = deserialize_fluid_producer(buffer.data(), buffer.size(), deserialized);
+
+    ASSERT_EQ(consumed, FLUID_PRODUCER_SERIALIZED_SIZE);
+    ASSERT_EQ(deserialized.base_output, UINT32_MAX);
+    ASSERT_EQ(deserialized.current_output, UINT32_MAX);
+    ASSERT_EQ(deserialized.max_water_distance, 255u);
+    ASSERT_EQ(deserialized.current_water_distance, 255u);
+    ASSERT_EQ(deserialized.is_operational, true);
+    ASSERT_EQ(deserialized.producer_type, 255u);
+}
+
+TEST(fluid_producer_buffer_overflow_protection) {
+    uint8_t small_buf[5] = {};
+    FluidProducerComponent comp;
+    ASSERT_THROW(deserialize_fluid_producer(small_buf, 5, comp), std::runtime_error);
+}
+
+TEST(fluid_producer_version_validation) {
+    FluidProducerComponent original;
+    original.base_output = 1000;
+
+    std::vector<uint8_t> buffer;
+    serialize_fluid_producer(original, buffer);
+
+    // Corrupt version byte
+    buffer[0] = 99;
+
+    FluidProducerComponent deserialized;
+    ASSERT_THROW(deserialize_fluid_producer(buffer.data(), buffer.size(), deserialized), std::runtime_error);
+}
+
+// ============================================================================
+// FluidConduitComponent Serialization Tests (Ticket F6-SR-01)
+// ============================================================================
+
+TEST(fluid_conduit_round_trip_defaults) {
+    FluidConduitComponent original;
+
+    std::vector<uint8_t> buffer;
+    serialize_fluid_conduit(original, buffer);
+
+    ASSERT_EQ(buffer.size(), FLUID_CONDUIT_SERIALIZED_SIZE);
+    ASSERT_EQ(buffer[0], FLUID_SERIALIZATION_VERSION);
+
+    FluidConduitComponent deserialized;
+    size_t consumed = deserialize_fluid_conduit(buffer.data(), buffer.size(), deserialized);
+
+    ASSERT_EQ(consumed, FLUID_CONDUIT_SERIALIZED_SIZE);
+    ASSERT_EQ(deserialized.coverage_radius, 3u);
+    ASSERT_EQ(deserialized.is_connected, false);
+    ASSERT_EQ(deserialized.is_active, false);
+    ASSERT_EQ(deserialized.conduit_level, 1u);
+}
+
+TEST(fluid_conduit_round_trip_custom_values) {
+    FluidConduitComponent original;
+    original.coverage_radius = 8;
+    original.is_connected = true;
+    original.is_active = true;
+    original.conduit_level = 2;
+
+    std::vector<uint8_t> buffer;
+    serialize_fluid_conduit(original, buffer);
+
+    ASSERT_EQ(buffer.size(), FLUID_CONDUIT_SERIALIZED_SIZE);
+
+    FluidConduitComponent deserialized;
+    size_t consumed = deserialize_fluid_conduit(buffer.data(), buffer.size(), deserialized);
+
+    ASSERT_EQ(consumed, FLUID_CONDUIT_SERIALIZED_SIZE);
+    ASSERT_EQ(deserialized.coverage_radius, 8u);
+    ASSERT_EQ(deserialized.is_connected, true);
+    ASSERT_EQ(deserialized.is_active, true);
+    ASSERT_EQ(deserialized.conduit_level, 2u);
+}
+
+TEST(fluid_conduit_buffer_overflow_protection) {
+    uint8_t small_buf[3] = {};
+    FluidConduitComponent comp;
+    ASSERT_THROW(deserialize_fluid_conduit(small_buf, 3, comp), std::runtime_error);
+}
+
+TEST(fluid_conduit_version_validation) {
+    FluidConduitComponent original;
+    original.coverage_radius = 5;
+
+    std::vector<uint8_t> buffer;
+    serialize_fluid_conduit(original, buffer);
+
+    // Corrupt version byte
+    buffer[0] = 99;
+
+    FluidConduitComponent deserialized;
+    ASSERT_THROW(deserialize_fluid_conduit(buffer.data(), buffer.size(), deserialized), std::runtime_error);
+}
+
+// ============================================================================
 // Main
 // ============================================================================
 
 int main() {
-    printf("=== FluidSerialization Unit Tests (Tickets 6-036, 6-037) ===\n\n");
+    printf("=== FluidSerialization Unit Tests (Tickets 6-036, 6-037, F6-SR-01) ===\n\n");
 
     // FluidComponent serialization
     RUN_TEST(fluid_component_round_trip);
@@ -482,6 +620,18 @@ int main() {
     RUN_TEST(pool_sync_little_endian_encoding);
     RUN_TEST(pool_sync_all_pool_states);
     RUN_TEST(pool_sync_reservoir_fields);
+
+    // FluidProducerComponent serialization
+    RUN_TEST(fluid_producer_round_trip_defaults);
+    RUN_TEST(fluid_producer_round_trip_max_values);
+    RUN_TEST(fluid_producer_buffer_overflow_protection);
+    RUN_TEST(fluid_producer_version_validation);
+
+    // FluidConduitComponent serialization
+    RUN_TEST(fluid_conduit_round_trip_defaults);
+    RUN_TEST(fluid_conduit_round_trip_custom_values);
+    RUN_TEST(fluid_conduit_buffer_overflow_protection);
+    RUN_TEST(fluid_conduit_version_validation);
 
     printf("\n=== Results ===\n");
     printf("Passed: %d\n", tests_passed);

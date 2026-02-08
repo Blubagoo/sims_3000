@@ -17,7 +17,9 @@
 #pragma once
 
 #include <sims3000/fluid/FluidComponent.h>
+#include <sims3000/fluid/FluidConduitComponent.h>
 #include <sims3000/fluid/FluidEnums.h>
+#include <sims3000/fluid/FluidProducerComponent.h>
 #include <cstdint>
 #include <cstring>
 #include <vector>
@@ -142,6 +144,67 @@ void serialize_pool_sync(const FluidPoolSyncMessage& msg, std::vector<uint8_t>& 
  * @throws std::runtime_error if buffer is too small.
  */
 size_t deserialize_pool_sync(const uint8_t* data, size_t size, FluidPoolSyncMessage& msg);
+
+// ============================================================================
+// FluidProducerComponent serialization (Ticket F6-SR-01)
+// ============================================================================
+
+/// Serialized size of FluidProducerComponent on the wire
+/// (1 version + 4 base_output + 4 current_output + 1 max_water_distance
+///  + 1 current_water_distance + 1 is_operational + 1 producer_type = 13 bytes)
+constexpr size_t FLUID_PRODUCER_SERIALIZED_SIZE = 13;
+
+/**
+ * @brief Serialize a FluidProducerComponent to a byte buffer.
+ *
+ * Uses field-by-field little-endian encoding for cross-platform safety.
+ * Total serialized size: 13 bytes (1 version + 12 component fields).
+ *
+ * @param comp The FluidProducerComponent to serialize.
+ * @param buffer Output byte buffer (appended to).
+ */
+void serialize_fluid_producer(const FluidProducerComponent& comp, std::vector<uint8_t>& buffer);
+
+/**
+ * @brief Deserialize a FluidProducerComponent from a byte buffer at offset.
+ *
+ * @param data Pointer to serialized data.
+ * @param size Size of the data buffer in bytes.
+ * @param comp Output FluidProducerComponent to populate.
+ * @return Number of bytes consumed.
+ * @throws std::runtime_error if buffer is too small or version mismatch.
+ */
+size_t deserialize_fluid_producer(const uint8_t* data, size_t size, FluidProducerComponent& comp);
+
+// ============================================================================
+// FluidConduitComponent serialization (Ticket F6-SR-01)
+// ============================================================================
+
+/// Serialized size of FluidConduitComponent on the wire
+/// (1 version + 1 coverage_radius + 1 is_connected + 1 is_active + 1 conduit_level = 5 bytes)
+constexpr size_t FLUID_CONDUIT_SERIALIZED_SIZE = 5;
+
+/**
+ * @brief Serialize a FluidConduitComponent to a byte buffer.
+ *
+ * Uses field-by-field encoding for cross-platform safety.
+ * Total serialized size: 5 bytes (1 version + 4 component fields).
+ *
+ * @param comp The FluidConduitComponent to serialize.
+ * @param buffer Output byte buffer (appended to).
+ */
+void serialize_fluid_conduit(const FluidConduitComponent& comp, std::vector<uint8_t>& buffer);
+
+/**
+ * @brief Deserialize a FluidConduitComponent from a byte buffer at offset.
+ *
+ * @param data Pointer to serialized data.
+ * @param size Size of the data buffer in bytes.
+ * @param comp Output FluidConduitComponent to populate.
+ * @return Number of bytes consumed.
+ * @throws std::runtime_error if buffer is too small or version mismatch.
+ */
+size_t deserialize_fluid_conduit(const uint8_t* data, size_t size, FluidConduitComponent& comp);
 
 } // namespace fluid
 } // namespace sims3000

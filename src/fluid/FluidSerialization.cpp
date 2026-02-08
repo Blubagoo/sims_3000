@@ -166,5 +166,81 @@ size_t deserialize_pool_sync(const uint8_t* data, size_t size, FluidPoolSyncMess
     return offset; // 22 bytes consumed
 }
 
+// ============================================================================
+// FluidProducerComponent serialization (Ticket F6-SR-01)
+// ============================================================================
+
+void serialize_fluid_producer(const FluidProducerComponent& comp, std::vector<uint8_t>& buffer) {
+    // Version byte
+    write_uint8(buffer, FLUID_SERIALIZATION_VERSION);       // 1 byte
+
+    // Field-by-field little-endian serialization
+    write_uint32_le(buffer, comp.base_output);              // 4 bytes
+    write_uint32_le(buffer, comp.current_output);           // 4 bytes
+    write_uint8(buffer, comp.max_water_distance);           // 1 byte
+    write_uint8(buffer, comp.current_water_distance);       // 1 byte
+    write_uint8(buffer, comp.is_operational ? 1 : 0);      // 1 byte
+    write_uint8(buffer, comp.producer_type);                // 1 byte
+    // Total: 1 + 12 = 13 bytes
+}
+
+size_t deserialize_fluid_producer(const uint8_t* data, size_t size, FluidProducerComponent& comp) {
+    if (size < FLUID_PRODUCER_SERIALIZED_SIZE) {
+        throw std::runtime_error("FluidProducerComponent deserialization: buffer too small");
+    }
+
+    size_t offset = 0;
+    const uint8_t version = read_uint8(data, offset);
+
+    if (version != FLUID_SERIALIZATION_VERSION) {
+        throw std::runtime_error("FluidProducerComponent deserialization: unsupported version");
+    }
+
+    comp.base_output = read_uint32_le(data, offset);
+    comp.current_output = read_uint32_le(data, offset);
+    comp.max_water_distance = read_uint8(data, offset);
+    comp.current_water_distance = read_uint8(data, offset);
+    comp.is_operational = (read_uint8(data, offset) != 0);
+    comp.producer_type = read_uint8(data, offset);
+
+    return offset; // 13 bytes consumed
+}
+
+// ============================================================================
+// FluidConduitComponent serialization (Ticket F6-SR-01)
+// ============================================================================
+
+void serialize_fluid_conduit(const FluidConduitComponent& comp, std::vector<uint8_t>& buffer) {
+    // Version byte
+    write_uint8(buffer, FLUID_SERIALIZATION_VERSION);       // 1 byte
+
+    // Field-by-field serialization
+    write_uint8(buffer, comp.coverage_radius);              // 1 byte
+    write_uint8(buffer, comp.is_connected ? 1 : 0);        // 1 byte
+    write_uint8(buffer, comp.is_active ? 1 : 0);           // 1 byte
+    write_uint8(buffer, comp.conduit_level);                // 1 byte
+    // Total: 1 + 4 = 5 bytes
+}
+
+size_t deserialize_fluid_conduit(const uint8_t* data, size_t size, FluidConduitComponent& comp) {
+    if (size < FLUID_CONDUIT_SERIALIZED_SIZE) {
+        throw std::runtime_error("FluidConduitComponent deserialization: buffer too small");
+    }
+
+    size_t offset = 0;
+    const uint8_t version = read_uint8(data, offset);
+
+    if (version != FLUID_SERIALIZATION_VERSION) {
+        throw std::runtime_error("FluidConduitComponent deserialization: unsupported version");
+    }
+
+    comp.coverage_radius = read_uint8(data, offset);
+    comp.is_connected = (read_uint8(data, offset) != 0);
+    comp.is_active = (read_uint8(data, offset) != 0);
+    comp.conduit_level = read_uint8(data, offset);
+
+    return offset; // 5 bytes consumed
+}
+
 } // namespace fluid
 } // namespace sims3000

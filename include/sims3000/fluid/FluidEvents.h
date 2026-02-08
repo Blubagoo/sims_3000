@@ -4,6 +4,8 @@
  *
  * Defines all events emitted by the fluid system:
  * - FluidStateChangedEvent: Entity fluid state changed
+ * - FluidMarginalBeganEvent: Fluid pool entered marginal state
+ * - FluidMarginalEndedEvent: Fluid pool exited marginal state
  * - FluidDeficitBeganEvent: Fluid pool entered deficit
  * - FluidDeficitEndedEvent: Fluid pool exited deficit
  * - FluidCollapseBeganEvent: Fluid grid entered collapse state
@@ -57,6 +59,44 @@ struct FluidStateChangedEvent {
         , had_fluid(had)
         , has_fluid(has)
     {}
+};
+
+/**
+ * @struct FluidMarginalBeganEvent
+ * @brief Event emitted when a fluid pool enters marginal state.
+ *
+ * Emitted when supply is meeting demand but surplus drops below the 10%
+ * healthy threshold. Used for early warning UI ("Water supply running low").
+ *
+ * Consumed by:
+ * - UISystem: Show marginal warning / advisor message
+ * - StatisticsSystem: Track marginal events
+ */
+struct FluidMarginalBeganEvent {
+    uint8_t owner_id = 0;          ///< Owning overseer PlayerID
+    int32_t surplus_amount = 0;    ///< How close to deficit (supply - demand)
+
+    FluidMarginalBeganEvent() = default;
+    FluidMarginalBeganEvent(uint8_t owner, int32_t surplus)
+        : owner_id(owner), surplus_amount(surplus) {}
+};
+
+/**
+ * @struct FluidMarginalEndedEvent
+ * @brief Event emitted when a fluid pool exits marginal state.
+ *
+ * Emitted when pool leaves Marginal state, either recovering to Healthy
+ * or worsening to Deficit/Collapse.
+ *
+ * Consumed by:
+ * - UISystem: Clear marginal warning
+ */
+struct FluidMarginalEndedEvent {
+    uint8_t owner_id = 0;  ///< Owning overseer PlayerID
+
+    FluidMarginalEndedEvent() = default;
+    explicit FluidMarginalEndedEvent(uint8_t owner)
+        : owner_id(owner) {}
 };
 
 /**

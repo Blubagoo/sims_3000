@@ -121,18 +121,19 @@ void FluidSystem::tick(float /*delta_time*/) {
                     continue;
                 }
 
-                // Find consumer position to check coverage
+                // Find consumer position via O(1) reverse map to check coverage
+                // (F6-PA-01 fix: replaces O(N*M) position map scan)
                 bool in_coverage = false;
-                for (const auto& pos_pair : m_consumer_positions[owner]) {
-                    if (pos_pair.second == eid) {
-                        uint32_t cx = unpack_x(pos_pair.first);
-                        uint32_t cy = unpack_y(pos_pair.first);
+                {
+                    auto rev_it = m_consumer_reverse[owner].find(eid);
+                    if (rev_it != m_consumer_reverse[owner].end()) {
+                        uint32_t cx = unpack_x(rev_it->second);
+                        uint32_t cy = unpack_y(rev_it->second);
                         // Coverage grid stores overseer_id (1-based)
                         uint8_t overseer_id = static_cast<uint8_t>(owner + 1);
                         if (m_coverage_grid.is_in_coverage(cx, cy, overseer_id)) {
                             in_coverage = true;
                         }
-                        break;
                     }
                 }
 
@@ -242,6 +243,7 @@ void FluidSystem::unregister_extractor(uint32_t entity_id, uint8_t owner) {
     auto it = std::find(ids.begin(), ids.end(), entity_id);
     if (it != ids.end()) {
         ids.erase(it);
+        m_extractor_reverse[owner].erase(entity_id);
         m_coverage_dirty[owner] = true;
     }
 }
@@ -262,6 +264,7 @@ void FluidSystem::unregister_reservoir(uint32_t entity_id, uint8_t owner) {
     auto it = std::find(ids.begin(), ids.end(), entity_id);
     if (it != ids.end()) {
         ids.erase(it);
+        m_reservoir_reverse[owner].erase(entity_id);
         m_coverage_dirty[owner] = true;
     }
 }
@@ -281,6 +284,7 @@ void FluidSystem::unregister_consumer(uint32_t entity_id, uint8_t owner) {
     auto it = std::find(ids.begin(), ids.end(), entity_id);
     if (it != ids.end()) {
         ids.erase(it);
+        m_consumer_reverse[owner].erase(entity_id);
     }
 }
 
@@ -295,6 +299,7 @@ void FluidSystem::register_extractor_position(uint32_t entity_id, uint8_t owner,
     }
     uint64_t key = pack_position(x, y);
     m_extractor_positions[owner][key] = entity_id;
+    m_extractor_reverse[owner][entity_id] = key;
     m_coverage_dirty[owner] = true;
 }
 
@@ -305,6 +310,7 @@ void FluidSystem::register_reservoir_position(uint32_t entity_id, uint8_t owner,
     }
     uint64_t key = pack_position(x, y);
     m_reservoir_positions[owner][key] = entity_id;
+    m_reservoir_reverse[owner][entity_id] = key;
     m_coverage_dirty[owner] = true;
 }
 
@@ -315,6 +321,7 @@ void FluidSystem::register_consumer_position(uint32_t entity_id, uint8_t owner,
     }
     uint64_t key = pack_position(x, y);
     m_consumer_positions[owner][key] = entity_id;
+    m_consumer_reverse[owner][entity_id] = key;
 }
 
 // =============================================================================
@@ -474,6 +481,7 @@ uint32_t FluidSystem::place_conduit(uint32_t x, uint32_t y, uint8_t owner) {
     // Register conduit position
     uint64_t key = pack_position(x, y);
     m_conduit_positions[owner][key] = entity_id;
+    m_conduit_reverse[owner][entity_id] = key;
     m_coverage_dirty[owner] = true;
 
     // Cost deduction stub: not yet deducted, needs ICreditProvider
@@ -510,6 +518,7 @@ bool FluidSystem::remove_conduit(uint32_t entity_id, uint8_t owner,
     // Unregister conduit position
     uint64_t key = pack_position(x, y);
     m_conduit_positions[owner].erase(key);
+    m_conduit_reverse[owner].erase(entity_id);
     m_coverage_dirty[owner] = true;
 
     // Emit FluidConduitRemovedEvent
@@ -691,6 +700,14 @@ const std::vector<FluidStateChangedEvent>& FluidSystem::get_state_changed_events
     return m_state_changed_events;
 }
 
+const std::vector<FluidMarginalBeganEvent>& FluidSystem::get_marginal_began_events() const {
+    return m_marginal_began_events;
+}
+
+const std::vector<FluidMarginalEndedEvent>& FluidSystem::get_marginal_ended_events() const {
+    return m_marginal_ended_events;
+}
+
 const std::vector<FluidDeficitBeganEvent>& FluidSystem::get_deficit_began_events() const {
     return m_deficit_began_events;
 }
@@ -737,6 +754,8 @@ const std::vector<ReservoirLevelChangedEvent>& FluidSystem::get_reservoir_level_
 
 void FluidSystem::clear_transition_events() {
     m_state_changed_events.clear();
+    m_marginal_began_events.clear();
+    m_marginal_ended_events.clear();
     m_deficit_began_events.clear();
     m_deficit_ended_events.clear();
     m_collapse_began_events.clear();
@@ -820,6 +839,7 @@ void FluidSystem::on_building_deconstructed(uint32_t entity_id, uint8_t owner,
             unregister_consumer(entity_id, owner);
             uint64_t key = pack_position(x, y);
             m_consumer_positions[owner].erase(key);
+            // Note: unregister_consumer already erases from m_consumer_reverse
         }
     }
 
@@ -831,6 +851,7 @@ void FluidSystem::on_building_deconstructed(uint32_t entity_id, uint8_t owner,
             unregister_extractor(entity_id, owner);
             uint64_t key = pack_position(x, y);
             m_extractor_positions[owner].erase(key);
+            // Note: unregister_extractor already erases from m_extractor_reverse
             m_coverage_dirty[owner] = true;
         }
     }
@@ -843,6 +864,7 @@ void FluidSystem::on_building_deconstructed(uint32_t entity_id, uint8_t owner,
             unregister_reservoir(entity_id, owner);
             uint64_t key = pack_position(x, y);
             m_reservoir_positions[owner].erase(key);
+            // Note: unregister_reservoir already erases from m_reservoir_reverse
             m_coverage_dirty[owner] = true;
         }
     }
@@ -906,12 +928,14 @@ void FluidSystem::update_extractor_outputs() {
                 powered = m_energy_provider->is_powered(eid);
             }
 
-            // Look up water distance from extractor position
+            // Look up water distance from extractor position via O(1) reverse map
+            // (F6-PA-01 fix: replaces O(N*M) position map scan)
             uint8_t water_distance = 0;
-            for (const auto& pos_pair : m_extractor_positions[owner]) {
-                if (pos_pair.second == eid) {
-                    uint32_t ex = unpack_x(pos_pair.first);
-                    uint32_t ey = unpack_y(pos_pair.first);
+            {
+                auto rev_it = m_extractor_reverse[owner].find(eid);
+                if (rev_it != m_extractor_reverse[owner].end()) {
+                    uint32_t ex = unpack_x(rev_it->second);
+                    uint32_t ey = unpack_y(rev_it->second);
 
                     if (m_terrain) {
                         uint32_t raw_dist = m_terrain->get_water_distance(
@@ -919,7 +943,6 @@ void FluidSystem::update_extractor_outputs() {
                         water_distance = static_cast<uint8_t>(
                             raw_dist > 255 ? 255 : raw_dist);
                     }
-                    break;
                 }
             }
 
@@ -1226,6 +1249,16 @@ void FluidSystem::detect_pool_state_transitions(uint8_t owner) {
     FluidPoolState prev = pool.previous_state;
     FluidPoolState curr = pool.state;
 
+    // Transition INTO Marginal (from Healthy, or recovering from Deficit/Collapse)
+    if (curr == FluidPoolState::Marginal && prev != FluidPoolState::Marginal) {
+        m_marginal_began_events.emplace_back(owner, pool.surplus);
+    }
+
+    // Transition OUT OF Marginal (to Healthy, Deficit, or Collapse)
+    if (curr != FluidPoolState::Marginal && prev == FluidPoolState::Marginal) {
+        m_marginal_ended_events.emplace_back(owner);
+    }
+
     // Transition INTO Deficit (from Healthy or Marginal)
     if ((curr == FluidPoolState::Deficit || curr == FluidPoolState::Collapse) &&
         (prev == FluidPoolState::Healthy || prev == FluidPoolState::Marginal)) {
@@ -1309,16 +1342,17 @@ void FluidSystem::distribute_fluid(uint8_t owner) {
             continue;
         }
 
-        // Check if consumer is in coverage
+        // Check if consumer is in coverage via O(1) reverse map
+        // (F6-PA-01 fix: replaces O(N*M) position map scan)
         bool in_coverage = false;
-        for (const auto& pos_pair : m_consumer_positions[owner]) {
-            if (pos_pair.second == eid) {
-                uint32_t cx = unpack_x(pos_pair.first);
-                uint32_t cy = unpack_y(pos_pair.first);
+        {
+            auto rev_it = m_consumer_reverse[owner].find(eid);
+            if (rev_it != m_consumer_reverse[owner].end()) {
+                uint32_t cx = unpack_x(rev_it->second);
+                uint32_t cy = unpack_y(rev_it->second);
                 if (m_coverage_grid.is_in_coverage(cx, cy, overseer_id)) {
                     in_coverage = true;
                 }
-                break;
             }
         }
 

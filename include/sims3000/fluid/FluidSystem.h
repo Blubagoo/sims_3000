@@ -504,6 +504,18 @@ public:
     const std::vector<FluidStateChangedEvent>& get_state_changed_events() const;
 
     /**
+     * @brief Get marginal began events emitted during the last tick.
+     * @return Const reference to the vector of FluidMarginalBeganEvent.
+     */
+    const std::vector<FluidMarginalBeganEvent>& get_marginal_began_events() const;
+
+    /**
+     * @brief Get marginal ended events emitted during the last tick.
+     * @return Const reference to the vector of FluidMarginalEndedEvent.
+     */
+    const std::vector<FluidMarginalEndedEvent>& get_marginal_ended_events() const;
+
+    /**
      * @brief Get deficit began events emitted during the last tick.
      * @return Const reference to the vector of FluidDeficitBeganEvent.
      */
@@ -826,6 +838,15 @@ private:
     /// Per-player consumer entity ID lists
     std::vector<uint32_t> m_consumer_ids[MAX_PLAYERS];
 
+    /// Per-player reverse lookups: entity_id -> packed(x,y) position
+    /// Maintained alongside the position -> entity_id maps for O(1) lookup
+    /// in hot-path methods (update_extractor_outputs, aggregate_consumption,
+    /// distribute_fluid). Fixes F6-PA-01 O(N*M) reverse position scan.
+    std::unordered_map<uint32_t, uint64_t> m_extractor_reverse[MAX_PLAYERS];
+    std::unordered_map<uint32_t, uint64_t> m_reservoir_reverse[MAX_PLAYERS];
+    std::unordered_map<uint32_t, uint64_t> m_conduit_reverse[MAX_PLAYERS];
+    std::unordered_map<uint32_t, uint64_t> m_consumer_reverse[MAX_PLAYERS];
+
     /// Map dimensions (cached for accessors)
     uint32_t m_map_width;
     uint32_t m_map_height;
@@ -838,6 +859,8 @@ private:
     // =========================================================================
 
     std::vector<FluidStateChangedEvent> m_state_changed_events;
+    std::vector<FluidMarginalBeganEvent> m_marginal_began_events;
+    std::vector<FluidMarginalEndedEvent> m_marginal_ended_events;
     std::vector<FluidDeficitBeganEvent> m_deficit_began_events;
     std::vector<FluidDeficitEndedEvent> m_deficit_ended_events;
     std::vector<FluidCollapseBeganEvent> m_collapse_began_events;

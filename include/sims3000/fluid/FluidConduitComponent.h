@@ -38,7 +38,7 @@ namespace fluid {
  * Total: 4 bytes
  */
 struct FluidConduitComponent {
-    uint8_t coverage_radius = 2;   ///< Tiles of coverage this conduit adds
+    uint8_t coverage_radius = 3;   ///< Tiles of coverage this conduit adds
     bool is_connected = false;     ///< True if connected to fluid network via BFS
     bool is_active = false;        ///< True if carrying fluid (for rendering)
     uint8_t conduit_level = 1;     ///< 1=basic, 2=upgraded (future)
