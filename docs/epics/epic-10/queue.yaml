@@ -1,0 +1,154 @@
+# Epic 10: Simulation Core - Execution Queue
+# Generated: 2026-02-07
+# Total tickets: 78 (3 already done, 75 to implement)
+
+already_done:
+  - E10-004  # ISimulationTime interface - exists in core/ISimulationTime.h
+  - E10-064  # IGridOverlay interface - exists in services/IGridOverlay.h
+  - E10-112  # IServiceQueryable stub - exists in building/ForwardDependencyStubs.h
+
+waves:
+  # Wave 1: Foundation - no dependencies, all parallel
+  - name: "Wave 1: Foundation Components & Grids"
+    parallel_agents: 3
+    batches:
+      - agent: A
+        tickets: [E10-001, E10-010, E10-011, E10-012, E10-013]
+        description: "SimulationCore + Population/Employment/Occupancy/Migration components"
+      - agent: B
+        tickets: [E10-040, E10-070, E10-071, E10-080, E10-113]
+        description: "DemandComponent + DisorderComponent + ContaminationType + ContaminationComponent + Economy stubs"
+      - agent: C
+        tickets: [E10-060, E10-061, E10-062]
+        description: "DisorderGrid + ContaminationGrid + LandValueGrid (double-buffered)"
+
+  # Wave 2: Core systems & events (depend on Wave 1)
+  - name: "Wave 2: Core Systems & Tick Events"
+    parallel_agents: 3
+    batches:
+      - agent: A
+        tickets: [E10-002, E10-003, E10-005]
+        description: "Speed control + Time progression + Tick events (depend on E10-001)"
+      - agent: B
+        tickets: [E10-041, E10-014]
+        description: "IDemandProvider extended + PopulationSystem skeleton (depend on E10-010, E10-011, E10-040)"
+      - agent: C
+        tickets: [E10-063]
+        description: "Grid buffer swap mechanism (depends on E10-060, E10-061)"
+
+  # Wave 3: System skeletons & early calculations
+  - name: "Wave 3: System Skeletons & Demographics"
+    parallel_agents: 3
+    batches:
+      - agent: A
+        tickets: [E10-015, E10-016, E10-019]
+        description: "Birth rate + Death rate + Labor pool (depend on E10-014)"
+      - agent: B
+        tickets: [E10-042, E10-072]
+        description: "DemandSystem skeleton + DisorderSystem skeleton (depend on E10-041, E10-060, E10-070)"
+      - agent: C
+        tickets: [E10-081, E10-100]
+        description: "ContaminationSystem skeleton + LandValueSystem skeleton (depend on E10-061, E10-080, E10-062)"
+
+  # Wave 4: Core calculations
+  - name: "Wave 4: Core Calculations"
+    parallel_agents: 3
+    batches:
+      - agent: A
+        tickets: [E10-017, E10-020, E10-024]
+        description: "Natural growth + Job market + Attractiveness (depend on E10-015/016, E10-019, E10-013)"
+      - agent: B
+        tickets: [E10-043, E10-044, E10-045, E10-046]
+        description: "Demand formulas: Hab/Exch/Fab + caps (depend on E10-042)"
+      - agent: C
+        tickets: [E10-073, E10-082, E10-086]
+        description: "Disorder generation + Contamination source query + Terrain contam (depend on E10-072, E10-081)"
+
+  # Wave 5: Employment & Migration & Spread algorithms
+  - name: "Wave 5: Employment, Migration & Spread"
+    parallel_agents: 3
+    batches:
+      - agent: A
+        tickets: [E10-021, E10-025, E10-026]
+        description: "Employment matching + Migration in/out (depend on E10-020, E10-024)"
+      - agent: B
+        tickets: [E10-074, E10-075, E10-083, E10-084, E10-085]
+        description: "Disorder: land value effect + spread + Industrial/Energy/Traffic contam gen (depend on E10-073, E10-062, E10-082)"
+      - agent: C
+        tickets: [E10-101, E10-102]
+        description: "Land value: terrain factors + road accessibility (depend on E10-100)"
+
+  # Wave 6: Integration & higher-level
+  - name: "Wave 6: Integration & Higher-Level"
+    parallel_agents: 3
+    batches:
+      - agent: A
+        tickets: [E10-027, E10-049]
+        description: "Migration application + BuildingSystem demand integration (depend on E10-025/026, E10-041)"
+      - agent: B
+        tickets: [E10-087, E10-103, E10-104]
+        description: "Contamination spread + Disorder/Contam penalties on land value (depend on E10-083, E10-063)"
+      - agent: C
+        tickets: [E10-076, E10-047]
+        description: "Enforcer suppression + Demand factors UI (depend on E10-072, E10-043/044/045)"
+
+  # Wave 7: Decay, full calc, P1 features
+  - name: "Wave 7: Decay, Full Value, P1 Features"
+    parallel_agents: 3
+    batches:
+      - agent: A
+        tickets: [E10-088, E10-105]
+        description: "Contamination decay + Full land value recalculation (depend on E10-087, E10-101-104)"
+      - agent: B
+        tickets: [E10-018, E10-022, E10-023]
+        description: "Age distribution + Building occupancy + Unemployment effects (depend on E10-017, E10-021)"
+      - agent: C
+        tickets: [E10-028, E10-030, E10-031, E10-032]
+        description: "Life expectancy + PopSys IStatQueryable + Milestones + Network sync (depend on E10-014)"
+
+  # Wave 8: Overlays, Stats, Events
+  - name: "Wave 8: Overlays, Stats & Events"
+    parallel_agents: 3
+    batches:
+      - agent: A
+        tickets: [E10-077, E10-078, E10-079]
+        description: "DisorderSystem: IStatQueryable + overlay + events (depend on E10-072)"
+      - agent: B
+        tickets: [E10-089, E10-090, E10-091]
+        description: "ContaminationSystem: IStatQueryable + overlay + events (depend on E10-081)"
+      - agent: C
+        tickets: [E10-029, E10-048, E10-106, E10-107]
+        description: "Health index + DemandSys IStatQueryable + LandValue IStatQueryable + overlay (depend on E10-028, E10-042, E10-100)"
+
+  # Wave 9: Cross-epic integration
+  - name: "Wave 9: Cross-Epic Integration"
+    parallel_agents: 3
+    batches:
+      - agent: A
+        tickets: [E10-110, E10-111]
+        description: "AbandonmentSystem + Simulation serialization (depend on E10-001)"
+      - agent: B
+        tickets: [E10-114, E10-115]
+        description: "EnergySystem IContaminationSource + TransportSystem traffic pollution (depend on E10-082)"
+
+  # Wave 10: Testing
+  - name: "Wave 10: Unit Tests"
+    parallel_agents: 3
+    batches:
+      - agent: A
+        tickets: [E10-120, E10-121]
+        description: "Demographics + Employment tests (depend on E10-017, E10-021, E10-027)"
+      - agent: B
+        tickets: [E10-122, E10-123]
+        description: "Demand formula + Disorder spread tests (depend on E10-043-045, E10-075)"
+      - agent: C
+        tickets: [E10-124, E10-125]
+        description: "Contamination spread + Land value tests (depend on E10-087, E10-105)"
+
+  # Wave 11: Final integration test
+  - name: "Wave 11: Integration Test"
+    parallel_agents: 1
+    batches:
+      - agent: A
+        tickets: [E10-126]
+        description: "Full simulation cycle integration test (depends on all P0 tickets)"

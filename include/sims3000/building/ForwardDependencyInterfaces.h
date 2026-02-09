@@ -396,6 +396,33 @@ public:
      * @return Demand value (-100 to +100, positive = growth pressure).
      */
     virtual float get_demand(std::uint8_t zone_type, std::uint32_t player_id) const = 0;
+
+    /**
+     * @brief Get maximum growth capacity for a zone type.
+     * @param zone_type Zone type to query.
+     * @param player_id Owner player ID.
+     * @return Maximum buildings that can grow (0 = no cap / unknown).
+     *
+     * Default implementation returns 0 (no cap) for backward compatibility.
+     * Added in E10-041.
+     */
+    virtual std::uint32_t get_demand_cap(std::uint8_t zone_type, std::uint32_t player_id) const {
+        (void)zone_type; (void)player_id;
+        return 0; // No cap by default
+    }
+
+    /**
+     * @brief Check if there is positive demand for a zone type.
+     * @param zone_type Zone type to query.
+     * @param player_id Owner player ID.
+     * @return true if demand > 0 for this zone type.
+     *
+     * Default implementation delegates to get_demand() for backward compatibility.
+     * Added in E10-041.
+     */
+    virtual bool has_positive_demand(std::uint8_t zone_type, std::uint32_t player_id) const {
+        return get_demand(zone_type, player_id) > 0.0f;
+    }
 };
 
 /**

@@ -5091,3 +5091,689 @@ target_include_directories(test_epic10_integration PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 add_test(NAME Epic10Integration COMMAND test_epic10_integration)
+
+# Epic 10: Demand data (E10-040)
+add_executable(test_demand_data demand/test_demand_data.cpp)
+target_include_directories(test_demand_data PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DemandData COMMAND test_demand_data)
+
+# Epic 10: Disorder component (E10-070)
+add_executable(test_disorder_component disorder/test_disorder_component.cpp)
+target_include_directories(test_disorder_component PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DisorderComponent COMMAND test_disorder_component)
+
+# Epic 10: Contamination types (E10-071, E10-080)
+add_executable(test_contamination_types contamination/test_contamination_types.cpp)
+target_include_directories(test_contamination_types PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ContaminationTypes COMMAND test_contamination_types)
+
+# Epic 10: Economy stubs (E10-113)
+add_executable(test_economy_stubs economy/test_economy_stubs.cpp)
+target_include_directories(test_economy_stubs PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME EconomyStubs COMMAND test_economy_stubs)
+
+# Test for SimulationCore (E10-001)
+add_executable(test_simulation_core
+    sim/test_simulation_core.cpp
+    ${CMAKE_SOURCE_DIR}/src/sim/SimulationCore.cpp
+)
+target_include_directories(test_simulation_core PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME SimulationCore COMMAND test_simulation_core)
+
+# Test for Population Components (E10-010 through E10-013)
+add_executable(test_population_components
+    population/test_population_components.cpp
+)
+target_include_directories(test_population_components PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME PopulationComponents COMMAND test_population_components)
+
+# Epic 10: DisorderGrid (E10-060)
+add_executable(test_disorder_grid
+    disorder/test_disorder_grid.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+)
+target_include_directories(test_disorder_grid PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DisorderGrid COMMAND test_disorder_grid)
+
+# Epic 10: ContaminationGrid (E10-061)
+add_executable(test_contamination_grid
+    contamination/test_contamination_grid.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+)
+target_include_directories(test_contamination_grid PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ContaminationGrid COMMAND test_contamination_grid)
+
+# Epic 10: ContaminationStats (E10-089)
+add_executable(test_contamination_stats
+    contamination/test_contamination_stats.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationStats.cpp
+)
+target_include_directories(test_contamination_stats PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ContaminationStats COMMAND test_contamination_stats)
+
+# Epic 10: ContaminationOverlay (E10-090)
+add_executable(test_contamination_overlay
+    contamination/test_contamination_overlay.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationOverlay.cpp
+)
+target_include_directories(test_contamination_overlay PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ContaminationOverlay COMMAND test_contamination_overlay)
+
+# Epic 10: ContaminationEvents (E10-091)
+add_executable(test_contamination_events
+    contamination/test_contamination_events.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationEvents.cpp
+)
+target_include_directories(test_contamination_events PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ContaminationEvents COMMAND test_contamination_events)
+
+# Epic 10: LandValueGrid (E10-062)
+add_executable(test_landvalue_grid
+    landvalue/test_landvalue_grid.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueGrid.cpp
+)
+target_include_directories(test_landvalue_grid PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME LandValueGrid COMMAND test_landvalue_grid)
+
+# Epic 10: Grid swap coordinator (E10-063)
+add_executable(test_grid_swap_coordinator
+    sim/test_grid_swap_coordinator.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+)
+target_include_directories(test_grid_swap_coordinator PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME GridSwapCoordinator COMMAND test_grid_swap_coordinator)
+
+# Epic 10: Simulation speed (E10-002)
+add_executable(test_simulation_speed
+    sim/test_simulation_speed.cpp
+    ${CMAKE_SOURCE_DIR}/src/sim/SimulationCore.cpp
+)
+target_include_directories(test_simulation_speed PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME SimulationSpeed COMMAND test_simulation_speed)
+
+# Epic 10: Time progression (E10-003)
+add_executable(test_time_progression
+    sim/test_time_progression.cpp
+    ${CMAKE_SOURCE_DIR}/src/sim/SimulationCore.cpp
+)
+target_include_directories(test_time_progression PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME TimeProgression COMMAND test_time_progression)
+
+# Epic 10: Simulation events (E10-005)
+add_executable(test_simulation_events
+    sim/test_simulation_events.cpp
+    ${CMAKE_SOURCE_DIR}/src/sim/SimulationCore.cpp
+)
+target_include_directories(test_simulation_events PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME SimulationEvents COMMAND test_simulation_events)
+
+# Epic 10: IDemandProvider extended (E10-041)
+add_executable(test_demand_provider_extended
+    population/test_demand_provider_extended.cpp
+)
+target_include_directories(test_demand_provider_extended PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DemandProviderExtended COMMAND test_demand_provider_extended)
+
+# Epic 10: PopulationSystem skeleton (E10-014)
+add_executable(test_population_system
+    population/test_population_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/PopulationSystem.cpp
+)
+target_include_directories(test_population_system PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME PopulationSystem COMMAND test_population_system)
+
+# Epic 10: Birth rate (E10-015)
+add_executable(test_birth_rate
+    population/test_birth_rate.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/BirthRateCalculation.cpp
+)
+target_include_directories(test_birth_rate PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME BirthRate COMMAND test_birth_rate)
+
+# Epic 10: Death rate (E10-016)
+add_executable(test_death_rate
+    population/test_death_rate.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/DeathRateCalculation.cpp
+)
+target_include_directories(test_death_rate PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DeathRate COMMAND test_death_rate)
+
+# Epic 10: Labor pool (E10-019)
+add_executable(test_labor_pool
+    population/test_labor_pool.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/LaborPoolCalculation.cpp
+)
+target_include_directories(test_labor_pool PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME LaborPool COMMAND test_labor_pool)
+
+# Epic 10: ContaminationSystem skeleton (E10-081)
+add_executable(test_contamination_system
+    contamination/test_contamination_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+)
+target_include_directories(test_contamination_system PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ContaminationSystem COMMAND test_contamination_system)
+
+# Epic 10: LandValueSystem skeleton (E10-100)
+add_executable(test_landvalue_system
+    landvalue/test_landvalue_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueGrid.cpp
+)
+target_include_directories(test_landvalue_system PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME LandValueSystem COMMAND test_landvalue_system)
+
+# Epic 10: DemandSystem skeleton (E10-042)
+add_executable(test_demand_system
+    demand/test_demand_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/demand/DemandSystem.cpp
+)
+target_include_directories(test_demand_system PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DemandSystem COMMAND test_demand_system)
+
+# Epic 10: DisorderSystem skeleton (E10-072)
+add_executable(test_disorder_system
+    disorder/test_disorder_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+)
+target_include_directories(test_disorder_system PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DisorderSystem COMMAND test_disorder_system)
+
+# Epic 10: Natural growth (E10-017)
+add_executable(test_natural_growth
+    population/test_natural_growth.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/NaturalGrowth.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/BirthRateCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/DeathRateCalculation.cpp
+)
+target_include_directories(test_natural_growth PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME NaturalGrowth COMMAND test_natural_growth)
+
+# Epic 10: Job market (E10-020)
+add_executable(test_job_market
+    population/test_job_market.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/JobMarketAggregation.cpp
+)
+target_include_directories(test_job_market PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME JobMarket COMMAND test_job_market)
+
+# Epic 10: Age distribution (E10-018)
+add_executable(test_age_distribution
+    population/test_age_distribution.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/AgeDistribution.cpp
+)
+target_include_directories(test_age_distribution PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME AgeDistribution COMMAND test_age_distribution)
+
+# Epic 10: Building occupancy distribution (E10-022)
+add_executable(test_occupancy_distribution
+    population/test_occupancy_distribution.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/OccupancyDistribution.cpp
+)
+target_include_directories(test_occupancy_distribution PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME OccupancyDistribution COMMAND test_occupancy_distribution)
+
+# Epic 10: Unemployment effects (E10-023)
+add_executable(test_unemployment_effects
+    population/test_unemployment_effects.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/UnemploymentEffects.cpp
+)
+target_include_directories(test_unemployment_effects PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME UnemploymentEffects COMMAND test_unemployment_effects)
+
+# Epic 10: Attractiveness (E10-024)
+add_executable(test_attractiveness
+    population/test_attractiveness.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/AttractivenessCalculation.cpp
+)
+target_include_directories(test_attractiveness PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME Attractiveness COMMAND test_attractiveness)
+
+# Epic 10: Habitation demand (E10-043)
+add_executable(test_habitation_demand demand/test_habitation_demand.cpp ${CMAKE_SOURCE_DIR}/src/demand/HabitationDemand.cpp)
+target_include_directories(test_habitation_demand PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME HabitationDemand COMMAND test_habitation_demand)
+
+# Epic 10: Exchange demand (E10-044)
+add_executable(test_exchange_demand demand/test_exchange_demand.cpp ${CMAKE_SOURCE_DIR}/src/demand/ExchangeDemand.cpp)
+target_include_directories(test_exchange_demand PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ExchangeDemand COMMAND test_exchange_demand)
+
+# Epic 10: Fabrication demand (E10-045)
+add_executable(test_fabrication_demand demand/test_fabrication_demand.cpp ${CMAKE_SOURCE_DIR}/src/demand/FabricationDemand.cpp)
+target_include_directories(test_fabrication_demand PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME FabricationDemand COMMAND test_fabrication_demand)
+
+# Epic 10: Demand cap (E10-046)
+add_executable(test_demand_cap demand/test_demand_cap.cpp ${CMAKE_SOURCE_DIR}/src/demand/DemandCap.cpp)
+target_include_directories(test_demand_cap PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DemandCap COMMAND test_demand_cap)
+
+# Epic 10: Disorder generation (E10-073)
+add_executable(test_disorder_generation
+    disorder/test_disorder_generation.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGeneration.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+)
+target_include_directories(test_disorder_generation PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DisorderGeneration COMMAND test_disorder_generation)
+
+# Epic 10: Contamination aggregator (E10-082)
+add_executable(test_contamination_aggregator
+    contamination/test_contamination_aggregator.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationAggregator.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+)
+target_include_directories(test_contamination_aggregator PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ContaminationAggregator COMMAND test_contamination_aggregator)
+
+# Epic 10: Terrain contamination (E10-086)
+add_executable(test_terrain_contamination
+    contamination/test_terrain_contamination.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/TerrainContamination.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+)
+target_include_directories(test_terrain_contamination PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME TerrainContamination COMMAND test_terrain_contamination)
+
+# Epic 10: Employment matching (E10-021)
+add_executable(test_employment_matching population/test_employment_matching.cpp ${CMAKE_SOURCE_DIR}/src/population/EmploymentMatching.cpp)
+target_include_directories(test_employment_matching PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME EmploymentMatching COMMAND test_employment_matching)
+
+# Epic 10: Migration in (E10-025)
+add_executable(test_migration_in population/test_migration_in.cpp ${CMAKE_SOURCE_DIR}/src/population/MigrationIn.cpp)
+target_include_directories(test_migration_in PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME MigrationIn COMMAND test_migration_in)
+
+# Epic 10: Migration out (E10-026)
+add_executable(test_migration_out population/test_migration_out.cpp ${CMAKE_SOURCE_DIR}/src/population/MigrationOut.cpp)
+target_include_directories(test_migration_out PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME MigrationOut COMMAND test_migration_out)
+
+# Epic 10: Terrain value factors (E10-101)
+add_executable(test_terrain_value_factors
+    landvalue/test_terrain_value_factors.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/TerrainValueFactors.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueGrid.cpp
+)
+target_include_directories(test_terrain_value_factors PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME TerrainValueFactors COMMAND test_terrain_value_factors)
+
+# Epic 10: Road access bonus (E10-102)
+add_executable(test_road_access_bonus
+    landvalue/test_road_access_bonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/RoadAccessBonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueGrid.cpp
+)
+target_include_directories(test_road_access_bonus PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME RoadAccessBonus COMMAND test_road_access_bonus)
+
+# Epic 10: Land value disorder (E10-074)
+add_executable(test_land_value_disorder
+    disorder/test_land_value_disorder.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/LandValueDisorderEffect.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueGrid.cpp
+)
+target_include_directories(test_land_value_disorder PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME LandValueDisorder COMMAND test_land_value_disorder)
+
+# Epic 10: Disorder spread (E10-075)
+add_executable(test_disorder_spread
+    disorder/test_disorder_spread.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderSpread.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+)
+target_include_directories(test_disorder_spread PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DisorderSpread COMMAND test_disorder_spread)
+
+# Epic 10: Industrial contamination (E10-083)
+add_executable(test_industrial_contamination
+    contamination/test_industrial_contamination.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/IndustrialContamination.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+)
+target_include_directories(test_industrial_contamination PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME IndustrialContamination COMMAND test_industrial_contamination)
+
+# Epic 10: Energy contamination (E10-084)
+add_executable(test_energy_contamination
+    contamination/test_energy_contamination.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/EnergyContamination.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+)
+target_include_directories(test_energy_contamination PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME EnergyContamination COMMAND test_energy_contamination)
+
+# Epic 10: Traffic contamination (E10-085)
+add_executable(test_traffic_contamination_gen
+    contamination/test_traffic_contamination.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/TrafficContamination.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+)
+target_include_directories(test_traffic_contamination_gen PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME TrafficContamination_Gen COMMAND test_traffic_contamination_gen)
+
+# Epic 10: Migration application (E10-027)
+add_executable(test_migration_application
+    population/test_migration_application.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/MigrationApplication.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/MigrationIn.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/MigrationOut.cpp
+)
+target_include_directories(test_migration_application PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME MigrationApplication COMMAND test_migration_application)
+
+# Epic 10: Demand integration (E10-049)
+add_executable(test_demand_integration
+    demand/test_demand_integration.cpp
+    ${CMAKE_SOURCE_DIR}/src/demand/DemandIntegration.cpp
+)
+target_include_directories(test_demand_integration PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DemandIntegration COMMAND test_demand_integration)
+
+# Epic 10: Enforcer suppression integration (E10-076)
+add_executable(test_enforcer_suppression
+    disorder/test_enforcer_suppression.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/EnforcerSuppression.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+)
+target_include_directories(test_enforcer_suppression PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME EnforcerSuppression COMMAND test_enforcer_suppression)
+
+# Epic 10: Demand factors for UI (E10-047)
+add_executable(test_demand_factors_ui
+    demand/test_demand_factors_ui.cpp
+    ${CMAKE_SOURCE_DIR}/src/demand/DemandFactorsUI.cpp
+)
+target_include_directories(test_demand_factors_ui PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DemandFactorsUI COMMAND test_demand_factors_ui)
+
+# Epic 10: Contamination spread (E10-087)
+add_executable(test_contamination_spread
+    contamination/test_contamination_spread.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationSpread.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+)
+target_include_directories(test_contamination_spread PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ContaminationSpread COMMAND test_contamination_spread)
+
+# Epic 10: Disorder penalty (E10-103)
+add_executable(test_disorder_penalty
+    landvalue/test_disorder_penalty.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/DisorderPenalty.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+)
+target_include_directories(test_disorder_penalty PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DisorderPenalty COMMAND test_disorder_penalty)
+
+# Epic 10: Contamination penalty (E10-104)
+add_executable(test_contamination_penalty
+    landvalue/test_contamination_penalty.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/ContaminationPenalty.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+)
+target_include_directories(test_contamination_penalty PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ContaminationPenalty COMMAND test_contamination_penalty)
+
+# Epic 10: Contamination decay algorithm (E10-088)
+add_executable(test_contamination_decay
+    contamination/test_contamination_decay.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationDecay.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+)
+target_include_directories(test_contamination_decay PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ContaminationDecay COMMAND test_contamination_decay)
+
+# Epic 10: Full land value recalculation (E10-105)
+add_executable(test_full_value_recalc
+    landvalue/test_full_value_recalc.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/FullValueRecalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/TerrainValueFactors.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/RoadAccessBonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/DisorderPenalty.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/ContaminationPenalty.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+)
+target_include_directories(test_full_value_recalc PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME FullValueRecalculation COMMAND test_full_value_recalc)
+# Epic 10: Life expectancy calculation (E10-028)
+add_executable(test_life_expectancy
+    population/test_life_expectancy.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/LifeExpectancy.cpp
+)
+target_include_directories(test_life_expectancy PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME LifeExpectancy COMMAND test_life_expectancy)
+
+# Epic 10: Population stats query (E10-030)
+add_executable(test_population_stats
+    population/test_population_stats.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/PopulationStats.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/LifeExpectancy.cpp
+)
+target_include_directories(test_population_stats PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME PopulationStats COMMAND test_population_stats)
+
+# Epic 10: Population milestones (E10-031)
+add_executable(test_population_milestones
+    population/test_population_milestones.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/PopulationMilestones.cpp
+)
+target_include_directories(test_population_milestones PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME PopulationMilestones COMMAND test_population_milestones)
+
+# Epic 10: Population network sync (E10-032)
+add_executable(test_population_net_sync
+    population/test_population_net_sync.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/PopulationNetSync.cpp
+)
+target_include_directories(test_population_net_sync PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME PopulationNetSync COMMAND test_population_net_sync)
+
+# Epic 10: Disorder stats (E10-077)
+add_executable(test_disorder_stats
+    disorder/test_disorder_stats.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderStats.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+)
+target_include_directories(test_disorder_stats PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DisorderStats COMMAND test_disorder_stats)
+
+# Epic 10: Disorder overlay (E10-078)
+add_executable(test_disorder_overlay
+    disorder/test_disorder_overlay.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderOverlay.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+)
+target_include_directories(test_disorder_overlay PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DisorderOverlay COMMAND test_disorder_overlay)
+
+# Epic 10: Disorder events (E10-079)
+add_executable(test_disorder_events
+    disorder/test_disorder_events.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderEvents.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+)
+target_include_directories(test_disorder_events PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DisorderEvents COMMAND test_disorder_events)
+
+# Epic 10: Health index system (E10-029)
+add_executable(test_health_index
+    population/test_health_index.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/HealthIndex.cpp
+)
+target_include_directories(test_health_index PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME HealthIndex COMMAND test_health_index)
+
+# Epic 10: Demand stats (E10-048)
+add_executable(test_demand_stats
+    demand/test_demand_stats.cpp
+    ${CMAKE_SOURCE_DIR}/src/demand/DemandStats.cpp
+)
+target_include_directories(test_demand_stats PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DemandStats COMMAND test_demand_stats)
+
+# Epic 10: Land value stats (E10-106)
+add_executable(test_landvalue_stats
+    landvalue/test_landvalue_stats.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueStats.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueGrid.cpp
+)
+target_include_directories(test_landvalue_stats PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME LandValueStats COMMAND test_landvalue_stats)
+
+# Epic 10: Land value overlay (E10-107)
+add_executable(test_landvalue_overlay
+    landvalue/test_landvalue_overlay.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueOverlay.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueGrid.cpp
+)
+target_include_directories(test_landvalue_overlay PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME LandValueOverlay COMMAND test_landvalue_overlay)
+
+# Epic 10: Abandonment system (E10-110)
+add_executable(test_abandonment_system
+    population/test_abandonment_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/AbandonmentSystem.cpp
+)
+target_include_directories(test_abandonment_system PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME AbandonmentSystem COMMAND test_abandonment_system)
+
+# Epic 10: Simulation state serialization (E10-111)
+add_executable(test_simulation_serializer
+    sim/test_simulation_serializer.cpp
+    ${CMAKE_SOURCE_DIR}/src/sim/SimulationSerializer.cpp
+)
+target_include_directories(test_simulation_serializer PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME SimulationSerializer COMMAND test_simulation_serializer)
+
+# Epic 10: Energy contamination adapter (E10-114)
+add_executable(test_energy_contamination_adapter
+    energy/test_energy_contamination_adapter.cpp
+    ${CMAKE_SOURCE_DIR}/src/energy/EnergyContaminationAdapter.cpp
+)
+target_include_directories(test_energy_contamination_adapter PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME EnergyContaminationAdapter COMMAND test_energy_contamination_adapter)
+
+# Epic 10: Traffic contamination adapter (E10-115)
+add_executable(test_traffic_contamination_adapter
+    transport/test_traffic_contamination_adapter.cpp
+    ${CMAKE_SOURCE_DIR}/src/transport/TrafficContaminationAdapter.cpp
+)
+target_include_directories(test_traffic_contamination_adapter PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME TrafficContaminationAdapter COMMAND test_traffic_contamination_adapter)
+
+# Epic 10: Demographics comprehensive tests (E10-120)
+add_executable(test_demographics_comprehensive
+    population/test_demographics_comprehensive.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/BirthRateCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/DeathRateCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/NaturalGrowth.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/MigrationIn.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/MigrationOut.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/MigrationApplication.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/AgeDistribution.cpp
+)
+target_include_directories(test_demographics_comprehensive PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DemographicsComprehensive COMMAND test_demographics_comprehensive)
+
+# Epic 10: Employment comprehensive tests (E10-121)
+add_executable(test_employment_comprehensive
+    population/test_employment_comprehensive.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/LaborPoolCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/JobMarketAggregation.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/EmploymentMatching.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/OccupancyDistribution.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/UnemploymentEffects.cpp
+)
+target_include_directories(test_employment_comprehensive PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME EmploymentComprehensive COMMAND test_employment_comprehensive)
+
+# Epic 10: Comprehensive demand tests (E10-122)
+add_executable(test_demand_comprehensive
+    demand/test_demand_comprehensive.cpp
+    ${CMAKE_SOURCE_DIR}/src/demand/HabitationDemand.cpp
+    ${CMAKE_SOURCE_DIR}/src/demand/ExchangeDemand.cpp
+    ${CMAKE_SOURCE_DIR}/src/demand/FabricationDemand.cpp
+    ${CMAKE_SOURCE_DIR}/src/demand/DemandCap.cpp
+    ${CMAKE_SOURCE_DIR}/src/demand/DemandFactorsUI.cpp
+)
+target_include_directories(test_demand_comprehensive PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DemandComprehensive COMMAND test_demand_comprehensive)
+
+# Epic 10: Comprehensive disorder tests (E10-123)
+add_executable(test_disorder_comprehensive
+    disorder/test_disorder_comprehensive.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderSpread.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGeneration.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/LandValueDisorderEffect.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/EnforcerSuppression.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderStats.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueGrid.cpp
+)
+target_include_directories(test_disorder_comprehensive PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DisorderComprehensive COMMAND test_disorder_comprehensive)
+
+
+# Epic 10: Contamination comprehensive tests (E10-124)
+add_executable(test_contamination_comprehensive
+    contamination/test_contamination_comprehensive.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationSpread.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationDecay.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/TerrainContamination.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/IndustrialContamination.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/EnergyContamination.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/TrafficContamination.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationStats.cpp
+)
+target_include_directories(test_contamination_comprehensive PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ContaminationComprehensive COMMAND test_contamination_comprehensive)
+
+# Epic 10: Land value comprehensive tests (E10-125)
+add_executable(test_landvalue_comprehensive
+    landvalue/test_landvalue_comprehensive.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/TerrainValueFactors.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/RoadAccessBonus.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/DisorderPenalty.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/ContaminationPenalty.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/FullValueRecalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueStats.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+)
+target_include_directories(test_landvalue_comprehensive PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME LandValueComprehensive COMMAND test_landvalue_comprehensive)
+
+# Epic 10: Simulation integration tests (E10-126)
+add_executable(test_simulation_integration
+    sim/test_simulation_integration.cpp
+    ${CMAKE_SOURCE_DIR}/src/sim/SimulationCore.cpp
+    ${CMAKE_SOURCE_DIR}/src/population/PopulationSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/demand/DemandSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/disorder/DisorderGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/contamination/ContaminationGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/landvalue/LandValueGrid.cpp
+)
+target_include_directories(test_simulation_integration PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME SimulationIntegration COMMAND test_simulation_integration)

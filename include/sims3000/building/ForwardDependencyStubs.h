@@ -288,6 +288,16 @@ public:
         return m_restrictive ? -1.0f : 1.0f;
     }
 
+    std::uint32_t get_demand_cap(std::uint8_t zone_type, std::uint32_t player_id) const override {
+        (void)zone_type; (void)player_id;
+        return m_restrictive ? 0 : 10000;
+    }
+
+    bool has_positive_demand(std::uint8_t zone_type, std::uint32_t player_id) const override {
+        (void)zone_type; (void)player_id;
+        return !m_restrictive;
+    }
+
     void set_debug_restrictive(bool restrictive) { m_restrictive = restrictive; }
     bool is_debug_restrictive() const { return m_restrictive; }
 
