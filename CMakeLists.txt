@@ -505,6 +505,31 @@ set(SIMS3000_SOURCES
     src/services/ServicesSystem.cpp
     src/services/GlobalServiceAggregation.cpp
     src/services/ServiceCoverageOverlay.cpp
+    src/ui/Widget.cpp
+    src/ui/UISkin.cpp
+    src/ui/TerminologyLookup.cpp
+    src/ui/UIManager.cpp
+    src/ui/ClassicRenderer.cpp
+    src/ui/CoreWidgets.cpp
+    src/ui/HolographicRenderer.cpp
+    src/ui/UIInputRouter.cpp
+    src/ui/ProgressWidgets.cpp
+    src/ui/CommandArray.cpp
+    src/ui/RadialMenu.cpp
+    src/ui/ToolStateMachine.cpp
+    src/ui/DataReadoutPanel.cpp
+    src/ui/ColonyStatusBar.cpp
+    src/ui/ZonePressurePanel.cpp
+    src/ui/ProbeFunction.cpp
+    src/ui/ScanLayerManager.cpp
+    src/ui/ScanLayerRenderer.cpp
+    src/ui/SectorScan.cpp
+    src/ui/BudgetWindow.cpp
+    src/ui/ScanLayerColorScheme.cpp
+    src/ui/SectorScanNavigator.cpp
+    src/ui/SliderWidget.cpp
+    src/ui/AlertPulseSystem.cpp
+    src/ui/KeyboardShortcuts.cpp
 )
 
 # Define header files (for IDE integration)
@@ -738,6 +763,32 @@ set(SIMS3000_HEADERS
     include/sims3000/services/DisorderSuppression.h
     include/sims3000/services/LongevityBonus.h
     include/sims3000/services/EducationBonus.h
+    include/sims3000/ui/Widget.h
+    include/sims3000/ui/UIRenderer.h
+    include/sims3000/ui/UISkin.h
+    include/sims3000/ui/TerminologyLookup.h
+    include/sims3000/ui/UIManager.h
+    include/sims3000/ui/ClassicRenderer.h
+    include/sims3000/ui/CoreWidgets.h
+    include/sims3000/ui/HolographicRenderer.h
+    include/sims3000/ui/UIInputRouter.h
+    include/sims3000/ui/ProgressWidgets.h
+    include/sims3000/ui/CommandArray.h
+    include/sims3000/ui/RadialMenu.h
+    include/sims3000/ui/ToolStateMachine.h
+    include/sims3000/ui/DataReadoutPanel.h
+    include/sims3000/ui/ColonyStatusBar.h
+    include/sims3000/ui/ZonePressurePanel.h
+    include/sims3000/ui/ProbeFunction.h
+    include/sims3000/ui/ScanLayerManager.h
+    include/sims3000/ui/ScanLayerRenderer.h
+    include/sims3000/ui/SectorScan.h
+    include/sims3000/ui/BudgetWindow.h
+    include/sims3000/ui/ScanLayerColorScheme.h
+    include/sims3000/ui/SectorScanNavigator.h
+    include/sims3000/ui/SliderWidget.h
+    include/sims3000/ui/AlertPulseSystem.h
+    include/sims3000/ui/KeyboardShortcuts.h
 )
 
 # Create executable

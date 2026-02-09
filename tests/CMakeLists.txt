@@ -6014,3 +6014,42 @@ add_executable(test_economy_integration
 )
 target_include_directories(test_economy_integration PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME EconomyIntegration COMMAND test_economy_integration)
+
+# UI Widget Unit Tests (E12-026)
+add_executable(test_ui_widgets
+    test_ui_widgets.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/Widget.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/CoreWidgets.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/UIManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/UISkin.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/ToolStateMachine.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/ScanLayerManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/ProgressWidgets.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/TerminologyLookup.cpp
+)
+target_include_directories(test_ui_widgets PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME UIWidgets COMMAND test_ui_widgets)
+
+# UI Integration Tests (E12-027)
+add_executable(test_ui_integration
+    test_ui_integration.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/Widget.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/CoreWidgets.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/UIManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/UISkin.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/ScanLayerRenderer.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/ScanLayerColorScheme.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/ScanLayerManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/ProbeFunction.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/DataReadoutPanel.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/BudgetWindow.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/SliderWidget.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/ColonyStatusBar.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/SectorScan.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/SectorScanNavigator.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/AlertPulseSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/ProgressWidgets.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/TerminologyLookup.cpp
+)
+target_include_directories(test_ui_integration PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME UIIntegration COMMAND test_ui_integration)

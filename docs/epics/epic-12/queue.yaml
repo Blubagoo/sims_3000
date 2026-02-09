@@ -1,0 +1,185 @@
+# Epic 12: Information & UI Systems - Execution Queue
+# Total: 27 tickets across 10 waves
+
+waves:
+  - id: 1
+    name: "Foundation (No Dependencies)"
+    status: complete
+    tickets:
+      - id: E12-001
+        title: "Widget Base Class and Hierarchy"
+        size: M
+        status: complete
+      - id: E12-003
+        title: "UIRenderer Interface and Skinning System"
+        size: M
+        status: complete
+      - id: E12-025
+        title: "Terminology Lookup and Application"
+        size: S
+        status: complete
+
+  - id: 2
+    name: "Core Framework"
+    status: complete
+    tickets:
+      - id: E12-002
+        title: "UIManager Core and State Management"
+        size: M
+        status: complete
+        blocked_by: [E12-001]
+      - id: E12-004
+        title: "Classic Renderer Implementation"
+        size: M
+        status: complete
+        blocked_by: [E12-003]
+      - id: E12-006
+        title: "Core Widget Library (Button, Label, Panel, Icon)"
+        size: M
+        status: complete
+        blocked_by: [E12-001]
+
+  - id: 3
+    name: "Holo Renderer + Input + Progress"
+    status: complete
+    tickets:
+      - id: E12-005
+        title: "Holographic Renderer Implementation"
+        size: L
+        status: complete
+        blocked_by: [E12-003]
+      - id: E12-008
+        title: "Input Routing and Hit Testing"
+        size: M
+        status: complete
+        blocked_by: [E12-002]
+      - id: E12-007
+        title: "ProgressBar and Demand Meter Widgets"
+        size: S
+        status: complete
+        blocked_by: [E12-006]
+
+  - id: 4
+    name: "Command Array + Tool State"
+    status: complete
+    tickets:
+      - id: E12-009
+        title: "Command Array - Classic Mode Layout"
+        size: M
+        status: complete
+        blocked_by: [E12-006]
+      - id: E12-010
+        title: "Command Array - Holographic Radial Menu"
+        size: M
+        status: complete
+        blocked_by: [E12-006]
+      - id: E12-011
+        title: "Tool State Machine and Cursor Display"
+        size: M
+        status: complete
+        blocked_by: [E12-008]
+
+  - id: 5
+    name: "Info Panels"
+    status: complete
+    tickets:
+      - id: E12-012
+        title: "Data Readout Panel (Query Tool Display)"
+        size: M
+        status: complete
+        blocked_by: [E12-006]
+      - id: E12-014
+        title: "Colony Status Bar (Population, Treasury, Date)"
+        size: M
+        status: complete
+        blocked_by: [E12-006]
+      - id: E12-015
+        title: "Zone Pressure Indicator (RCI Demand)"
+        size: S
+        status: complete
+        blocked_by: [E12-007]
+
+  - id: 6
+    name: "Query Tool + Scan Layers"
+    status: complete
+    tickets:
+      - id: E12-013
+        title: "Probe Function (Query Tool) Implementation"
+        size: M
+        status: complete
+        blocked_by: [E12-012]
+      - id: E12-016
+        title: "Scan Layer Manager and Toggle System"
+        size: M
+        status: complete
+        blocked_by: [E12-002]
+
+  - id: 7
+    name: "Scan Layer Rendering + Minimap"
+    status: complete
+    tickets:
+      - id: E12-017
+        title: "Scan Layer Rendering (IGridOverlay Integration)"
+        size: L
+        status: complete
+        blocked_by: [E12-016]
+      - id: E12-019
+        title: "Sector Scan Rendering (Minimap)"
+        size: L
+        status: complete
+        blocked_by: [E12-002]
+
+  - id: 8
+    name: "Visual Polish + Navigation"
+    status: complete
+    tickets:
+      - id: E12-018
+        title: "Scan Layer Color Schemes"
+        size: S
+        status: complete
+        blocked_by: [E12-017]
+      - id: E12-020
+        title: "Sector Scan Click Navigation"
+        size: S
+        status: complete
+        blocked_by: [E12-019]
+      - id: E12-021
+        title: "Colony Treasury Panel (Budget Window)"
+        size: L
+        status: complete
+        blocked_by: [E12-006]
+
+  - id: 9
+    name: "Budget + Alerts + Shortcuts"
+    status: complete
+    tickets:
+      - id: E12-022
+        title: "Tribute Rate and Funding Sliders"
+        size: M
+        status: complete
+        blocked_by: [E12-021]
+      - id: E12-023
+        title: "Alert Pulse Notification System"
+        size: M
+        status: complete
+        blocked_by: [E12-006]
+      - id: E12-024
+        title: "Keyboard Shortcut System"
+        size: M
+        status: complete
+        blocked_by: [E12-008]
+
+  - id: 10
+    name: "Testing"
+    status: complete
+    tickets:
+      - id: E12-026
+        title: "Unit Tests for Widget System"
+        size: L
+        status: complete
+        blocked_by: [E12-008]
+      - id: E12-027
+        title: "Integration Tests with Simulation Systems"
+        size: L
+        status: complete
+        blocked_by: [E12-017, E12-021]
