@@ -5805,6 +5805,13 @@ add_test(NAME TributeRateConfig COMMAND test_tribute_rate_config)
 add_executable(test_economy_system
     economy/test_economy_system.cpp
     ${CMAKE_SOURCE_DIR}/src/economy/EconomySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/BudgetCycle.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/DeficitHandling.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/EmergencyBond.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ExpenseTracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/RevenueTracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/TributeCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/Ordinance.cpp
 )
 target_include_directories(test_economy_system PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME EconomySystem COMMAND test_economy_system)
@@ -5813,6 +5820,13 @@ add_test(NAME EconomySystem COMMAND test_economy_system)
 add_executable(test_economy_queryable
     economy/test_economy_queryable.cpp
     ${CMAKE_SOURCE_DIR}/src/economy/EconomySystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/BudgetCycle.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/DeficitHandling.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/EmergencyBond.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ExpenseTracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/RevenueTracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/TributeCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/Ordinance.cpp
 )
 target_include_directories(test_economy_queryable PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME EconomyQueryable COMMAND test_economy_queryable)

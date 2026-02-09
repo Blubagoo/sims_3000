@@ -19,6 +19,9 @@
 #include "sims3000/core/types.h"
 #include "sims3000/economy/IEconomyQueryable.h"
 #include "sims3000/economy/TreasuryState.h"
+#include "sims3000/economy/RevenueTracking.h"
+#include "sims3000/economy/ExpenseTracking.h"
+#include "sims3000/economy/Ordinance.h"
 #include "sims3000/building/ForwardDependencyInterfaces.h"
 
 namespace sims3000 {
@@ -113,14 +116,58 @@ public:
     bool deduct_credits(std::uint32_t player_id, std::int64_t amount) override;
     bool has_credits(std::uint32_t player_id, std::int64_t amount) const override;
 
+    // -----------------------------------------------------------------------
+    // Budget cycle data input (called by integration layer each budget phase)
+    // -----------------------------------------------------------------------
+
+    /**
+     * @brief Set pre-computed income breakdown for next budget cycle.
+     *
+     * The integration layer gathers tribute data from ECS and calls this
+     * before the budget cycle tick fires.
+     */
+    void set_phase_income(uint8_t player_id, const IncomeBreakdown& income);
+
+    /**
+     * @brief Set pre-computed cost data for next budget cycle.
+     *
+     * The integration layer aggregates infrastructure/service/energy costs
+     * from ECS and calls this before the budget cycle tick fires.
+     */
+    void set_phase_costs(uint8_t player_id, int64_t infra_cost,
+                         int64_t service_cost, int64_t energy_cost);
+
+    // -----------------------------------------------------------------------
+    // Ordinance and history access
+    // -----------------------------------------------------------------------
+
+    OrdinanceState& get_ordinances(uint8_t player_id);
+    const OrdinanceState& get_ordinances(uint8_t player_id) const;
+    const IncomeHistory& get_income_history(uint8_t player_id) const;
+    const ExpenseHistory& get_expense_history(uint8_t player_id) const;
+
 private:
     std::array<TreasuryState, MAX_PLAYERS> m_treasuries;
     std::array<bool, MAX_PLAYERS> m_player_active{};
 
+    /// Per-player cached income/expense data from integration layer
+    std::array<IncomeBreakdown, MAX_PLAYERS> m_cached_income{};
+    std::array<int64_t, MAX_PLAYERS> m_cached_infra_cost{};
+    std::array<int64_t, MAX_PLAYERS> m_cached_service_cost{};
+    std::array<int64_t, MAX_PLAYERS> m_cached_energy_cost{};
+
+    /// Per-player ordinances and history
+    std::array<OrdinanceState, MAX_PLAYERS> m_ordinances{};
+    std::array<IncomeHistory, MAX_PLAYERS> m_income_history{};
+    std::array<ExpenseHistory, MAX_PLAYERS> m_expense_history{};
+
     /// Static empty treasury for invalid const queries
     static const TreasuryState s_empty_treasury;
+    static const OrdinanceState s_empty_ordinances;
+    static const IncomeHistory s_empty_income_history;
+    static const ExpenseHistory s_empty_expense_history;
 
-    // Stub methods for later tickets
+    /// Process a complete budget cycle for one player.
     void process_budget_cycle(uint8_t player_id);
 };
 

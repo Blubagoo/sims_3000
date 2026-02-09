@@ -154,8 +154,8 @@ static void test_tick_no_crash_active() {
         system.tick(time);
     }
 
-    // Balance should still be 20000 since process_budget_cycle is a stub
-    assert(system.get_treasury(0).balance == 20000 && "Balance unchanged (stub budget cycle)");
+    // Balance should still be 20000: no cached income/expenses means zero net change
+    assert(system.get_treasury(0).balance == 20000 && "Balance unchanged (zero income/expenses)");
 
     std::printf("  PASS: tick() doesn't crash with active players\n");
 }

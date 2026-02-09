@@ -274,10 +274,10 @@ static void test_deduct_credits() {
     assert(result && "deduct_credits should return true");
     assert(system.get_treasury_balance(0) == 15000 && "Balance should be 15000 after deduction");
 
-    // Allow deficit - deduct more than balance
+    // Reject insufficient funds (E11-GD-002: no deficit spending)
     result = provider->deduct_credits(0, 20000);
-    assert(result && "deduct_credits allows deficit");
-    assert(system.get_treasury_balance(0) == -5000 && "Balance should be -5000 (deficit)");
+    assert(!result && "deduct_credits should reject insufficient funds");
+    assert(system.get_treasury_balance(0) == 15000 && "Balance should remain 15000 after rejection");
 
     // Invalid player
     result = provider->deduct_credits(5, 100);
