@@ -58,7 +58,10 @@ void ScanLayerManager::set_active(OverlayType type) {
 
     OverlayType old_type = m_active_type;
 
-    // Start fade transition
+    // Update active type immediately so get_active_overlay() returns the new overlay
+    m_active_type = type;
+
+    // Start fade transition (visual effect only)
     m_fade_target = type;
     m_fading = true;
     m_fade_progress = 0.0f;
@@ -142,7 +145,6 @@ void ScanLayerManager::update(float delta_time) {
 
     if (m_fade_progress >= 1.0f) {
         m_fading = false;
-        m_active_type = m_fade_target;
     }
 }
 

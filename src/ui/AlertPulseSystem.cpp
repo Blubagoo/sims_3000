@@ -141,7 +141,7 @@ void AlertPulseSystem::render(UIRenderer* renderer) {
 // =========================================================================
 
 void AlertPulseSystem::on_mouse_down(int button, float x, float y) {
-    if (button != 1) {
+    if (button != 0) {
         return;
     }
 
