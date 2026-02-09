@@ -32,5 +32,5 @@ vcpkg_installed/
 
 # Temporary build/test artifacts
 build_temp_size/
-build_test/
+build_test*
 temp_size_check.cpp

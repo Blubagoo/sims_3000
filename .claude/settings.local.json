@@ -53,7 +53,8 @@
       "Bash(start:*)",
       "Bash(\"C:/Program Files \\(x86\\)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe\" --build build --config Debug --target sims_3000)",
       "mcp__computer-control__wait_milliseconds",
-      "mcp__computer-control__take_screenshot_with_ocr"
+      "mcp__computer-control__take_screenshot_with_ocr",
+      "mcp__clickup__clickup_get_list"
     ]
   },
   "enableAllProjectMcpServers": true,
