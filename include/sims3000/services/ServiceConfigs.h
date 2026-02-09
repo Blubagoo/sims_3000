@@ -58,12 +58,6 @@ struct ServiceBuildingConfig {
 /// Hazard fire suppression speed: 3x faster fire suppression in coverage area
 constexpr float HAZARD_SUPPRESSION_SPEED = 3.0f;
 
-/// Medical base longevity in simulation cycles
-constexpr uint32_t MEDICAL_BASE_LONGEVITY = 60;
-
-/// Medical maximum longevity bonus at 100% coverage (added to base)
-constexpr uint32_t MEDICAL_MAX_LONGEVITY_BONUS = 40;
-
 /// Number of beings served per medical capacity unit
 constexpr uint32_t BEINGS_PER_MEDICAL_UNIT = 500;
 

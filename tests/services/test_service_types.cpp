@@ -226,21 +226,28 @@ void test_enforcer_suppression_multiplier() {
 void test_all_type_tier_configs() {
     printf("Testing get_service_config for all type+tier combinations...\n");
 
-    // Verify all valid combinations return non-zero radius
+    // Verify all valid combinations return valid configs
     for (uint8_t t = 0; t < SERVICE_TYPE_COUNT; ++t) {
         for (uint8_t tier = 1; tier <= SERVICE_TIER_COUNT; ++tier) {
             ServiceConfig cfg = get_service_config(
                 static_cast<ServiceType>(t),
                 static_cast<ServiceTier>(tier)
             );
-            assert(cfg.base_radius > 0);
+            // Radius-based services (Enforcer, HazardResponse) have radius > 0
+            // Global/capacity-based services (Medical, Education) have radius = 0
+            ServiceType st = static_cast<ServiceType>(t);
+            if (st == ServiceType::Enforcer || st == ServiceType::HazardResponse) {
+                assert(cfg.base_radius > 0);
+            } else {
+                assert(cfg.base_radius == 0);
+            }
             assert(cfg.base_effectiveness > 0);
             assert(cfg.footprint_width > 0);
             assert(cfg.footprint_height > 0);
         }
     }
 
-    // Verify higher tiers have larger (or equal) radius
+    // Verify higher tiers have larger (or equal) radius and footprint
     for (uint8_t t = 0; t < SERVICE_TYPE_COUNT; ++t) {
         ServiceType type = static_cast<ServiceType>(t);
         ServiceConfig post    = get_service_config(type, ServiceTier::Post);

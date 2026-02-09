@@ -12,6 +12,7 @@
  */
 
 #include <sims3000/services/ServiceConfigs.h>
+#include <sims3000/services/LongevityBonus.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>

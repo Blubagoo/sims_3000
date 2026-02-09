@@ -147,11 +147,11 @@ void test_enforcer_nexus_key_distances() {
 }
 
 void test_hazard_post_coverage_pattern() {
-    printf("Testing HazardResponse Post (radius=8): coverage pattern...\n");
+    printf("Testing HazardResponse Post (radius=10): coverage pattern...\n");
     ++test_count;
 
     int radius = get_radius(ServiceType::HazardResponse, ServiceTier::Post);
-    assert(radius == 8);
+    assert(radius == 10);
 
     ServiceCoverageGrid grid(64, 64);
     std::vector<ServiceBuildingData> buildings;
@@ -171,11 +171,11 @@ void test_hazard_post_coverage_pattern() {
 }
 
 void test_hazard_station_coverage_pattern() {
-    printf("Testing HazardResponse Station (radius=12): coverage pattern...\n");
+    printf("Testing HazardResponse Station (radius=15): coverage pattern...\n");
     ++test_count;
 
     int radius = get_radius(ServiceType::HazardResponse, ServiceTier::Station);
-    assert(radius == 12);
+    assert(radius == 15);
 
     ServiceCoverageGrid grid(64, 64);
     std::vector<ServiceBuildingData> buildings;
@@ -193,11 +193,11 @@ void test_hazard_station_coverage_pattern() {
 }
 
 void test_hazard_nexus_coverage_pattern() {
-    printf("Testing HazardResponse Nexus (radius=16): coverage pattern...\n");
+    printf("Testing HazardResponse Nexus (radius=20): coverage pattern...\n");
     ++test_count;
 
     int radius = get_radius(ServiceType::HazardResponse, ServiceTier::Nexus);
-    assert(radius == 16);
+    assert(radius == 20);
 
     ServiceCoverageGrid grid(64, 64);
     std::vector<ServiceBuildingData> buildings;
@@ -213,74 +213,64 @@ void test_hazard_nexus_coverage_pattern() {
     printf("  PASS\n");
 }
 
-void test_medical_post_coverage_pattern() {
-    printf("Testing Medical Post (radius=8): coverage pattern...\n");
+void test_medical_post_no_radius_coverage() {
+    printf("Testing Medical Post (radius=0, global): no radius coverage generated...\n");
     ++test_count;
 
     int radius = get_radius(ServiceType::Medical, ServiceTier::Post);
-    assert(radius == 8);
+    assert(radius == 0);
 
     ServiceCoverageGrid grid(64, 64);
     std::vector<ServiceBuildingData> buildings;
     buildings.push_back(make_building(32, 32, ServiceType::Medical, ServiceTier::Post, 255));
     calculate_radius_coverage(grid, buildings);
 
-    // Verify center and midpoint
-    assert(grid.get_coverage_at(32, 32) == 255);
-    assert(grid.get_coverage_at(36, 32) == expected_coverage(255, 4, 8));  // 128
-    assert(grid.get_coverage_at(40, 32) == 0);  // distance 8 = edge
+    // Global services (radius=0) produce no radius-based coverage
+    assert(grid.get_coverage_at(32, 32) == 0);
+    assert(grid.get_coverage_at(36, 32) == 0);
 
     printf("  PASS\n");
 }
 
-void test_education_nexus_coverage_pattern() {
-    printf("Testing Education Nexus (radius=16): coverage pattern...\n");
+void test_education_nexus_no_radius_coverage() {
+    printf("Testing Education Nexus (radius=0, global): no radius coverage generated...\n");
     ++test_count;
 
     int radius = get_radius(ServiceType::Education, ServiceTier::Nexus);
-    assert(radius == 16);
+    assert(radius == 0);
 
     ServiceCoverageGrid grid(64, 64);
     std::vector<ServiceBuildingData> buildings;
     buildings.push_back(make_building(32, 32, ServiceType::Education, ServiceTier::Nexus, 255));
     calculate_radius_coverage(grid, buildings);
 
-    assert(grid.get_coverage_at(32, 32) == 255);
-    // distance 8: 1 - 8/16 = 0.5 -> 128
-    assert(grid.get_coverage_at(40, 32) == expected_coverage(255, 8, 16));
-    assert(grid.get_coverage_at(48, 32) == 0);  // distance 16 = edge
+    // Global services (radius=0) produce no radius-based coverage
+    assert(grid.get_coverage_at(32, 32) == 0);
+    assert(grid.get_coverage_at(40, 32) == 0);
 
     printf("  PASS\n");
 }
 
-void test_all_types_same_tier_equal_coverage() {
-    printf("Testing all service types at same tier produce identical coverage...\n");
+void test_radius_vs_global_coverage_distinction() {
+    printf("Testing radius-based types produce coverage, global types produce none...\n");
     ++test_count;
 
-    // All four service types have the same radius/effectiveness configs per tier
-    ServiceType types[] = {
-        ServiceType::Enforcer, ServiceType::HazardResponse,
-        ServiceType::Medical, ServiceType::Education
-    };
+    // Radius-based services should produce coverage
+    for (auto type : { ServiceType::Enforcer, ServiceType::HazardResponse }) {
+        ServiceCoverageGrid grid(64, 64);
+        std::vector<ServiceBuildingData> buildings;
+        buildings.push_back(make_building(32, 32, type, ServiceTier::Post, 255));
+        calculate_radius_coverage(grid, buildings);
+        assert(grid.get_coverage_at(32, 32) == 255);  // Center has full coverage
+    }
 
-    for (auto tier : { ServiceTier::Post, ServiceTier::Station, ServiceTier::Nexus }) {
-        ServiceCoverageGrid ref_grid(64, 64);
-        std::vector<ServiceBuildingData> ref_buildings;
-        ref_buildings.push_back(make_building(32, 32, types[0], tier, 255));
-        calculate_radius_coverage(ref_grid, ref_buildings);
-
-        for (int t = 1; t < 4; ++t) {
-            ServiceCoverageGrid test_grid(64, 64);
-            std::vector<ServiceBuildingData> test_buildings;
-            test_buildings.push_back(make_building(32, 32, types[t], tier, 255));
-            calculate_radius_coverage(test_grid, test_buildings);
-
-            for (uint32_t y = 0; y < 64; ++y) {
-                for (uint32_t x = 0; x < 64; ++x) {
-                    assert(ref_grid.get_coverage_at(x, y) == test_grid.get_coverage_at(x, y));
-                }
-            }
-        }
+    // Global/capacity-based services should produce NO radius coverage
+    for (auto type : { ServiceType::Medical, ServiceType::Education }) {
+        ServiceCoverageGrid grid(64, 64);
+        std::vector<ServiceBuildingData> buildings;
+        buildings.push_back(make_building(32, 32, type, ServiceTier::Post, 255));
+        calculate_radius_coverage(grid, buildings);
+        assert(grid.get_coverage_at(32, 32) == 0);  // No radius coverage
     }
 
     printf("  PASS\n");
@@ -1385,9 +1375,9 @@ int main() {
     test_hazard_post_coverage_pattern();
     test_hazard_station_coverage_pattern();
     test_hazard_nexus_coverage_pattern();
-    test_medical_post_coverage_pattern();
-    test_education_nexus_coverage_pattern();
-    test_all_types_same_tier_equal_coverage();
+    test_medical_post_no_radius_coverage();
+    test_education_nexus_no_radius_coverage();
+    test_radius_vs_global_coverage_distinction();
 
     // 2. Map edge clipping scenarios
     test_edge_clip_origin_64x64();

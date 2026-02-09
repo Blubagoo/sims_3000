@@ -232,8 +232,8 @@ public:
         return 0.0f;
     }
 
-    float get_coverage_at(std::uint8_t service_type, std::int32_t x, std::int32_t y) const override {
-        (void)service_type; (void)x; (void)y;
+    float get_coverage_at(std::uint8_t service_type, std::int32_t x, std::int32_t y, std::uint8_t player_id) const override {
+        (void)service_type; (void)x; (void)y; (void)player_id;
         return 0.0f;
     }
 

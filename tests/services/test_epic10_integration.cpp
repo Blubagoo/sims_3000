@@ -442,10 +442,10 @@ TEST(stub_service_queryable_returns_zero_coverage) {
 TEST(stub_service_queryable_returns_zero_coverage_at) {
     StubServiceQueryable stub;
 
-    ASSERT_FLOAT_EQ(stub.get_coverage_at(0, 10, 20), 0.0f);
-    ASSERT_FLOAT_EQ(stub.get_coverage_at(1, 10, 20), 0.0f);
-    ASSERT_FLOAT_EQ(stub.get_coverage_at(2, 10, 20), 0.0f);
-    ASSERT_FLOAT_EQ(stub.get_coverage_at(3, 10, 20), 0.0f);
+    ASSERT_FLOAT_EQ(stub.get_coverage_at(0, 10, 20, 0), 0.0f);
+    ASSERT_FLOAT_EQ(stub.get_coverage_at(1, 10, 20, 0), 0.0f);
+    ASSERT_FLOAT_EQ(stub.get_coverage_at(2, 10, 20, 0), 0.0f);
+    ASSERT_FLOAT_EQ(stub.get_coverage_at(3, 10, 20, 0), 0.0f);
 }
 
 TEST(stub_service_queryable_returns_zero_effectiveness) {
@@ -481,7 +481,7 @@ TEST(stub_restrictive_mode_same_as_default) {
     stub.set_debug_restrictive(true);
 
     ASSERT_FLOAT_EQ(stub.get_coverage(0, 0), 0.0f);
-    ASSERT_FLOAT_EQ(stub.get_coverage_at(0, 10, 20), 0.0f);
+    ASSERT_FLOAT_EQ(stub.get_coverage_at(0, 10, 20, 0), 0.0f);
     ASSERT_FLOAT_EQ(stub.get_effectiveness(0, 0), 0.0f);
 }
 

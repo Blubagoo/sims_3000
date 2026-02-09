@@ -49,10 +49,10 @@ void test_stub_get_coverage_at_returns_zero() {
     printf("Testing StubServiceQueryable::get_coverage_at returns 0.0f...\n");
 
     StubServiceQueryable stub;
-    assert(float_eq(stub.get_coverage_at(0, 0, 0), 0.0f));
-    assert(float_eq(stub.get_coverage_at(1, 50, 50), 0.0f));
-    assert(float_eq(stub.get_coverage_at(2, 127, 255), 0.0f));
-    assert(float_eq(stub.get_coverage_at(3, -1, -1), 0.0f));
+    assert(float_eq(stub.get_coverage_at(0, 0, 0, 0), 0.0f));
+    assert(float_eq(stub.get_coverage_at(1, 50, 50, 0), 0.0f));
+    assert(float_eq(stub.get_coverage_at(2, 127, 255, 1), 0.0f));
+    assert(float_eq(stub.get_coverage_at(3, -1, -1, 3), 0.0f));
 
     printf("  PASS: get_coverage_at returns 0.0f for all inputs\n");
 }
@@ -85,7 +85,7 @@ void test_interface_via_base_pointer() {
     IServiceQueryable* iface = &stub;
 
     assert(float_eq(iface->get_coverage(0, 0), 0.0f));
-    assert(float_eq(iface->get_coverage_at(0, 10, 10), 0.0f));
+    assert(float_eq(iface->get_coverage_at(0, 10, 10, 0), 0.0f));
     assert(float_eq(iface->get_effectiveness(0, 0), 0.0f));
 
     printf("  PASS: Interface works via base pointer\n");
@@ -106,7 +106,7 @@ void test_debug_restrictive_mode() {
 
     // For opt-in infrastructure, restrictive == default (both return 0.0f)
     assert(float_eq(stub.get_coverage(0, 0), 0.0f));
-    assert(float_eq(stub.get_coverage_at(0, 0, 0), 0.0f));
+    assert(float_eq(stub.get_coverage_at(0, 0, 0, 0), 0.0f));
     assert(float_eq(stub.get_effectiveness(0, 0), 0.0f));
 
     stub.set_debug_restrictive(false);
@@ -141,11 +141,11 @@ void test_defaults_not_half() {
 
     // Acceptance criteria: Stub fallback returns 0.0f (not 0.5f)
     assert(!float_eq(stub.get_coverage(0, 0), 0.5f));
-    assert(!float_eq(stub.get_coverage_at(0, 0, 0), 0.5f));
+    assert(!float_eq(stub.get_coverage_at(0, 0, 0, 0), 0.5f));
     assert(!float_eq(stub.get_effectiveness(0, 0), 0.5f));
 
     assert(float_eq(stub.get_coverage(0, 0), 0.0f));
-    assert(float_eq(stub.get_coverage_at(0, 0, 0), 0.0f));
+    assert(float_eq(stub.get_coverage_at(0, 0, 0, 0), 0.0f));
     assert(float_eq(stub.get_effectiveness(0, 0), 0.0f));
 
     printf("  PASS: Defaults are 0.0f, not 0.5f\n");

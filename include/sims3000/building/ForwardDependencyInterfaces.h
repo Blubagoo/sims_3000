@@ -342,9 +342,10 @@ public:
      * @param service_type Service type (cast from services::ServiceType).
      * @param x X coordinate (column).
      * @param y Y coordinate (row).
+     * @param player_id Owner player ID.
      * @return Coverage ratio at the tile (0.0 = no coverage, 1.0 = full coverage).
      */
-    virtual float get_coverage_at(std::uint8_t service_type, std::int32_t x, std::int32_t y) const = 0;
+    virtual float get_coverage_at(std::uint8_t service_type, std::int32_t x, std::int32_t y, std::uint8_t player_id) const = 0;
 
     /**
      * @brief Get funding-adjusted effectiveness for a service type and player.

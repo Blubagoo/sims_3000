@@ -96,10 +96,9 @@ constexpr float ENFORCER_SUPPRESSION_MULTIPLIER = 0.7f;
  * Returns a ServiceConfig with the appropriate radius, effectiveness,
  * capacity, and footprint for the specified service type and tier.
  *
- * Enforcer configs (E9-030):
- * - Post:    radius=8,  effectiveness=100, capacity=0, footprint=1x1
- * - Station: radius=12, effectiveness=100, capacity=0, footprint=2x2
- * - Nexus:   radius=16, effectiveness=100, capacity=0, footprint=3x3
+ * Config values match SERVICE_CONFIGS[] in ServiceConfigs.h.
+ * Radius-based (Enforcer, HazardResponse) have radius > 0.
+ * Global/capacity-based (Medical, Education) have radius = 0.
  *
  * @param type The service type.
  * @param tier The service tier (1-3).
@@ -116,23 +115,23 @@ inline ServiceConfig get_service_config(ServiceType type, ServiceTier tier) {
             }
         case ServiceType::HazardResponse:
             switch (tier) {
-                case ServiceTier::Post:    return { 8, 100, 0, 1, 1 };
-                case ServiceTier::Station: return { 12, 100, 0, 2, 2 };
-                case ServiceTier::Nexus:   return { 16, 100, 0, 3, 3 };
+                case ServiceTier::Post:    return { 10, 100, 0, 1, 1 };
+                case ServiceTier::Station: return { 15, 100, 0, 2, 2 };
+                case ServiceTier::Nexus:   return { 20, 100, 0, 3, 3 };
                 default:                   return { 0, 0, 0, 0, 0 };
             }
         case ServiceType::Medical:
             switch (tier) {
-                case ServiceTier::Post:    return { 8, 100, 100, 1, 1 };
-                case ServiceTier::Station: return { 12, 100, 500, 2, 2 };
-                case ServiceTier::Nexus:   return { 16, 100, 2000, 3, 3 };
+                case ServiceTier::Post:    return { 0, 100, 500, 1, 1 };
+                case ServiceTier::Station: return { 0, 100, 2000, 2, 2 };
+                case ServiceTier::Nexus:   return { 0, 100, 5000, 3, 3 };
                 default:                   return { 0, 0, 0, 0, 0 };
             }
         case ServiceType::Education:
             switch (tier) {
-                case ServiceTier::Post:    return { 8, 100, 200, 1, 1 };
-                case ServiceTier::Station: return { 12, 100, 1000, 2, 2 };
-                case ServiceTier::Nexus:   return { 16, 100, 5000, 3, 3 };
+                case ServiceTier::Post:    return { 0, 100, 300, 1, 1 };
+                case ServiceTier::Station: return { 0, 100, 1200, 2, 2 };
+                case ServiceTier::Nexus:   return { 0, 100, 3000, 3, 3 };
                 default:                   return { 0, 0, 0, 0, 0 };
             }
         default:
