@@ -5777,3 +5777,226 @@ add_executable(test_simulation_integration
 )
 target_include_directories(test_simulation_integration PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME SimulationIntegration COMMAND test_simulation_integration)
+
+# Epic 11: Economy Components (E11-001)
+add_executable(test_economy_components economy/test_economy_components.cpp)
+target_include_directories(test_economy_components PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME EconomyComponents COMMAND test_economy_components)
+
+# Epic 11: TreasuryState (E11-002)
+add_executable(test_treasury_state economy/test_treasury_state.cpp)
+target_include_directories(test_treasury_state PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME TreasuryState COMMAND test_treasury_state)
+
+# Epic 11: CreditAdvance (E11-003)
+add_executable(test_credit_advance economy/test_credit_advance.cpp)
+target_include_directories(test_credit_advance PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME CreditAdvance COMMAND test_credit_advance)
+
+# Epic 11: TributeRateConfig (E11-006)
+add_executable(test_tribute_rate_config
+    economy/test_tribute_rate_config.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/TributeRateConfig.cpp
+)
+target_include_directories(test_tribute_rate_config PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME TributeRateConfig COMMAND test_tribute_rate_config)
+
+# Epic 11: EconomySystem skeleton (E11-004)
+add_executable(test_economy_system
+    economy/test_economy_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/EconomySystem.cpp
+)
+target_include_directories(test_economy_system PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME EconomySystem COMMAND test_economy_system)
+
+# Epic 11: IEconomyQueryable real implementation (E11-005)
+add_executable(test_economy_queryable
+    economy/test_economy_queryable.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/EconomySystem.cpp
+)
+target_include_directories(test_economy_queryable PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME EconomyQueryable COMMAND test_economy_queryable)
+
+# Epic 11: TributeCalculation engine (E11-007)
+add_executable(test_tribute_calculation
+    economy/test_tribute_calculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/TributeCalculation.cpp
+)
+target_include_directories(test_tribute_calculation PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME TributeCalculation COMMAND test_tribute_calculation)
+
+# Epic 11: Infrastructure Maintenance Calculation (E11-009)
+add_executable(test_infrastructure_maintenance
+    economy/test_infrastructure_maintenance.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/InfrastructureMaintenance.cpp
+)
+target_include_directories(test_infrastructure_maintenance PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME InfrastructureMaintenance COMMAND test_infrastructure_maintenance)
+
+# Epic 11: Service Maintenance Calculation (E11-010)
+add_executable(test_service_maintenance
+    economy/test_service_maintenance.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ServiceMaintenance.cpp
+)
+target_include_directories(test_service_maintenance PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ServiceMaintenance COMMAND test_service_maintenance)
+
+# Epic 11: Revenue Breakdown Tracking (E11-008)
+add_executable(test_revenue_tracking
+    economy/test_revenue_tracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/RevenueTracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/TributeCalculation.cpp
+)
+target_include_directories(test_revenue_tracking PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME RevenueTracking COMMAND test_revenue_tracking)
+
+# Epic 11: Expense Breakdown Tracking (E11-011)
+add_executable(test_expense_tracking
+    economy/test_expense_tracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ExpenseTracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/InfrastructureMaintenance.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ServiceMaintenance.cpp
+)
+target_include_directories(test_expense_tracking PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ExpenseTracking COMMAND test_expense_tracking)
+
+# Epic 11: Budget Cycle Processing (E11-012)
+add_executable(test_budget_cycle
+    economy/test_budget_cycle.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/BudgetCycle.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/RevenueTracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ExpenseTracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/TributeCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/InfrastructureMaintenance.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ServiceMaintenance.cpp
+)
+target_include_directories(test_budget_cycle PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME BudgetCycle COMMAND test_budget_cycle)
+
+# Epic 11: Funding Level Storage and API (E11-013)
+add_executable(test_funding_level
+    economy/test_funding_level.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/FundingLevel.cpp
+)
+target_include_directories(test_funding_level PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME FundingLevel COMMAND test_funding_level)
+
+# Epic 11: Deficit Warning and Handling (E11-015)
+add_executable(test_deficit_handling
+    economy/test_deficit_handling.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/DeficitHandling.cpp
+)
+target_include_directories(test_deficit_handling PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME DeficitHandling COMMAND test_deficit_handling)
+
+# Epic 11: DemandSystem Tribute Rate Integration (E11-019)
+add_executable(test_tribute_demand_modifier
+    economy/test_tribute_demand_modifier.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/TributeDemandModifier.cpp
+)
+target_include_directories(test_tribute_demand_modifier PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME TributeDemandModifier COMMAND test_tribute_demand_modifier)
+
+# Epic 11: ServicesSystem Funding Integration (E11-014)
+add_executable(test_service_funding_integration
+    economy/test_service_funding_integration.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ServiceFundingIntegration.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/FundingLevel.cpp
+)
+target_include_directories(test_service_funding_integration PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ServiceFundingIntegration COMMAND test_service_funding_integration)
+
+# Epic 11: Bond Issuance System (E11-016)
+add_executable(test_bond_issuance
+    economy/test_bond_issuance.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/BondIssuance.cpp
+)
+target_include_directories(test_bond_issuance PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME BondIssuance COMMAND test_bond_issuance)
+
+# Epic 11: Construction Cost Deduction (E11-020)
+add_executable(test_construction_cost
+    economy/test_construction_cost.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ConstructionCost.cpp
+)
+target_include_directories(test_construction_cost PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME ConstructionCost COMMAND test_construction_cost)
+
+# Epic 11: Bond Repayment Processing (E11-017)
+add_executable(test_bond_repayment
+    economy/test_bond_repayment.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/BondRepayment.cpp
+)
+target_include_directories(test_bond_repayment PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME BondRepayment COMMAND test_bond_repayment)
+
+# Epic 11: Emergency Bond Auto-Issuance (E11-018)
+add_executable(test_emergency_bond
+    economy/test_emergency_bond.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/EmergencyBond.cpp
+)
+target_include_directories(test_emergency_bond PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME EmergencyBond COMMAND test_emergency_bond)
+
+# Epic 11: Ordinance Framework (E11-021)
+add_executable(test_ordinance
+    economy/test_ordinance.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/Ordinance.cpp
+)
+target_include_directories(test_ordinance PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME Ordinance COMMAND test_ordinance)
+
+# Epic 11: Economy Network Sync (E11-022)
+add_executable(test_economy_net_sync
+    economy/test_economy_net_sync.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/EconomyNetSync.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/BondRepayment.cpp
+)
+target_include_directories(test_economy_net_sync PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME EconomyNetSync COMMAND test_economy_net_sync)
+
+# Epic 11: Comprehensive Tribute & Maintenance Tests (E11-023)
+add_executable(test_tribute_comprehensive
+    economy/test_tribute_comprehensive.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/TributeCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/TributeRateConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/InfrastructureMaintenance.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ServiceMaintenance.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/RevenueTracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ExpenseTracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/BudgetCycle.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/FundingLevel.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/DeficitHandling.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/BondIssuance.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/BondRepayment.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/EmergencyBond.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ConstructionCost.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/TributeDemandModifier.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ServiceFundingIntegration.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/Ordinance.cpp
+)
+target_include_directories(test_tribute_comprehensive PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME TributeComprehensive COMMAND test_tribute_comprehensive)
+
+# Epic 11: Economy Integration Tests (E11-024)
+add_executable(test_economy_integration
+    economy/test_economy_integration.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/TributeCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/TributeRateConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/InfrastructureMaintenance.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ServiceMaintenance.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/RevenueTracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ExpenseTracking.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/BudgetCycle.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/FundingLevel.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/DeficitHandling.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/BondIssuance.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/BondRepayment.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/EmergencyBond.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ConstructionCost.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/TributeDemandModifier.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/ServiceFundingIntegration.cpp
+    ${CMAKE_SOURCE_DIR}/src/economy/Ordinance.cpp
+)
+target_include_directories(test_economy_integration PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME EconomyIntegration COMMAND test_economy_integration)

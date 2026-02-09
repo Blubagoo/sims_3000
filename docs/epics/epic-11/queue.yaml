@@ -1,0 +1,123 @@
+# Epic 11 Execution Queue
+# Generated: 2026-02-08
+# Last Updated: 2026-02-08
+
+epic: 11
+name: "Financial System"
+status: in_progress
+
+# Execution waves (max 3 parallel per wave)
+# Wave 1: Foundation components (no deps)
+# Wave 2: System skeleton + IEconomyQueryable
+# Wave 3: Tribute + maintenance calculation
+# Wave 4: Expense tracking + budget cycle
+# Wave 5: Funding + deficit + demand integration
+# Wave 6: Bonds + construction + ordinances
+# Wave 7: Network sync + comprehensive tests
+
+waves:
+  wave_1:
+    tickets: ["E11-001", "E11-002", "E11-003"]
+    status: pending
+  wave_2:
+    tickets: ["E11-004", "E11-005", "E11-006"]
+    status: pending
+  wave_3:
+    tickets: ["E11-007", "E11-009", "E11-010"]
+    status: pending
+  wave_4:
+    tickets: ["E11-008", "E11-011", "E11-012"]
+    status: pending
+  wave_5:
+    tickets: ["E11-013", "E11-015", "E11-019"]
+    status: pending
+  wave_6:
+    tickets: ["E11-014", "E11-016", "E11-020"]
+    status: pending
+  wave_7:
+    tickets: ["E11-017", "E11-018", "E11-021"]
+    status: pending
+  wave_8:
+    tickets: ["E11-022", "E11-023", "E11-024"]
+    status: pending
+
+queue:
+  - id: "E11-001"
+    title: "Core Components (TributableComponent, MaintenanceCostComponent)"
+    status: pending
+  - id: "E11-002"
+    title: "TreasuryState Data Structure"
+    status: pending
+  - id: "E11-003"
+    title: "CreditAdvance (Bond) Data Structure"
+    status: pending
+  - id: "E11-004"
+    title: "EconomySystem Skeleton"
+    status: pending
+  - id: "E11-005"
+    title: "IEconomyQueryable Real Implementation"
+    status: pending
+  - id: "E11-006"
+    title: "Per-Zone Tribute Rate Configuration"
+    status: pending
+  - id: "E11-007"
+    title: "Tribute Calculation Engine"
+    status: pending
+  - id: "E11-008"
+    title: "Revenue Breakdown Tracking"
+    status: pending
+  - id: "E11-009"
+    title: "Infrastructure Maintenance Calculation"
+    status: pending
+  - id: "E11-010"
+    title: "Service Maintenance Calculation"
+    status: pending
+  - id: "E11-011"
+    title: "Expense Breakdown Tracking"
+    status: pending
+  - id: "E11-012"
+    title: "Budget Cycle Processing"
+    status: pending
+  - id: "E11-013"
+    title: "Funding Level Storage and API"
+    status: pending
+  - id: "E11-014"
+    title: "ServicesSystem Funding Integration"
+    status: pending
+  - id: "E11-015"
+    title: "Deficit Warning and Handling"
+    status: pending
+  - id: "E11-016"
+    title: "Bond Issuance System"
+    status: pending
+  - id: "E11-017"
+    title: "Bond Repayment Processing"
+    status: pending
+  - id: "E11-018"
+    title: "Emergency Bond Auto-Issuance"
+    status: pending
+  - id: "E11-019"
+    title: "DemandSystem Tribute Rate Integration"
+    status: pending
+  - id: "E11-020"
+    title: "Construction Cost Deduction"
+    status: pending
+  - id: "E11-021"
+    title: "Ordinance Framework and Sample Ordinances"
+    status: pending
+  - id: "E11-022"
+    title: "Network Sync for Treasury State"
+    status: pending
+  - id: "E11-023"
+    title: "Unit Tests for Tribute and Maintenance"
+    status: pending
+  - id: "E11-024"
+    title: "Integration Tests with Epic 9/10"
+    status: pending
+
+stats:
+  total: 24
+  complete: 0
+  in_progress: 0
+  pending: 24
+  failed: 0
