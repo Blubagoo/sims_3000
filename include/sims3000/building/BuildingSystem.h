@@ -119,6 +119,9 @@ public:
     /** @brief Set port provider for port/trade queries. */
     void set_port_provider(IPortProvider* provider);
 
+    /** @brief Set service queryable provider for coverage/effectiveness queries. */
+    void set_service_provider(IServiceQueryable* provider);
+
     /** @brief Set land value provider for desirability queries. */
     void set_land_value_provider(ILandValueProvider* provider);
 
@@ -233,6 +236,7 @@ private:
     IFluidProvider* m_fluid = nullptr;
     ITransportProvider* m_transport = nullptr;
     IPortProvider* m_port = nullptr;
+    IServiceQueryable* m_service = nullptr;
     ILandValueProvider* m_land_value = nullptr;
     IDemandProvider* m_demand = nullptr;
     ICreditProvider* m_credits = nullptr;

@@ -499,6 +499,12 @@ set(SIMS3000_SOURCES
     src/port/TradeNetworkMessages.cpp
     src/port/MigrationEffects.cpp
     src/port/TradeIncome.cpp
+    src/services/ServiceSerialization.cpp
+    src/services/ServiceCoverageGrid.cpp
+    src/services/CoverageCalculation.cpp
+    src/services/ServicesSystem.cpp
+    src/services/GlobalServiceAggregation.cpp
+    src/services/ServiceCoverageOverlay.cpp
 )
 
 # Define header files (for IDE integration)
@@ -716,6 +722,22 @@ set(SIMS3000_HEADERS
     include/sims3000/port/TradeAgreementBenefits.h
     include/sims3000/port/MigrationEffects.h
     include/sims3000/port/TradeIncome.h
+    include/sims3000/services/ServiceTypes.h
+    include/sims3000/services/ServiceProviderComponent.h
+    include/sims3000/services/ServiceSerialization.h
+    include/sims3000/services/ServiceConfigs.h
+    include/sims3000/services/FundingModifier.h
+    include/sims3000/services/ServiceCoverageGrid.h
+    include/sims3000/services/CoverageCalculation.h
+    include/sims3000/services/ServiceEvents.h
+    include/sims3000/services/ServicesSystem.h
+    include/sims3000/services/ServiceStatistics.h
+    include/sims3000/services/GlobalServiceAggregation.h
+    include/sims3000/services/IGridOverlay.h
+    include/sims3000/services/ServiceCoverageOverlay.h
+    include/sims3000/services/DisorderSuppression.h
+    include/sims3000/services/LongevityBonus.h
+    include/sims3000/services/EducationBonus.h
 )
 
 # Create executable

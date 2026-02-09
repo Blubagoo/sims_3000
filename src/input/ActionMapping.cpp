@@ -142,6 +142,14 @@ void ActionMapping::resetToDefaults() {
     bind(Action::PORT_PLACE, SDL_SCANCODE_COMMA);
     bind(Action::PORT_REMOVE, SDL_SCANCODE_PERIOD);
 
+    // Services demo controls (Epic 9)
+    bind(Action::SERVICE_ENFORCER, SDL_SCANCODE_SEMICOLON);
+    bind(Action::SERVICE_HAZARD, SDL_SCANCODE_APOSTROPHE);
+    bind(Action::SERVICE_MEDICAL, SDL_SCANCODE_LEFTBRACKET);
+    bind(Action::SERVICE_EDUCATION, SDL_SCANCODE_RIGHTBRACKET);
+    bind(Action::SERVICE_PLACE, SDL_SCANCODE_SLASH);
+    bind(Action::SERVICE_REMOVE, SDL_SCANCODE_BACKSLASH);
+
     // System
     bind(Action::FULLSCREEN, SDL_SCANCODE_F11);
     bind(Action::QUIT, SDL_SCANCODE_ESCAPE);
@@ -207,6 +215,12 @@ const char* ActionMapping::getActionName(Action action) {
         case Action::PORT_AQUA: return "Port Aqua";
         case Action::PORT_PLACE: return "Port Place";
         case Action::PORT_REMOVE: return "Port Remove";
+        case Action::SERVICE_ENFORCER: return "Service Enforcer";
+        case Action::SERVICE_HAZARD: return "Service Hazard";
+        case Action::SERVICE_MEDICAL: return "Service Medical";
+        case Action::SERVICE_EDUCATION: return "Service Education";
+        case Action::SERVICE_PLACE: return "Service Place";
+        case Action::SERVICE_REMOVE: return "Service Remove";
         case Action::FULLSCREEN:   return "Fullscreen";
         case Action::QUIT:         return "Quit";
         default:                   return "Unknown";

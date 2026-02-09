@@ -26,6 +26,7 @@ BuildingSystem::BuildingSystem(
     , m_fluid(nullptr)
     , m_transport(nullptr)
     , m_port(nullptr)
+    , m_service(nullptr)
     , m_land_value(nullptr)
     , m_demand(nullptr)
     , m_credits(nullptr)
@@ -72,6 +73,10 @@ void BuildingSystem::set_transport_provider(ITransportProvider* provider) {
 
 void BuildingSystem::set_port_provider(IPortProvider* provider) {
     m_port = provider;
+}
+
+void BuildingSystem::set_service_provider(IServiceQueryable* provider) {
+    m_service = provider;
 }
 
 void BuildingSystem::set_land_value_provider(ILandValueProvider* provider) {

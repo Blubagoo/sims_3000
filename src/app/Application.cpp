@@ -137,6 +137,11 @@ Application::Application(const ApplicationConfig& config)
         if (!initPort()) {
             SDL_Log("Warning: Port demo failed to initialize");
         }
+
+        // Initialize services demo (Epic 9)
+        if (!initServices()) {
+            SDL_Log("Warning: Services demo failed to initialize");
+        }
     }
 
     // Create ECS (both client and server)
@@ -431,6 +436,8 @@ void Application::processEvents() {
                 handleTransportInput();
                 // Port demo input (Epic 8)
                 handlePortInput();
+                // Services demo input (Epic 9)
+                handleServicesInput();
                 break;
 
             default:
@@ -470,6 +477,9 @@ void Application::updateSimulation() {
 
         // Tick port system (Epic 8 demo) - priority 48, after transport, before population
         tickPort();
+
+        // Tick services system (Epic 9 demo) - priority 55, after population, before economy
+        tickServices();
 
         // Tick zone/building systems (Epic 4 demo)
         tickZoneBuilding();
@@ -571,6 +581,9 @@ void Application::shutdown() {
 
     // Cleanup fluid resources
     cleanupFluid();
+
+    // Cleanup services resources
+    cleanupServices();
 
     // Cleanup port resources
     cleanupPort();
@@ -2816,6 +2829,108 @@ void Application::handlePortInput() {
 
 void Application::cleanupPort() {
     m_portSystem.reset();
+}
+
+// =============================================================================
+// Services Demo Integration (Epic 9)
+// =============================================================================
+
+bool Application::initServices() {
+    SDL_Log("Initializing services demo...");
+
+    // Create ServicesSystem
+    m_services = std::make_unique<services::ServicesSystem>();
+
+    // Initialize with map dimensions (256x256 to match terrain grid)
+    m_services->init(256, 256);
+
+    SDL_Log("Services demo initialized");
+    SDL_Log("  ;=Enforcer  '=Hazard  [=Medical  ]=Education  /=Place  \\=Remove");
+
+    return true;
+}
+
+void Application::tickServices() {
+    if (!m_services) return;
+
+    m_services->tick(m_clock);
+
+    m_serviceTickLogCounter++;
+    if (m_serviceTickLogCounter % 200 == 0) {
+        SDL_Log("Services [tick %u]: initialized=%s map=%ux%u dirty=%s",
+                m_serviceTickLogCounter,
+                m_services->isInitialized() ? "yes" : "no",
+                m_services->getMapWidth(),
+                m_services->getMapHeight(),
+                m_services->isCoverageDirty() ? "yes" : "no");
+    }
+}
+
+void Application::handleServicesInput() {
+    if (!m_services || !m_input) return;
+
+    // Service mode selection
+    if (m_input->isActionPressed(Action::SERVICE_ENFORCER)) {
+        m_serviceMode = (m_serviceMode == 1) ? 0 : 1;
+        SDL_Log("Service mode: %s", m_serviceMode == 1 ? "ENFORCER" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::SERVICE_HAZARD)) {
+        m_serviceMode = (m_serviceMode == 2) ? 0 : 2;
+        SDL_Log("Service mode: %s", m_serviceMode == 2 ? "HAZARD RESPONSE" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::SERVICE_MEDICAL)) {
+        m_serviceMode = (m_serviceMode == 3) ? 0 : 3;
+        SDL_Log("Service mode: %s", m_serviceMode == 3 ? "MEDICAL" : "NONE");
+    }
+    if (m_input->isActionPressed(Action::SERVICE_EDUCATION)) {
+        m_serviceMode = (m_serviceMode == 4) ? 0 : 4;
+        SDL_Log("Service mode: %s", m_serviceMode == 4 ? "EDUCATION" : "NONE");
+    }
+
+    // Place service building at camera focus
+    if (m_input->isActionPressed(Action::SERVICE_PLACE) && m_serviceMode > 0) {
+        int32_t cx = static_cast<int32_t>(std::max(0.0f, m_demoCamera.focus_point.x));
+        int32_t cz = static_cast<int32_t>(std::max(0.0f, m_demoCamera.focus_point.z));
+
+        // Map service mode to ServiceType
+        services::ServiceType stype;
+        const char* typeName = "unknown";
+        switch (m_serviceMode) {
+            case 1: stype = services::ServiceType::Enforcer;       typeName = "enforcer"; break;
+            case 2: stype = services::ServiceType::HazardResponse; typeName = "hazard";   break;
+            case 3: stype = services::ServiceType::Medical;        typeName = "medical";  break;
+            case 4: stype = services::ServiceType::Education;      typeName = "education"; break;
+            default: return;
+        }
+
+        // Use entity ID based on position for demo purposes
+        uint32_t entityId = static_cast<uint32_t>(cz * 256 + cx);
+
+        // Register building construction with services system
+        m_services->on_building_constructed(entityId, 0);
+        m_services->mark_dirty(stype, 0);
+
+        SDL_Log("Placed %s service at (%d, %d) entity=%u", typeName, cx, cz, entityId);
+    }
+
+    // Remove service building at camera focus
+    if (m_input->isActionPressed(Action::SERVICE_REMOVE)) {
+        int32_t cx = static_cast<int32_t>(std::max(0.0f, m_demoCamera.focus_point.x));
+        int32_t cz = static_cast<int32_t>(std::max(0.0f, m_demoCamera.focus_point.z));
+
+        uint32_t entityId = static_cast<uint32_t>(cz * 256 + cx);
+        m_services->on_building_deconstructed(entityId, 0);
+        m_services->mark_all_dirty(0);
+
+        SDL_Log("Removed service building at (%d, %d) entity=%u", cx, cz, entityId);
+    }
+}
+
+void Application::cleanupServices() {
+    if (m_services) {
+        m_services->cleanup();
+    }
+    m_services.reset();
 }
 
 } // namespace sims3000

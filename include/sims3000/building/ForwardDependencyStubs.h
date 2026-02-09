@@ -1,6 +1,6 @@
 /**
  * @file ForwardDependencyStubs.h
- * @brief Stub implementations of all 7 forward dependency interfaces
+ * @brief Stub implementations of all 8 forward dependency interfaces
  *
  * Provides permissive default implementations for testing and development
  * before real systems are available. Each stub has a debug_restrictive mode
@@ -11,6 +11,7 @@
  * - StubFluidProvider: has_fluid() -> true
  * - StubTransportProvider: is_road_accessible_at() -> true
  * - StubPortProvider: get_port_capacity() -> 0, has_operational_port() -> false
+ * - StubServiceQueryable: get_coverage() -> 0.0f, get_effectiveness() -> 0.0f
  * - StubLandValueProvider: get_land_value() -> 50.0f
  * - StubDemandProvider: get_demand() -> 1.0f
  * - StubCreditProvider: deduct_credits() -> true, has_credits() -> true
@@ -204,6 +205,41 @@ public:
     std::int64_t get_trade_income(std::uint8_t owner) const override {
         (void)owner;
         return 0;
+    }
+
+    void set_debug_restrictive(bool restrictive) { m_restrictive = restrictive; }
+    bool is_debug_restrictive() const { return m_restrictive; }
+
+private:
+    bool m_restrictive;
+};
+
+/**
+ * @class StubServiceQueryable
+ * @brief Service queryable stub with safe defaults.
+ *
+ * Default: no coverage, no effectiveness (0.0f).
+ * Services are opt-in infrastructure, so the safe default is 0.0f
+ * (not 0.5f) when no service buildings exist.
+ * Debug restrictive: same as default (services are opt-in).
+ */
+class StubServiceQueryable : public IServiceQueryable {
+public:
+    StubServiceQueryable() : m_restrictive(false) {}
+
+    float get_coverage(std::uint8_t service_type, std::uint8_t player_id) const override {
+        (void)service_type; (void)player_id;
+        return 0.0f;
+    }
+
+    float get_coverage_at(std::uint8_t service_type, std::int32_t x, std::int32_t y) const override {
+        (void)service_type; (void)x; (void)y;
+        return 0.0f;
+    }
+
+    float get_effectiveness(std::uint8_t service_type, std::uint8_t player_id) const override {
+        (void)service_type; (void)player_id;
+        return 0.0f;
     }
 
     void set_debug_restrictive(bool restrictive) { m_restrictive = restrictive; }

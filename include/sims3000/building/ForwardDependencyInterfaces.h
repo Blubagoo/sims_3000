@@ -2,7 +2,7 @@
  * @file ForwardDependencyInterfaces.h
  * @brief Forward dependency interfaces for BuildingSystem (Epic 4)
  *
- * Defines seven pure abstract interfaces that represent dependencies on systems
+ * Defines eight pure abstract interfaces that represent dependencies on systems
  * implemented in later epics. These interfaces enable BuildingSystem and
  * ZoneSystem to be developed and tested independently of future epics.
  *
@@ -11,6 +11,7 @@
  * - IFluidProvider: Water/fluid state queries (Epic 6)
  * - ITransportProvider: Pathway connectivity queries (Epic 7)
  * - IPortProvider: Port facility and trade queries (Epic 8)
+ * - IServiceQueryable: Service coverage/effectiveness queries (Epic 9)
  * - ILandValueProvider: Sector desirability queries (Epic 10)
  * - IDemandProvider: Zone growth pressure queries (Epic 10)
  * - ICreditProvider: Treasury/credit deduction (Epic 11)
@@ -309,6 +310,49 @@ public:
      * @return Trade income in credits per cycle.
      */
     virtual std::int64_t get_trade_income(std::uint8_t owner) const = 0;
+};
+
+/**
+ * @interface IServiceQueryable
+ * @brief Service coverage and effectiveness query interface (Epic 9 dependency)
+ *
+ * Allows BuildingSystem and other systems to query city service coverage
+ * and effectiveness without depending on ServicesSystem directly.
+ * Will be implemented by ServicesSystem in Epic 9.
+ *
+ * All enum parameters use uint8_t to avoid circular includes with
+ * services::ServiceType, matching the pattern used by other interfaces
+ * in this file.
+ */
+class IServiceQueryable {
+public:
+    /// Virtual destructor for proper polymorphic cleanup
+    virtual ~IServiceQueryable() = default;
+
+    /**
+     * @brief Get overall coverage for a service type and player.
+     * @param service_type Service type (cast from services::ServiceType).
+     * @param player_id Owner player ID.
+     * @return Coverage ratio (0.0 = no coverage, 1.0 = full coverage).
+     */
+    virtual float get_coverage(std::uint8_t service_type, std::uint8_t player_id) const = 0;
+
+    /**
+     * @brief Get service coverage at a specific tile position.
+     * @param service_type Service type (cast from services::ServiceType).
+     * @param x X coordinate (column).
+     * @param y Y coordinate (row).
+     * @return Coverage ratio at the tile (0.0 = no coverage, 1.0 = full coverage).
+     */
+    virtual float get_coverage_at(std::uint8_t service_type, std::int32_t x, std::int32_t y) const = 0;
+
+    /**
+     * @brief Get funding-adjusted effectiveness for a service type and player.
+     * @param service_type Service type (cast from services::ServiceType).
+     * @param player_id Owner player ID.
+     * @return Effectiveness ratio (0.0 = completely ineffective, 1.0 = fully effective).
+     */
+    virtual float get_effectiveness(std::uint8_t service_type, std::uint8_t player_id) const = 0;
 };
 
 /**

@@ -35,6 +35,7 @@
 #include "sims3000/transport/TransportSystem.h"
 #include "sims3000/transport/RailSystem.h"
 #include "sims3000/port/PortSystem.h"
+#include "sims3000/services/ServicesSystem.h"
 
 #include <memory>
 #include <string>
@@ -364,6 +365,16 @@ private:
     std::unique_ptr<port::PortSystem> m_portSystem;
     int m_portMode = 0;  // 0=none, 1=aero, 2=aqua
     uint32_t m_portTickLogCounter = 0;
+
+    // Services demo integration (Epic 9)
+    bool initServices();
+    void tickServices();
+    void handleServicesInput();
+    void cleanupServices();
+
+    std::unique_ptr<services::ServicesSystem> m_services;
+    int m_serviceMode = 0;  // 0=none, 1=enforcer, 2=hazard, 3=medical, 4=education
+    uint32_t m_serviceTickLogCounter = 0;
 };
 
 } // namespace sims3000

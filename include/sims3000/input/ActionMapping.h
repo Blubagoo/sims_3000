@@ -97,6 +97,14 @@ enum class Action {
     PORT_PLACE,         // Place port at camera focus (,)
     PORT_REMOVE,        // Remove port at camera focus (.)
 
+    // Services demo controls (Epic 9)
+    SERVICE_ENFORCER,   // Select enforcer placement mode (;)
+    SERVICE_HAZARD,     // Select hazard response placement mode (')
+    SERVICE_MEDICAL,    // Select medical placement mode ([)
+    SERVICE_EDUCATION,  // Select education placement mode (])
+    SERVICE_PLACE,      // Place service building at camera focus (/)
+    SERVICE_REMOVE,     // Remove service building at camera focus (\)
+
     // System
     FULLSCREEN,
     QUIT,

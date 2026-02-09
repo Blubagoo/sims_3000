@@ -1,0 +1,68 @@
+# Epic 9 Execution Queue
+# Generated: 2026-02-08
+# Last Updated: 2026-02-08
+
+epic: 9
+name: "City Services"
+status: complete
+
+current_wave: 6
+# ALL WAVES COMPLETE
+
+
+# Execution waves (dependency-ordered, max 3 parallel agents per wave)
+waves:
+  wave_1:
+    description: "Foundation types + service configs (no dependencies)"
+    tickets:
+      - {id: "9-001", title: "ServiceType Enum and Configuration Data", status: complete}
+      - {id: "9-002", title: "ServiceProviderComponent Definition", status: complete}
+      - {id: "9-030", title: "Enforcer Post/Station/Nexus Config", status: complete}
+      - {id: "9-031", title: "Hazard Response Post/Station/Nexus Config", status: complete}
+      - {id: "9-032", title: "Medical Post/Center/Nexus Config", status: complete}
+      - {id: "9-033", title: "Learning Center/Archive/Nexus Config", status: complete}
+
+  wave_2:
+    description: "System skeleton"
+    tickets:
+      - {id: "9-003", title: "ServicesSystem Class Skeleton", status: complete}
+
+  wave_3:
+    description: "Interface + grid + events + funding + stats"
+    tickets:
+      - {id: "9-004", title: "IServiceQueryable Real Implementation", status: complete}
+      - {id: "9-010", title: "ServiceCoverageGrid Class", status: complete}
+      - {id: "9-012", title: "Building Event Handlers", status: complete}
+      - {id: "9-024", title: "Funding Effectiveness Modifier", status: complete}
+      - {id: "9-053", title: "Service Statistics (IStatQueryable)", status: complete}
+
+  wave_4:
+    description: "Coverage algorithms + dirty flags + overlays"
+    tickets:
+      - {id: "9-020", title: "Radius-Based Coverage Calculation", status: complete}
+      - {id: "9-011", title: "Dirty Flag and Recalculation Triggers", status: complete}
+      - {id: "9-023", title: "Global Service Aggregation", status: complete}
+      - {id: "9-043", title: "Service Coverage Overlays (IGridOverlay)", status: complete}
+
+  wave_5:
+    description: "Falloff + overlap + integration + global tests"
+    tickets:
+      - {id: "9-021", title: "Linear Distance Falloff", status: complete}
+      - {id: "9-022", title: "Coverage Overlap Handling (Max-Value)", status: complete}
+      - {id: "9-040", title: "DisorderSystem Enforcer Integration", status: complete}
+      - {id: "9-041", title: "PopulationSystem Medical Integration", status: complete}
+      - {id: "9-042", title: "LandValueSystem Education Bonus", status: complete}
+      - {id: "9-051", title: "Unit Tests: Global Services", status: complete}
+
+  wave_6:
+    description: "Comprehensive tests"
+    tickets:
+      - {id: "9-050", title: "Unit Tests: Coverage Calculation", status: complete}
+      - {id: "9-052", title: "Integration Tests: Epic 10 Systems", status: complete}
+
+stats:
+  total: 24
+  complete: 24
+  in_progress: 0
+  pending: 0
+  failed: 0

@@ -4873,3 +4873,221 @@ target_include_directories(test_multiplayer_trade_routes PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 add_test(NAME MultiplayerTradeRoutes COMMAND test_multiplayer_trade_routes)
+
+# Test executable for ServiceConfigs (Tickets E9-031, E9-032, E9-033)
+add_executable(test_service_configs
+    services/test_service_configs.cpp
+)
+target_include_directories(test_service_configs PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ServiceConfigs COMMAND test_service_configs)
+
+# Test executable for ServiceTypes (Tickets E9-001, E9-030)
+add_executable(test_service_types
+    services/test_service_types.cpp
+)
+target_include_directories(test_service_types PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ServiceTypes COMMAND test_service_types)
+
+# Test executable for ServiceProviderComponent (Ticket E9-002)
+add_executable(test_service_component
+    services/test_service_component.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceSerialization.cpp
+)
+target_include_directories(test_service_component PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ServiceComponent COMMAND test_service_component)
+
+# Test executable for ServicesSystem (Ticket E9-003)
+add_executable(test_services_system
+    services/test_services_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServicesSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/CoverageCalculation.cpp
+)
+target_include_directories(test_services_system PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ServicesSystem COMMAND test_services_system)
+
+# Test executable for ServiceStatistics (Ticket E9-053)
+add_executable(test_service_statistics
+    services/test_service_statistics.cpp
+)
+target_include_directories(test_service_statistics PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ServiceStatistics COMMAND test_service_statistics)
+
+# Test executable for IServiceQueryable interface (Ticket E9-004)
+add_executable(test_service_queryable
+    services/test_service_queryable.cpp
+)
+target_include_directories(test_service_queryable PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ServiceQueryable COMMAND test_service_queryable)
+
+# Test executable for FundingModifier (Ticket E9-024)
+add_executable(test_funding_modifier
+    services/test_funding_modifier.cpp
+)
+target_include_directories(test_funding_modifier PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME FundingModifier COMMAND test_funding_modifier)
+
+# Test executable for ServiceCoverageGrid (Ticket E9-010)
+add_executable(test_service_coverage_grid
+    services/test_service_coverage_grid.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceCoverageGrid.cpp
+)
+target_include_directories(test_service_coverage_grid PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ServiceCoverageGrid COMMAND test_service_coverage_grid)
+
+# Test executable for CoverageCalculation (Ticket E9-020)
+add_executable(test_coverage_calculation
+    services/test_coverage_calculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/CoverageCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceCoverageGrid.cpp
+)
+target_include_directories(test_coverage_calculation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME CoverageCalculation COMMAND test_coverage_calculation)
+
+# Test executable for Dirty Flags (Ticket E9-011)
+add_executable(test_dirty_flags
+    services/test_dirty_flags.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServicesSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/CoverageCalculation.cpp
+)
+target_include_directories(test_dirty_flags PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME DirtyFlags COMMAND test_dirty_flags)
+
+# Test executable for ServiceEvents (Ticket E9-012)
+add_executable(test_service_events
+    services/test_service_events.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServicesSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/CoverageCalculation.cpp
+)
+target_include_directories(test_service_events PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ServiceEvents COMMAND test_service_events)
+
+# Test executable for GlobalServiceAggregation (Ticket E9-023)
+add_executable(test_global_service_aggregation
+    services/test_global_service_aggregation.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/GlobalServiceAggregation.cpp
+)
+target_include_directories(test_global_service_aggregation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME GlobalServiceAggregation COMMAND test_global_service_aggregation)
+
+# Test executable for ServiceCoverageOverlay (Ticket E9-043)
+add_executable(test_service_coverage_overlay
+    services/test_service_coverage_overlay.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceCoverageOverlay.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceCoverageGrid.cpp
+)
+target_include_directories(test_service_coverage_overlay PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME ServiceCoverageOverlay COMMAND test_service_coverage_overlay)
+
+# Test executable for DisorderSuppression (Ticket E9-040)
+add_executable(test_disorder_suppression
+    services/test_disorder_suppression.cpp
+)
+target_include_directories(test_disorder_suppression PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME DisorderSuppression COMMAND test_disorder_suppression)
+
+# Test executable for LongevityBonus (Ticket E9-041)
+add_executable(test_longevity_bonus
+    services/test_longevity_bonus.cpp
+)
+target_include_directories(test_longevity_bonus PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME LongevityBonus COMMAND test_longevity_bonus)
+
+# Test executable for EducationBonus (Ticket E9-042)
+add_executable(test_education_bonus
+    services/test_education_bonus.cpp
+)
+target_include_directories(test_education_bonus PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME EducationBonus COMMAND test_education_bonus)
+
+# Test executable for Global Services Comprehensive (Ticket E9-051)
+add_executable(test_global_services_comprehensive
+    services/test_global_services_comprehensive.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/GlobalServiceAggregation.cpp
+)
+target_include_directories(test_global_services_comprehensive PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME GlobalServicesComprehensive COMMAND test_global_services_comprehensive)
+
+# Test executable for LinearFalloff (Ticket E9-021)
+add_executable(test_linear_falloff
+    services/test_linear_falloff.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/CoverageCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceCoverageGrid.cpp
+)
+target_include_directories(test_linear_falloff PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME LinearFalloff COMMAND test_linear_falloff)
+
+# Test executable for CoverageOverlap (Ticket E9-022)
+add_executable(test_coverage_overlap
+    services/test_coverage_overlap.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/CoverageCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceCoverageGrid.cpp
+)
+target_include_directories(test_coverage_overlap PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME CoverageOverlap COMMAND test_coverage_overlap)
+
+# Test executable for CoverageComprehensive (Ticket E9-050)
+add_executable(test_coverage_comprehensive
+    services/test_coverage_comprehensive.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/CoverageCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceCoverageGrid.cpp
+)
+target_include_directories(test_coverage_comprehensive PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME CoverageComprehensive COMMAND test_coverage_comprehensive)
+
+# Test executable for Epic10 Integration (Ticket E9-052)
+add_executable(test_epic10_integration
+    services/test_epic10_integration.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServicesSystem.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/CoverageCalculation.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceCoverageGrid.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/GlobalServiceAggregation.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceSerialization.cpp
+    ${CMAKE_SOURCE_DIR}/src/services/ServiceCoverageOverlay.cpp
+)
+target_include_directories(test_epic10_integration PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME Epic10Integration COMMAND test_epic10_integration)
